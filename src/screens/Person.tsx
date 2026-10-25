@@ -17,7 +17,7 @@ export default function Person() {
   const nav = useNavigate();
   const toast = useToast();
   const all = usePeople();
-  const cargos = useLiveQuery(() => db.cargos.toArray());
+  const cargos = useLiveQuery(() => db.gastos.toArray());
   const [sheet, setSheet] = useState<Item | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
 
@@ -46,7 +46,7 @@ export default function Person() {
 
   const owes = v.saldo > 0;
   const cargoInfo = (m: Movimiento) => {
-    const c = m.cargoId ? cargos?.find((x) => x.id === m.cargoId) : undefined;
+    const c = m.gastoId ? cargos?.find((x) => x.id === m.gastoId) : undefined;
     const n = c ? c.participantes.length + (c.yoIncluido ? 1 : 0) : 0;
     return n > 1 ? `dividido entre ${n}` : '';
   };
@@ -107,7 +107,7 @@ export default function Person() {
             const e = estados.get(m.id);
             const shared = cargoInfo(m);
             return (
-              <button key={m.id} className="bubble cargo" onClick={() => (m.cargoId ? nav(`/cargo/${m.cargoId}`) : undefined)}>
+              <button key={m.id} className="bubble cargo" onClick={() => (m.gastoId ? nav(`/cargo/${m.gastoId}`) : undefined)}>
                 <div className="b-desc">{m.detalle}</div>
                 <div className="b-amt">+{fmt(m.monto)}</div>
                 <div className="b-meta">
@@ -119,10 +119,13 @@ export default function Person() {
               </button>
             );
           }
+          // Provisorio hasta el diseño nuevo: "pagó por ti" (deuda) y "le pagaste" (abono).
+          const label = m.tipo === 'pago' ? `Pagó · ${m.detalle}` : m.tipo === 'deuda' ? `Pagó por ti · ${m.detalle}` : `Le pagaste · ${m.detalle}`;
+          const signo = m.tipo === 'abono' ? '+' : '−';
           return (
-            <button key={m.id} className="bubble pago" onClick={() => setSheet(it)}>
-              <div className="b-desc">Pagó · {m.detalle}</div>
-              <div className="b-amt">−{fmt(m.monto)}</div>
+            <button key={m.id} className={'bubble pago'} onClick={() => (m.tipo === 'deuda' && m.gastoId ? nav(`/cargo/${m.gastoId}`) : setSheet(it))}>
+              <div className="b-desc">{label}</div>
+              <div className="b-amt">{signo}{fmt(m.monto)}</div>
               <div className="b-meta">{shortDate(m.fecha)}</div>
             </button>
           );

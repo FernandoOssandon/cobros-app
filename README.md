@@ -1,4 +1,4 @@
-# Me Debes · MVP
+# Me Debes
 
 PWA móvil para llevar la cuenta de quién te debe plata. Está construida a partir del handoff de diseño "Lúdica" (`design_handoff_me_debes`). Funciona sin conexión y guarda los datos solo en el teléfono, en IndexedDB.
 
@@ -14,7 +14,19 @@ npm run build      # genera la versión de producción en dist/
 npm run preview    # sirve dist/ para probar la PWA (service worker incluido)
 ```
 
-## Publicarla para instalarla en el teléfono
+## Publicar versiones nuevas
+
+El sitio de Netlify está conectado a este repo y `netlify.toml` define cómo compilar, así que **cada `git push` a `main` publica una versión nueva**.
+
+1. Sube el número en `package.json` (`"version"`); se muestra en Ajustes.
+2. `npm test` y `git push`.
+3. En el teléfono aparece el aviso **"Hay una versión nueva · Actualizar"**: la app revisa cada hora y cada vez que vuelves a abrirla.
+
+**Los datos no se pierden al actualizar.** Viven en el teléfono (IndexedDB) asociados a la dirección del sitio, y cada cambio de estructura incluye una migración probada (`src/tests/migration.test.ts`). Solo se pierden si cambia la dirección del sitio, si se desinstala la app o si se borran los datos del navegador. Por eso existe el recordatorio de respaldo.
+
+> Transición 1.0 → 1.1: la 1.0 se actualizaba sola y no sabe mostrar el aviso. `public/sw-transicion.js` hace que la primera versión con aviso se active sola; desde ahí cada versión espera a que toques "Actualizar".
+
+## Publicarla por primera vez
 
 La PWA necesita HTTPS para poder instalarse. La opción más rápida:
 
@@ -40,15 +52,29 @@ También sirven GitHub Pages o Cloudflare Pages. La app usa rutas con `#` y una 
 | Estado de cada cargo | Los pagos se aplican a los cargos más antiguos primero. Cada burbuja muestra "pagado" o "quedan $X". |
 | Confirmaciones | "Importar" y "Borrar todo" piden confirmación en una hoja inferior, como recomienda el handoff para producción. |
 
+## Modelo de datos (v1.1)
+
+| Tabla | Qué guarda |
+|---|---|
+| `gastos` | Todo lo que se paga: total, fecha, `pagador` (`'yo'` o una persona), medio de pago, categoría, grupo, `miParte` y reparto (`solo`, `equal`, `exact`, `shares`). |
+| `movimientos` | Lo que cambia el saldo con una persona: `cargo` (me debe), `pago` (me pagó), `deuda` (le debo: pagó por mí) y `abono` (le pagué). Saldo neto = cargos − pagos − deudas + abonos. |
+| `recurrentes` | Plantillas de 3 tipos: `mio` (arriendo, luz), `compartido` (Netflix con amigos) y `cobro` (cuota que alguien me paga). El monto puede ser `fijo` (se anota solo) o `variable` (queda en `pendientes` para confirmar). Se generan al abrir la app. |
+| `medios`, `categorias`, `grupos`, `fotos` | Tarjetas con nombre, categorías (vienen 7 por defecto), eventos y fotos de boletas. |
+| `personas`, `cobros`, `ajustes` | Igual que en la 1.0, más el recordatorio de respaldo. |
+
+La lógica pura vive en `src/lib/`: `resumen.ts` (gasto real del mes y desglose por tarjeta), `recurrence.ts` (fechas), `search.ts` (búsqueda) y `balance.ts` (saldos netos). Las pantallas del rediseño (Resumen, Gastos, Recurrentes) se conectan sobre esa base.
+
 ## Estructura
 
 ```
 src/
-  db.ts              Esquema Dexie (Persona, Cargo, Movimiento, Cobro, Ajustes) y operaciones
+  db.ts              Esquema Dexie, migraciones v1→v3 y operaciones (gastos, pagos, medios…)
+  backup.ts          Respaldo v3 (con fotos), importación de respaldos v2, compartir/descargar
+  recurrentes.ts     Motor de recurrentes (generar, confirmar, saltar)
   hooks.ts           Consultas en vivo y tema claro/oscuro
-  lib/               Lógica pura: format, split (reparto), balance (saldos/FIFO), messages (WhatsApp), csv
+  lib/               Lógica pura: format, split, balance, resumen, recurrence, search, messages, csv, contacts
   screens/           Home, Person, ChargeForm, ChargeDetail, Pay, Collect, Settings, EditPerson, Archived
-  ui/                Kit (botones, avatar, switch, teclado, hojas) y toast
+  ui/                Kit, toast, aviso de versión nueva (UpdatePrompt) y recordatorio de respaldo (BackupBanner)
   tests/             Pruebas con Vitest
 ```
 
@@ -59,5 +85,6 @@ src/
 ## Datos y respaldo
 
 - Todo queda en IndexedDB del navegador del teléfono. Al iniciar, la app pide almacenamiento persistente.
-- **Exportar** descarga un JSON (`version: 2`) con todo. **Importar** lo restaura y reemplaza los datos actuales.
+- **Exportar** abre el menú de compartir del teléfono (Drive, WhatsApp, correo) con un JSON (`version: 3`, incluye fotos). En computador lo descarga. **Importar** acepta respaldos v2 y v3 y reemplaza los datos actuales.
+- Si pasan 7 días sin respaldar, Inicio muestra un recordatorio (se puede apagar en Ajustes).
 - Ojo en iPhone: Safari puede borrar los datos de sitios que no se usan en semanas. Instalar la app en la pantalla de inicio y exportar respaldos de vez en cuando evita sorpresas.

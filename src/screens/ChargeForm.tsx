@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { crearPersona, db, guardarCargo } from '../db';
+import { crearPersona, db, guardarGasto } from '../db';
 import { usePeople } from '../hooks';
 import { dateLabel, dg, fmt, pressKey, show, todayISO } from '../lib/format';
 import { computeSplit, type SplitMode } from '../lib/split';
 import { AV, CloseButton, DatePill, Keypad } from '../ui/kit';
+import { elegirContacto, puedeElegirContacto } from '../lib/contacts';
 import { useToast } from '../ui/toast';
 
 const MODES: [SplitMode, string][] = [
@@ -21,7 +22,7 @@ export default function ChargeForm() {
   const nav = useNavigate();
   const toast = useToast();
   const people = usePeople();
-  const editing = useLiveQuery(() => (editId ? db.cargos.get(editId) : undefined), [editId]);
+  const editing = useLiveQuery(() => (editId ? db.gastos.get(editId) : undefined), [editId]);
 
   const [desc, setDesc] = useState('');
   const [amt, setAmt] = useState('');
@@ -43,7 +44,7 @@ export default function ChargeForm() {
     setDesc(editing.descripcion);
     setAmt(String(editing.total));
     setFecha(editing.fecha);
-    setMode(editing.modo);
+    setMode(editing.modo === 'solo' ? 'equal' : editing.modo);
     setSel(editing.participantes);
     setMe(editing.yoIncluido);
     setExact(Object.fromEntries(Object.entries(editing.exactos).map(([k, v]) => [k, String(v)])));
@@ -96,8 +97,15 @@ export default function ChargeForm() {
       toast(!sp.amount ? 'Ingresa un monto' : !ids.length ? 'Elige al menos una persona' : 'Revisa cómo se reparte el monto');
       return;
     }
-    await guardarCargo(
+    await guardarGasto(
       {
+        // Al editar se conservan los datos que esta pantalla todavía no muestra.
+        pagador: editing?.pagador,
+        medioId: editing?.medioId,
+        categoriaId: editing?.categoriaId,
+        grupoId: editing?.grupoId,
+        recurrenteId: editing?.recurrenteId,
+        nota: editing?.nota,
         descripcion: desc,
         fecha,
         modo: mode,
@@ -113,10 +121,10 @@ export default function ChargeForm() {
     close();
   };
 
-  const addPerson = async () => {
-    const n = newName.trim();
+  const addPerson = async (nombre = newName, telefono = '') => {
+    const n = nombre.trim();
     if (!n) return;
-    const pid = await crearPersona(n);
+    const pid = await crearPersona(n, telefono);
     setSel((s) => [...s, pid]);
     setNewName('');
     setAdding(false);
@@ -186,6 +194,19 @@ export default function ChargeForm() {
           <button className="btn-add" type="submit">
             Agregar
           </button>
+          {puedeElegirContacto() && (
+            <button
+              type="button"
+              className="btn-outline"
+              style={{ height: 42, borderRadius: 21 }}
+              onClick={async () => {
+                const c = await elegirContacto();
+                if (c?.nombre) addPerson(c.nombre, c.telefono);
+              }}
+            >
+              Contactos
+            </button>
+          )}
         </form>
       )}
 

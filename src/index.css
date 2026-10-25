@@ -263,3 +263,21 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* ---------- Avisos: respaldo y versión nueva ---------- */
+.notice {
+  flex: none; margin: 0 16px 10px; padding: 12px 8px 12px 16px; border-radius: 22px;
+  border: 2px solid var(--ink); background: var(--surface);
+  display: grid; grid-template-columns: 1fr auto 32px; align-items: center; gap: 8px;
+}
+.notice-title { font-size: 16px; font-weight: 800; letter-spacing: -0.2px; }
+.notice-body { font-size: 13px; font-weight: 600; color: var(--muted); margin-top: 1px; }
+.notice-go { height: 38px; padding: 0 14px; border-radius: 19px; border: none; background: var(--accent); color: var(--accent-ink); font-weight: 800; font-size: 14px; }
+.notice-x, .update-x { width: 32px; height: 32px; border-radius: 16px; border: none; background: transparent; font-size: 22px; font-weight: 700; line-height: 1; color: inherit; }
+.update {
+  position: absolute; top: max(8px, env(safe-area-inset-top)); left: 12px; right: 12px; z-index: 35;
+  padding: 8px 6px 8px 18px; border-radius: 22px; background: var(--accent); color: var(--accent-ink);
+  display: grid; grid-template-columns: 1fr auto 32px; align-items: center; gap: 8px;
+  font-size: 16px; font-weight: 800; animation: toast-in 0.18s ease-out;
+}
+.update-go { height: 38px; padding: 0 14px; border-radius: 19px; border: none; background: #0E1A12; color: #F3F0E6; font-weight: 800; font-size: 14px; }

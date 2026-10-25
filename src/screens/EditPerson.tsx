@@ -4,6 +4,7 @@ import { actualizarPersona, borrarPersona } from '../db';
 import { usePeople } from '../hooks';
 import { fmt } from '../lib/format';
 import { CloseButton, ConfirmSheet, Switch } from '../ui/kit';
+import { elegirContacto, puedeElegirContacto } from '../lib/contacts';
 import { useToast } from '../ui/toast';
 
 export default function EditPerson() {
@@ -55,6 +56,18 @@ export default function EditPerson() {
         <div className="field">
           <label htmlFor="tel">Teléfono para WhatsApp</label>
           <input id="tel" type="tel" inputMode="tel" placeholder="+56 9 1234 5678" value={tel} onChange={(e) => setTel(e.target.value)} />
+          {puedeElegirContacto() && (
+            <button
+              className="btn-text"
+              style={{ alignSelf: 'flex-start', fontSize: 14 }}
+              onClick={async () => {
+                const c = await elegirContacto();
+                if (c?.telefono) setTel(c.telefono);
+              }}
+            >
+              Tomar el número de mis contactos
+            </button>
+          )}
         </div>
         <div className="setting" style={{ borderTopWidth: 2 }}>
           <span>

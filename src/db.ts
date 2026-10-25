@@ -1,5 +1,15 @@
-// Base de datos local (IndexedDB vía Dexie) y todas las operaciones que la modifican.
-import Dexie, { type EntityTable } from 'dexie';
+// Base de datos local (IndexedDB vía Dexie): esquema, migraciones y operaciones.
+//
+// Modelo (versión 2 de los datos):
+// - Gasto: todo lo que se paga. Puede ser solo mío, compartido o pagado por otra persona.
+// - Movimiento: lo que cambia el saldo con una persona.
+//     cargo  → la persona me debe           (+)
+//     pago   → la persona me pagó           (−)
+//     deuda  → yo le debo (pagó por mí)     (−)
+//     abono  → yo le pagué                  (+)
+//   Saldo neto = cargos − pagos − deudas + abonos. Positivo: te debe. Negativo: le debes.
+// - Recurrente: plantilla que genera gastos o cargos cada cierto tiempo.
+import Dexie, { type EntityTable, type Transaction } from 'dexie';
 import type { SplitMode, SplitResult } from './lib/split';
 
 export interface Persona {
@@ -13,31 +23,75 @@ export interface Persona {
   creado: string;
 }
 
-/** Un gasto compartido. Cada participante tiene un Movimiento 'cargo' con su parte. */
-export interface Cargo {
+export type TipoMedio = 'credito' | 'debito' | 'efectivo' | 'transferencia';
+
+/** Medio de pago con nombre (ej. "Visa BCI"). */
+export interface Medio {
+  id: string;
+  nombre: string;
+  tipo: TipoMedio;
+  color: number;
+  /** Día de facturación de una tarjeta de crédito (1–31), para agrupar por período. */
+  diaFacturacion?: number;
+  archivado: boolean;
+  orden: number;
+  creado: string;
+}
+
+export interface Categoria {
+  id: string;
+  nombre: string;
+  /** Clave del ícono (la interfaz la traduce a un SVG). */
+  icono: string;
+  orden: number;
+  archivada: boolean;
+}
+
+/** Grupo o evento (ej. "Viaje a Pucón"). */
+export interface Grupo {
+  id: string;
+  nombre: string;
+  archivado: boolean;
+  creado: string;
+}
+
+/** 'solo' = gasto 100% mío; el resto son los modos de reparto entre personas. */
+export type ModoGasto = SplitMode | 'solo';
+
+export interface Gasto {
   id: string;
   descripcion: string;
   total: number;
   fecha: string; // YYYY-MM-DD
-  modo: SplitMode;
+  /** 'yo' o el id de la persona que pagó. */
+  pagador: 'yo' | string;
+  medioId?: string;
+  categoriaId?: string;
+  grupoId?: string;
+  recurrenteId?: string;
+  modo: ModoGasto;
   yoIncluido: boolean;
   miParte: number;
   misPartes: number;
   participantes: string[];
   exactos: Record<string, number>;
   partes: Record<string, number>;
+  nota?: string;
   creado: string;
 }
+
+export type TipoMovimiento = 'cargo' | 'pago' | 'deuda' | 'abono';
 
 export interface Movimiento {
   id: string;
   personaId: string;
-  tipo: 'cargo' | 'pago';
-  /** Cargo: descripción del gasto. Pago: medio (Transferencia / Efectivo). */
+  tipo: TipoMovimiento;
+  /** Cargo/deuda: descripción. Pago/abono: medio (Transferencia / Efectivo). */
   detalle: string;
   monto: number;
   fecha: string; // YYYY-MM-DD
-  cargoId?: string;
+  gastoId?: string;
+  recurrenteId?: string;
   creado: string;
 }
 
@@ -52,6 +106,66 @@ export interface Cobro {
   mensaje: string;
 }
 
+export type TipoRecurrente = 'mio' | 'compartido' | 'cobro';
+export type UnidadFrecuencia = 'dia' | 'semana' | 'mes' | 'anio';
+
+export interface Frecuencia {
+  unidad: UnidadFrecuencia;
+  /** Cada cuántas unidades (1 = todos los meses, 2 = cada 2 meses…). */
+  cada: number;
+  /** Para 'mes': día del mes (1–31; si el mes es más corto, se usa el último día). */
+  dia?: number;
+}
+
+export interface Reparto {
+  /** Total con que se definió el reparto (para escalar montos exactos cuando el monto es variable). */
+  baseTotal?: number;
+  modo: SplitMode;
+  yoIncluido: boolean;
+  misPartes: number;
+  participantes: string[];
+  exactos: Record<string, number>;
+  partes: Record<string, number>;
+}
+
+export interface Recurrente {
+  id: string;
+  nombre: string;
+  tipo: TipoRecurrente;
+  /** 'fijo' se anota solo; 'variable' queda "por confirmar" para ingresar el monto real. */
+  montoTipo: 'fijo' | 'variable';
+  /** Monto fijo o, si es variable, el último monto como referencia. */
+  monto: number;
+  frecuencia: Frecuencia;
+  inicio: string; // YYYY-MM-DD, primera ocurrencia
+  fin?: string; // YYYY-MM-DD, inclusive
+  medioId?: string;
+  categoriaId?: string;
+  /** Solo para 'compartido'. */
+  reparto?: Reparto;
+  /** Solo para 'cobro'. */
+  personaId?: string;
+  /** Última fecha ya generada (o confirmada/saltada). */
+  generadoHasta?: string;
+  activo: boolean;
+  creado: string;
+}
+
+/** Ocurrencia de un recurrente variable esperando que confirmes el monto. */
+export interface Pendiente {
+  id: string;
+  recurrenteId: string;
+  fecha: string;
+  creado: string;
+}
+
+export interface Foto {
+  id: string;
+  gastoId: string;
+  blob: Blob;
+  creado: string;
+}
+
 export type Tema = 'claro' | 'oscuro' | 'sistema';
 
 export interface Ajustes {
@@ -61,6 +175,8 @@ export interface Ajustes {
   incluirDatos: boolean;
   tema: Tema;
   ultimoRespaldo?: string;
+  /** Avisar si pasan más de 7 días sin respaldo. */
+  recordarRespaldo: boolean;
 }
 
 export const AJUSTES_DEFAULT: Ajustes = {
@@ -69,16 +185,36 @@ export const AJUSTES_DEFAULT: Ajustes = {
   datosBancarios: '',
   incluirDatos: true,
   tema: 'sistema',
+  recordarRespaldo: true,
 };
 
-export const db = new Dexie('me-debes') as Dexie & {
+export const CATEGORIAS_DEFAULT: Omit<Categoria, 'archivada'>[] = [
+  { id: 'cat-comida', nombre: 'Comida', icono: 'comida', orden: 1 },
+  { id: 'cat-transporte', nombre: 'Transporte', icono: 'transporte', orden: 2 },
+  { id: 'cat-casa', nombre: 'Casa', icono: 'casa', orden: 3 },
+  { id: 'cat-suscripciones', nombre: 'Suscripciones', icono: 'suscripciones', orden: 4 },
+  { id: 'cat-salidas', nombre: 'Salidas', icono: 'salidas', orden: 5 },
+  { id: 'cat-salud', nombre: 'Salud', icono: 'salud', orden: 6 },
+  { id: 'cat-otros', nombre: 'Otros', icono: 'otros', orden: 7 },
+];
+
+type DB = Dexie & {
   personas: EntityTable<Persona, 'id'>;
-  cargos: EntityTable<Cargo, 'id'>;
+  gastos: EntityTable<Gasto, 'id'>;
   movimientos: EntityTable<Movimiento, 'id'>;
   cobros: EntityTable<Cobro, 'id'>;
   ajustes: EntityTable<Ajustes, 'id'>;
+  medios: EntityTable<Medio, 'id'>;
+  categorias: EntityTable<Categoria, 'id'>;
+  grupos: EntityTable<Grupo, 'id'>;
+  recurrentes: EntityTable<Recurrente, 'id'>;
+  pendientes: EntityTable<Pendiente, 'id'>;
+  fotos: EntityTable<Foto, 'id'>;
 };
 
+export const db = new Dexie('me-debes') as DB;
+
+// v1: primera versión publicada (cargos compartidos).
 db.version(1).stores({
   personas: 'id',
   cargos: 'id, fecha',
@@ -87,9 +223,55 @@ db.version(1).stores({
   ajustes: 'id',
 });
 
-const uid = () =>
+// v2: modelo de gastos. Copia cada cargo como un gasto pagado por mí y renombra cargoId → gastoId.
+db.version(2)
+  .stores({
+    gastos: 'id, fecha, pagador, medioId, categoriaId, grupoId, recurrenteId',
+    movimientos: 'id, personaId, cargoId, gastoId, recurrenteId, fecha',
+    medios: 'id',
+    categorias: 'id',
+    grupos: 'id',
+    recurrentes: 'id',
+    pendientes: 'id, recurrenteId, fecha',
+    fotos: 'id, gastoId',
+  })
+  .upgrade(migrarV1aV2);
+
+// v3: elimina la tabla antigua de cargos y el índice cargoId.
+db.version(3).stores({
+  cargos: null,
+  movimientos: 'id, personaId, gastoId, recurrenteId, fecha',
+});
+
+/** Migración v1 → v2. Exportada para poder probarla. */
+export async function migrarV1aV2(tx: Transaction) {
+  // Registros con la forma de la v1 (tipados sueltos a propósito).
+  type CargoV1 = Omit<Gasto, 'pagador' | 'modo'> & { modo: SplitMode };
+  type MovV1 = Movimiento & { cargoId?: string };
+  const cargos = (await tx.table('cargos').toArray()) as CargoV1[];
+  await tx.table('gastos').bulkPut(cargos.map((c): Gasto => ({ ...c, pagador: 'yo' })));
+  await tx
+    .table('movimientos')
+    .toCollection()
+    .modify((m: MovV1) => {
+      if (m.cargoId) m.gastoId = m.cargoId;
+      delete m.cargoId;
+    });
+  await sembrarCategorias(tx.table('categorias'));
+  const aj = await tx.table('ajustes').get('main');
+  if (aj && aj.recordarRespaldo === undefined) await tx.table('ajustes').put({ ...aj, recordarRespaldo: true });
+}
+
+async function sembrarCategorias(t: { count(): Promise<number>; bulkPut(x: unknown[]): Promise<unknown> }) {
+  if ((await t.count()) === 0) await t.bulkPut(CATEGORIAS_DEFAULT.map((c) => ({ ...c, archivada: false })));
+}
+
+// Base nueva (primer uso): categorías por defecto.
+db.on('populate', (tx) => sembrarCategorias(tx.table('categorias')));
+
+export const uid = () =>
   globalThis.crypto?.randomUUID?.() ?? Date.now().toString(36) + Math.random().toString(36).slice(2);
-const now = () => new Date().toISOString();
+export const now = () => new Date().toISOString();
 
 // ---------- Personas ----------
 
@@ -113,91 +295,142 @@ export async function borrarPersona(id: string): Promise<boolean> {
   return true;
 }
 
-// ---------- Cargos ----------
+// ---------- Gastos ----------
 
-export interface CargoDraft {
+export interface GastoDraft {
   descripcion: string;
   fecha: string;
-  modo: SplitMode;
+  modo: ModoGasto;
   yoIncluido: boolean;
   misPartes: number;
   exactos: Record<string, number>;
   partes: Record<string, number>;
+  pagador?: 'yo' | string;
+  medioId?: string;
+  categoriaId?: string;
+  grupoId?: string;
+  recurrenteId?: string;
+  nota?: string;
 }
 
-/** Crea o reemplaza un cargo y regenera los movimientos de cada participante. Devuelve el id. */
-export async function guardarCargo(d: CargoDraft, split: SplitResult, existingId?: string): Promise<string> {
-  const id = existingId ?? uid();
-  const descripcion = d.descripcion.trim() || 'Gasto compartido';
-  await db.transaction('rw', db.cargos, db.movimientos, async () => {
-    const prev = existingId ? await db.cargos.get(existingId) : undefined;
-    const creado = prev?.creado ?? now();
-    await db.cargos.put({
-      id,
-      descripcion,
-      total: split.amount,
-      fecha: d.fecha,
-      modo: d.modo,
-      yoIncluido: d.yoIncluido,
-      miParte: split.mine,
-      misPartes: d.misPartes,
-      participantes: split.rows.map((r) => r.id),
-      exactos: d.exactos,
-      partes: d.partes,
-      creado,
-    });
-    await db.movimientos.where('cargoId').equals(id).delete();
-    await db.movimientos.bulkAdd(
-      split.rows
-        .filter((r) => r.v > 0)
-        .map((r) => ({ id: uid(), personaId: r.id, tipo: 'cargo' as const, detalle: descripcion, monto: r.v, fecha: d.fecha, cargoId: id, creado })),
-    );
+/**
+ * Construye el gasto y sus movimientos (sin guardar). Reglas:
+ * - Pagué yo: cada participante con monto > 0 queda con un 'cargo' (me debe su parte).
+ * - Pagó otra persona: solo se registra mi parte como 'deuda' con quien pagó
+ *   (lo que otros le deban a esa persona no es asunto de esta app).
+ */
+export function armarGasto(d: GastoDraft, split: SplitResult, id: string, creado: string): { gasto: Gasto; movs: Movimiento[] } {
+  const descripcion = d.descripcion.trim() || (d.modo === 'solo' ? 'Gasto' : 'Gasto compartido');
+  const pagador = d.pagador ?? 'yo';
+  const solo = d.modo === 'solo';
+  const gasto: Gasto = {
+    id,
+    descripcion,
+    total: split.amount,
+    fecha: d.fecha,
+    pagador,
+    medioId: pagador === 'yo' ? d.medioId : undefined,
+    categoriaId: d.categoriaId,
+    grupoId: d.grupoId,
+    recurrenteId: d.recurrenteId,
+    modo: d.modo,
+    yoIncluido: solo ? true : d.yoIncluido,
+    miParte: solo ? split.amount : split.mine,
+    misPartes: d.misPartes,
+    participantes: solo ? [] : split.rows.map((r) => r.id),
+    exactos: d.exactos,
+    partes: d.partes,
+    nota: d.nota,
+    creado,
+  };
+  let movs: Movimiento[] = [];
+  if (pagador === 'yo') {
+    movs = gasto.participantes
+      .map((pid) => ({ pid, v: split.rows.find((r) => r.id === pid)?.v ?? 0 }))
+      .filter((x) => x.v > 0)
+      .map((x, i) => ({
+        id: `${id}:${i}`,
+        personaId: x.pid,
+        tipo: 'cargo' as const,
+        detalle: descripcion,
+        monto: x.v,
+        fecha: d.fecha,
+        gastoId: id,
+        recurrenteId: d.recurrenteId,
+        creado,
+      }));
+  } else if (gasto.miParte > 0) {
+    movs = [{ id: `${id}:deuda`, personaId: pagador, tipo: 'deuda', detalle: descripcion, monto: gasto.miParte, fecha: d.fecha, gastoId: id, recurrenteId: d.recurrenteId, creado }];
+  }
+  return { gasto, movs };
+}
+
+/** Crea o reemplaza un gasto y regenera sus movimientos. Devuelve el id. */
+export async function guardarGasto(d: GastoDraft, split: SplitResult, existingId?: string, fixedId?: string): Promise<string> {
+  const id = existingId ?? fixedId ?? uid();
+  await db.transaction('rw', db.gastos, db.movimientos, async () => {
+    const prev = await db.gastos.get(id);
+    const { gasto, movs } = armarGasto(d, split, id, prev?.creado ?? now());
+    await db.gastos.put(gasto);
+    await db.movimientos.where('gastoId').equals(id).delete();
+    await db.movimientos.bulkPut(movs);
   });
   return id;
 }
 
 /** Copia de lo borrado, para poder deshacer. */
 export interface Snapshot {
-  cargos: Cargo[];
+  gastos: Gasto[];
   movimientos: Movimiento[];
   cobros: Cobro[];
+  fotos?: Foto[];
 }
 
-export async function borrarCargo(id: string): Promise<Snapshot> {
-  return db.transaction('rw', db.cargos, db.movimientos, async () => {
-    const c = await db.cargos.get(id);
-    const cargos = c ? [c] : [];
-    const movimientos = await db.movimientos.where('cargoId').equals(id).toArray();
-    await db.movimientos.where('cargoId').equals(id).delete();
-    await db.cargos.delete(id);
-    return { cargos, movimientos, cobros: [] };
+export async function borrarGasto(id: string): Promise<Snapshot> {
+  return db.transaction('rw', [db.gastos, db.movimientos, db.fotos], async () => {
+    const g = await db.gastos.get(id);
+    const movimientos = await db.movimientos.where('gastoId').equals(id).toArray();
+    const fotos = await db.fotos.where('gastoId').equals(id).toArray();
+    await db.movimientos.where('gastoId').equals(id).delete();
+    await db.fotos.where('gastoId').equals(id).delete();
+    await db.gastos.delete(id);
+    return { gastos: g ? [g] : [], movimientos, cobros: [], fotos };
   });
 }
 
 export async function restaurar(s: Snapshot) {
-  await db.transaction('rw', db.cargos, db.movimientos, db.cobros, async () => {
-    await db.cargos.bulkPut(s.cargos);
+  await db.transaction('rw', [db.gastos, db.movimientos, db.cobros, db.fotos], async () => {
+    await db.gastos.bulkPut(s.gastos);
     await db.movimientos.bulkPut(s.movimientos);
     await db.cobros.bulkPut(s.cobros);
+    if (s.fotos?.length) await db.fotos.bulkPut(s.fotos);
   });
 }
 
-// ---------- Pagos ----------
+// ---------- Pagos y abonos ----------
 
-export async function guardarPago(personaId: string, monto: number, medio: string, fecha: string, existingId?: string) {
+/** 'pago' = la persona me pagó · 'abono' = yo le pagué a la persona. */
+export async function guardarPago(
+  personaId: string,
+  monto: number,
+  medio: string,
+  fecha: string,
+  existingId?: string,
+  tipo: 'pago' | 'abono' = 'pago',
+) {
   if (existingId) {
     await db.movimientos.update(existingId, { monto, detalle: medio, fecha });
     return existingId;
   }
   const id = uid();
-  await db.movimientos.add({ id, personaId, tipo: 'pago', detalle: medio, monto, fecha, creado: now() });
+  await db.movimientos.add({ id, personaId, tipo, detalle: medio, monto, fecha, creado: now() });
   return id;
 }
 
 export async function borrarMovimiento(id: string): Promise<Snapshot> {
   const m = await db.movimientos.get(id);
   await db.movimientos.delete(id);
-  return { cargos: [], movimientos: m ? [m] : [], cobros: [] };
+  return { gastos: [], movimientos: m ? [m] : [], cobros: [] };
 }
 
 // ---------- Cobros ----------
@@ -209,70 +442,57 @@ export async function registrarCobro(c: Omit<Cobro, 'id' | 'fecha' | 'medio'>) {
 export async function borrarCobro(id: string): Promise<Snapshot> {
   const c = await db.cobros.get(id);
   await db.cobros.delete(id);
-  return { cargos: [], movimientos: [], cobros: c ? [c] : [] };
+  return { gastos: [], movimientos: [], cobros: c ? [c] : [] };
 }
+
+// ---------- Medios, categorías y grupos ----------
+
+export async function guardarMedio(m: Omit<Medio, 'id' | 'creado' | 'orden' | 'archivado'> & Partial<Pick<Medio, 'id' | 'archivado'>>) {
+  const prev = m.id ? await db.medios.get(m.id) : undefined;
+  const id = m.id ?? uid();
+  await db.medios.put({ archivado: false, ...prev, ...m, id, orden: prev?.orden ?? (await db.medios.count()) + 1, creado: prev?.creado ?? now() });
+  return id;
+}
+
+export async function guardarCategoria(c: Omit<Categoria, 'id' | 'orden' | 'archivada'> & Partial<Pick<Categoria, 'id' | 'archivada'>>) {
+  const prev = c.id ? await db.categorias.get(c.id) : undefined;
+  const id = c.id ?? uid();
+  await db.categorias.put({ archivada: false, ...prev, ...c, id, orden: prev?.orden ?? (await db.categorias.count()) + 1 });
+  return id;
+}
+
+export async function guardarGrupo(nombre: string, id?: string) {
+  const prev = id ? await db.grupos.get(id) : undefined;
+  const gid = id ?? uid();
+  await db.grupos.put({ archivado: false, ...prev, id: gid, nombre: nombre.trim(), creado: prev?.creado ?? now() });
+  return gid;
+}
+
+// ---------- Fotos ----------
+
+export async function agregarFoto(gastoId: string, blob: Blob) {
+  const id = uid();
+  await db.fotos.add({ id, gastoId, blob, creado: now() });
+  return id;
+}
+
+export const borrarFoto = (id: string) => db.fotos.delete(id);
 
 // ---------- Ajustes ----------
 
 export const guardarAjustes = async (patch: Partial<Omit<Ajustes, 'id'>>) => {
   const cur = (await db.ajustes.get('main')) ?? AJUSTES_DEFAULT;
-  await db.ajustes.put({ ...cur, ...patch, id: 'main' });
+  await db.ajustes.put({ ...AJUSTES_DEFAULT, ...cur, ...patch, id: 'main' });
 };
 
-// ---------- Respaldo ----------
-
-export interface Respaldo {
-  app: 'me-debes';
-  version: 2;
-  exportado: string;
-  personas: Persona[];
-  cargos: Cargo[];
-  movimientos: Movimiento[];
-  cobros: Cobro[];
-  ajustes: Ajustes;
-}
-
-export async function exportarRespaldo(): Promise<Respaldo> {
-  const exportado = now();
-  await guardarAjustes({ ultimoRespaldo: exportado });
-  const [personas, cargos, movimientos, cobros, ajustes] = await Promise.all([
-    db.personas.toArray(),
-    db.cargos.toArray(),
-    db.movimientos.toArray(),
-    db.cobros.toArray(),
-    db.ajustes.get('main'),
-  ]);
-  return { app: 'me-debes', version: 2, exportado, personas, cargos, movimientos, cobros, ajustes: ajustes ?? AJUSTES_DEFAULT };
-}
-
-/** Valida un respaldo leído desde un archivo. Lanza un Error con un mensaje legible si no sirve. */
-export function validarRespaldo(data: unknown): Respaldo {
-  const r = data as Partial<Respaldo>;
-  if (!r || r.app !== 'me-debes' || r.version !== 2) throw new Error('El archivo no es un respaldo de Me Debes');
-  for (const k of ['personas', 'cargos', 'movimientos', 'cobros'] as const) {
-    if (!Array.isArray(r[k])) throw new Error('El respaldo está incompleto');
-  }
-  for (const m of r.movimientos!) {
-    if (typeof m.monto !== 'number' || !m.personaId || (m.tipo !== 'cargo' && m.tipo !== 'pago')) {
-      throw new Error('El respaldo tiene movimientos dañados');
-    }
-  }
-  return r as Respaldo;
-}
-
-export async function importarRespaldo(r: Respaldo) {
-  await db.transaction('rw', [db.personas, db.cargos, db.movimientos, db.cobros, db.ajustes], async () => {
-    await Promise.all([db.personas.clear(), db.cargos.clear(), db.movimientos.clear(), db.cobros.clear()]);
-    await db.personas.bulkAdd(r.personas);
-    await db.cargos.bulkAdd(r.cargos);
-    await db.movimientos.bulkAdd(r.movimientos);
-    await db.cobros.bulkAdd(r.cobros);
-    if (r.ajustes) await db.ajustes.put({ ...AJUSTES_DEFAULT, ...r.ajustes, id: 'main' });
-  });
-}
-
 export async function borrarTodo() {
-  await db.transaction('rw', [db.personas, db.cargos, db.movimientos, db.cobros], async () => {
-    await Promise.all([db.personas.clear(), db.cargos.clear(), db.movimientos.clear(), db.cobros.clear()]);
-  });
+  await db.transaction(
+    'rw',
+    [db.personas, db.gastos, db.movimientos, db.cobros, db.medios, db.grupos, db.recurrentes, db.pendientes, db.fotos],
+    async () => {
+      await Promise.all(
+        [db.personas, db.gastos, db.movimientos, db.cobros, db.medios, db.grupos, db.recurrentes, db.pendientes, db.fotos].map((t) => t.clear()),
+      );
+    },
+  );
 }

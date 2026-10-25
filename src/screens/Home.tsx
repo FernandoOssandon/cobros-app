@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { usePeople, type PersonView } from '../hooks';
 import { fmt, relativeDays } from '../lib/format';
 import { Avatar, IconPlus } from '../ui/kit';
+import BackupBanner from '../ui/BackupBanner';
 
 const subLabel = (v: PersonView) => (v.ultimoCobro ? `Cobrado ${relativeDays(v.ultimoCobro.fecha)}` : '');
 
@@ -36,7 +37,13 @@ export function SettledCard({ v }: { v: PersonView }) {
       <span className="card-row">
         <Avatar color={v.p.color} text={v.ini} />
         <span className="card-name">{v.p.nombre}</span>
-        {v.saldo > 0 ? <span className="card-amt">{fmt(v.saldo)}</span> : <span className="chip-lime">a mano</span>}
+        {v.saldo > 0 ? (
+          <span className="card-amt">{fmt(v.saldo)}</span>
+        ) : v.saldo < 0 ? (
+          <span className="meta" style={{ fontSize: 14, color: 'var(--ink)' }}>le debes {fmt(-v.saldo)}</span>
+        ) : (
+          <span className="chip-lime">a mano</span>
+        )}
       </span>
     </button>
   );
@@ -64,6 +71,7 @@ export default function Home() {
         </button>
       </div>
 
+      <BackupBanner />
       {isEmpty ? (
         <div className="scroll" style={{ padding: '90px 24px 0' }}>
           <div className="display">

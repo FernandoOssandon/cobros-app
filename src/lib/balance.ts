@@ -1,20 +1,22 @@
-// Saldos, % pagado y estado de cada cargo (los pagos se aplican a los cargos más antiguos primero).
+// Saldos netos con cada persona, % pagado y estado de cada cargo.
 import type { Movimiento } from '../db';
 
 export type EstadoCargo = 'pendiente' | 'parcial' | 'pagado';
 
-/** Orden cronológico: por fecha del gasto y, si empatan, por momento de registro. */
+/** Orden cronológico: por fecha y, si empatan, por momento de registro. */
 export const byDate = (a: { fecha: string; creado: string }, b: { fecha: string; creado: string }) =>
   a.fecha.localeCompare(b.fecha) || a.creado.localeCompare(b.creado);
 
-/** Saldo = Σ cargos − Σ pagos. */
-export const saldo = (movs: Movimiento[]): number =>
-  movs.reduce((s, m) => s + (m.tipo === 'cargo' ? m.monto : -m.monto), 0);
+const SIGNO: Record<Movimiento['tipo'], 1 | -1> = { cargo: 1, pago: -1, deuda: -1, abono: 1 };
 
-export const cargado = (movs: Movimiento[]): number =>
-  movs.filter((m) => m.tipo === 'cargo').reduce((s, m) => s + m.monto, 0);
+/** Saldo neto = cargos − pagos − deudas + abonos. Positivo: te debe. Negativo: le debes. */
+export const saldo = (movs: Movimiento[]): number => movs.reduce((s, m) => s + SIGNO[m.tipo] * m.monto, 0);
 
-/** % pagado = (cargado − saldo) / cargado, limitado a 0–100. */
+const suma = (movs: Movimiento[], tipo: Movimiento['tipo']) => movs.filter((m) => m.tipo === tipo).reduce((s, m) => s + m.monto, 0);
+
+export const cargado = (movs: Movimiento[]): number => suma(movs, 'cargo');
+
+/** % pagado de lo que me deben = (cargado − saldo) / cargado, limitado a 0–100. */
 export const pctPagado = (movs: Movimiento[]): number => {
   const c = cargado(movs);
   if (!c) return 0;
@@ -22,15 +24,15 @@ export const pctPagado = (movs: Movimiento[]): number => {
 };
 
 /**
- * Estado de cada cargo de una persona. El total pagado se reparte entre los cargos
- * del más antiguo al más reciente (FIFO).
+ * Estado de cada cargo de una persona. Lo que cubre sus cargos es lo que me pagó más lo que yo le
+ * debo (se compensa), menos lo que yo le abone. Se aplica del cargo más antiguo al más reciente.
  */
 export function estadosCargos(movs: Movimiento[]): Map<string, { estado: EstadoCargo; pendiente: number }> {
-  let pagado = movs.filter((m) => m.tipo === 'pago').reduce((s, m) => s + m.monto, 0);
+  let cubre = Math.max(0, suma(movs, 'pago') + suma(movs, 'deuda') - suma(movs, 'abono'));
   const out = new Map<string, { estado: EstadoCargo; pendiente: number }>();
   for (const m of movs.filter((x) => x.tipo === 'cargo').sort(byDate)) {
-    const aplicado = Math.min(pagado, m.monto);
-    pagado -= aplicado;
+    const aplicado = Math.min(cubre, m.monto);
+    cubre -= aplicado;
     const pendiente = m.monto - aplicado;
     out.set(m.id, { estado: pendiente === 0 ? 'pagado' : aplicado > 0 ? 'parcial' : 'pendiente', pendiente });
   }

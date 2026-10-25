@@ -1,20 +1,20 @@
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { borrarCargo, db, restaurar } from '../db';
+import { borrarGasto, db, restaurar } from '../db';
 import { usePeople } from '../hooks';
 import { estadosCargos } from '../lib/balance';
 import { fmt, shortDate } from '../lib/format';
 import { Avatar, BackButton } from '../ui/kit';
 import { useToast } from '../ui/toast';
 
-const MODO = { equal: 'Partes iguales', exact: 'Montos exactos', shares: 'Por partes' };
+const MODO = { equal: 'Partes iguales', exact: 'Montos exactos', shares: 'Por partes', solo: 'Solo tuyo' };
 
 export default function ChargeDetail() {
   const { id = '' } = useParams();
   const nav = useNavigate();
   const toast = useToast();
   const people = usePeople();
-  const cargo = useLiveQuery(() => db.cargos.get(id), [id], null);
+  const cargo = useLiveQuery(() => db.gastos.get(id), [id], null);
 
   const back = () => (window.history.length > 1 ? nav(-1) : nav('/'));
 
@@ -31,13 +31,13 @@ export default function ChargeDetail() {
   const rows = cargo.participantes
     .map((pid) => {
       const v = people.find((x) => x.p.id === pid);
-      const m = v?.movs.find((x) => x.cargoId === cargo.id);
+      const m = v?.movs.find((x) => x.gastoId === cargo.id);
       return v && m ? { v, m, e: estadosCargos(v.movs).get(m.id) } : null;
     })
     .filter((r) => r !== null);
 
   const remove = async () => {
-    const snap = await borrarCargo(cargo.id);
+    const snap = await borrarGasto(cargo.id);
     toast('Cargo borrado', { label: 'Deshacer', run: () => restaurar(snap) });
     back();
   };
@@ -81,9 +81,11 @@ export default function ChargeDetail() {
         <button className="btn-line" style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }} onClick={remove}>
           Borrar
         </button>
-        <button className="btn-ink" onClick={() => nav(`/cargo/${cargo.id}/editar`, { replace: true })}>
-          Editar cargo
-        </button>
+        {cargo.modo !== 'solo' && cargo.pagador === 'yo' && (
+          <button className="btn-ink" onClick={() => nav(`/cargo/${cargo.id}/editar`, { replace: true })}>
+            Editar cargo
+          </button>
+        )}
       </div>
     </div>
   );

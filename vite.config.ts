@@ -2,15 +2,20 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import pkg from './package.json' with { type: 'json' }
 
 // base relativa: la app funciona en la raíz de un dominio o dentro de una subcarpeta
 // (por ejemplo GitHub Pages). La navegación usa rutas con # (HashRouter).
 export default defineConfig({
   base: './',
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt': la versión nueva espera hasta que toques "Actualizar" (aviso en la app).
+      registerType: 'prompt',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'Me Debes',
@@ -31,6 +36,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        globIgnores: ['sw-transicion.js'],
+        importScripts: ['sw-transicion.js'],
       },
     }),
   ],

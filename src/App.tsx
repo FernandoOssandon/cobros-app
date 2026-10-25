@@ -1,6 +1,9 @@
+import { useEffect } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { useAjustes, useThemeSync } from './hooks';
-import { ToastProvider } from './ui/toast';
+import { ToastProvider, useToast } from './ui/toast';
+import UpdatePrompt from './ui/UpdatePrompt';
+import { generarRecurrentes } from './recurrentes';
 import Home from './screens/Home';
 import Person from './screens/Person';
 import EditPerson from './screens/EditPerson';
@@ -18,6 +21,8 @@ export default function App() {
     <HashRouter>
       <div className="app">
         <ToastProvider>
+          <UpdatePrompt />
+          <RecurrentesAlDia />
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/persona/:id" element={<Person />} />
@@ -36,4 +41,28 @@ export default function App() {
       </div>
     </HashRouter>
   );
+}
+
+/** Al abrir la app (y al volver a ella) anota los recurrentes que tocaban. */
+function RecurrentesAlDia() {
+  const toast = useToast();
+  useEffect(() => {
+    let corriendo = false;
+    const run = async () => {
+      if (corriendo) return;
+      corriendo = true;
+      try {
+        const { anotados, porConfirmar } = await generarRecurrentes();
+        const partes = [anotados && `${anotados} ${anotados === 1 ? 'recurrente anotado' : 'recurrentes anotados'}`, porConfirmar && `${porConfirmar} por confirmar`].filter(Boolean);
+        if (partes.length) toast(partes.join(' · '));
+      } finally {
+        corriendo = false;
+      }
+    };
+    run();
+    const onVis = () => document.visibilityState === 'visible' && run();
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, [toast]);
+  return null;
 }

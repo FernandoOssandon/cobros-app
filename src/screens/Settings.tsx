@@ -1,23 +1,14 @@
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { borrarTodo, db, exportarRespaldo, guardarAjustes, importarRespaldo, validarRespaldo, type Respaldo } from '../db';
+import { borrarTodo, db, guardarAjustes } from '../db';
+import { entregarArchivo, importarRespaldo, validarRespaldo, type Respaldo } from '../backup';
+import { useRespaldar } from '../useRespaldo';
 import { isDark, useAjustes } from '../hooks';
-import { movimientosCsv } from '../lib/csv';
+import { gastosCsv, movimientosCsv } from '../lib/csv';
 import { stampLabel, todayISO } from '../lib/format';
 import { BackButton, ConfirmSheet, Switch } from '../ui/kit';
 import { useToast } from '../ui/toast';
-
-function download(name: string, content: string, type: string) {
-  const url = URL.createObjectURL(new Blob([content], { type }));
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = name;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
 
 export default function Settings() {
   const nav = useNavigate();
@@ -35,15 +26,13 @@ export default function Settings() {
   const [name, setName] = useState<string | null>(null);
   const [bank, setBank] = useState<string | null>(null);
 
-  const exportJson = async () => {
-    const r = await exportarRespaldo();
-    download(`me-debes-respaldo-${todayISO()}.json`, JSON.stringify(r, null, 2), 'application/json');
-    toast('Respaldo guardado');
-  };
-  const exportCsv = async () => {
-    const [ps, ms, cs] = await Promise.all([db.personas.toArray(), db.movimientos.toArray(), db.cargos.toArray()]);
-    download(`me-debes-movimientos-${todayISO()}.csv`, movimientosCsv(ps, ms, cs), 'text/csv;charset=utf-8');
-    toast('Planilla descargada');
+  const exportJson = useRespaldar();
+  const exportCsv = async (cual: 'deudas' | 'gastos') => {
+    const [ps, ms, gs, md, cs] = await Promise.all([
+      db.personas.toArray(), db.movimientos.toArray(), db.gastos.toArray(), db.medios.toArray(), db.categorias.toArray(),
+    ]);
+    const contenido = cual === 'deudas' ? movimientosCsv(ps, ms, gs) : gastosCsv(gs, ps, md, cs);
+    if (await entregarArchivo(`me-debes-${cual}-${todayISO()}.csv`, contenido, 'text/csv;charset=utf-8')) toast('Planilla lista');
   };
   const onFile = async (f?: File) => {
     if (!f) return;
@@ -101,9 +90,18 @@ export default function Settings() {
               Importar
             </button>
           </div>
-          <button className="btn-line" style={{ height: 50, fontSize: 15 }} onClick={exportCsv}>
-            Descargar planilla (Excel)
-          </button>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <button className="btn-line" style={{ height: 50, fontSize: 14 }} onClick={() => exportCsv('deudas')}>
+              Excel de deudas
+            </button>
+            <button className="btn-line" style={{ height: 50, fontSize: 14 }} onClick={() => exportCsv('gastos')}>
+              Excel de gastos
+            </button>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <span style={{ fontSize: 15, fontWeight: 600 }}>Recordarme respaldar cada 7 días</span>
+            <Switch label="Recordarme respaldar cada 7 días" on={aj.recordarRespaldo} onChange={(on) => guardarAjustes({ recordarRespaldo: on })} />
+          </div>
           <input ref={file} type="file" accept="application/json,.json" hidden onChange={(e) => onFile(e.target.files?.[0])} />
         </div>
 
@@ -114,13 +112,13 @@ export default function Settings() {
         >
           Borrar todo
         </button>
-        <div className="meta" style={{ paddingTop: 8 }}>Me Debes 1.0 · funciona sin conexión</div>
+        <div className="meta" style={{ paddingTop: 8 }}>Me Debes {__APP_VERSION__} · funciona sin conexión</div>
       </div>
 
       {pendingImport && (
         <ConfirmSheet
           title="¿Reemplazar todo con este respaldo?"
-          body={`Trae ${pendingImport.personas.length} personas y ${pendingImport.movimientos.length} movimientos. Lo que tienes ahora en el teléfono se borra.`}
+          body={`Trae ${pendingImport.personas.length} personas, ${pendingImport.gastos.length} gastos y ${pendingImport.movimientos.length} movimientos. Lo que tienes ahora en el teléfono se borra.`}
           confirm="Sí, restaurar"
           onClose={() => setPendingImport(null)}
           onConfirm={async () => {
@@ -133,7 +131,7 @@ export default function Settings() {
       {confirmReset && (
         <ConfirmSheet
           title="¿Borrar todos los datos?"
-          body="Se borran personas, cargos, pagos y cobros de este teléfono. No se puede deshacer. Si quieres, exporta un respaldo antes."
+          body="Se borran personas, gastos, pagos, cobros, medios de pago y recurrentes de este teléfono. No se puede deshacer. Si quieres, exporta un respaldo antes."
           confirm="Sí, borrar todo"
           onClose={() => setConfirmReset(false)}
           onConfirm={async () => {
