@@ -25,12 +25,19 @@ export interface Persona {
 
 export type TipoMedio = 'credito' | 'debito' | 'efectivo' | 'transferencia';
 
+/** Paletas del diseño v2 (los textos sobre estos colores van siempre en #0E1A12). */
+export const AVATAR_COLORS = ['#7FD9A8', '#FFD36E', '#9EC9FF', '#FF9E8A', '#D9B8FF', '#BDE7E0'];
+export const CAT_COLORS = ['#FFD36E', '#9EC9FF', '#7FD9A8', '#D9B8FF', '#FF9E8A', '#BDE7E0'];
+export const MEDIO_COLORS = ['#9EC9FF', '#FFD36E', '#7FD9A8', '#FF9E8A', '#D9B8FF', '#E9E4D4'];
+export const ICONOS_CATEGORIA = ['comida', 'transporte', 'casa', 'subs', 'salidas', 'salud', 'regalo', 'libro'] as const;
+
 /** Medio de pago con nombre (ej. "Visa BCI"). */
 export interface Medio {
   id: string;
   nombre: string;
   tipo: TipoMedio;
-  color: number;
+  /** Color de la tarjeta (uno de MEDIO_COLORS). */
+  color: string;
   /** Día de facturación de una tarjeta de crédito (1–31), para agrupar por período. */
   diaFacturacion?: number;
   archivado: boolean;
@@ -41,8 +48,10 @@ export interface Medio {
 export interface Categoria {
   id: string;
   nombre: string;
-  /** Clave del ícono (la interfaz la traduce a un SVG). */
+  /** Clave del ícono (una de ICONOS_CATEGORIA; la interfaz la traduce a un SVG). */
   icono: string;
+  /** Color pastel (uno de CAT_COLORS). */
+  color: string;
   orden: number;
   archivada: boolean;
 }
@@ -76,6 +85,8 @@ export interface Gasto {
   participantes: string[];
   exactos: Record<string, number>;
   partes: Record<string, number>;
+  /** Parte calculada de cada participante (incluida la de quien pagó, si no fui yo). */
+  montos?: Record<string, number>;
   nota?: string;
   creado: string;
 }
@@ -147,15 +158,22 @@ export interface Recurrente {
   personaId?: string;
   /** Última fecha ya generada (o confirmada/saltada). */
   generadoHasta?: string;
+  /** Fecha de la última ocurrencia variable confirmada (para "en octubre llegaron $X"). */
+  ultimoConfirmado?: string;
   activo: boolean;
   creado: string;
 }
 
-/** Ocurrencia de un recurrente variable esperando que confirmes el monto. */
+/**
+ * Ocurrencia de un recurrente que espera una acción:
+ * - 'confirmar': monto variable, hay que decir cuánto llegó.
+ * - 'anotar': monto fijo de un mes anterior (la app no se abrió a tiempo); se anota con "Anotar los N".
+ */
 export interface Pendiente {
   id: string;
   recurrenteId: string;
   fecha: string;
+  tipo: 'confirmar' | 'anotar';
   creado: string;
 }
 
@@ -177,6 +195,8 @@ export interface Ajustes {
   ultimoRespaldo?: string;
   /** Avisar si pasan más de 7 días sin respaldo. */
   recordarRespaldo: boolean;
+  /** Ya pasó (o saltó) la pantalla "Agrega tus tarjetas". */
+  onboardingHecho: boolean;
 }
 
 export const AJUSTES_DEFAULT: Ajustes = {
@@ -186,17 +206,22 @@ export const AJUSTES_DEFAULT: Ajustes = {
   incluirDatos: true,
   tema: 'sistema',
   recordarRespaldo: true,
+  onboardingHecho: false,
 };
 
 export const CATEGORIAS_DEFAULT: Omit<Categoria, 'archivada'>[] = [
-  { id: 'cat-comida', nombre: 'Comida', icono: 'comida', orden: 1 },
-  { id: 'cat-transporte', nombre: 'Transporte', icono: 'transporte', orden: 2 },
-  { id: 'cat-casa', nombre: 'Casa', icono: 'casa', orden: 3 },
-  { id: 'cat-suscripciones', nombre: 'Suscripciones', icono: 'suscripciones', orden: 4 },
-  { id: 'cat-salidas', nombre: 'Salidas', icono: 'salidas', orden: 5 },
-  { id: 'cat-salud', nombre: 'Salud', icono: 'salud', orden: 6 },
-  { id: 'cat-otros', nombre: 'Otros', icono: 'otros', orden: 7 },
+  { id: 'cat-comida', nombre: 'Comida', icono: 'comida', color: '#FFD36E', orden: 1 },
+  { id: 'cat-transporte', nombre: 'Transporte', icono: 'transporte', color: '#9EC9FF', orden: 2 },
+  { id: 'cat-casa', nombre: 'Casa', icono: 'casa', color: '#7FD9A8', orden: 3 },
+  { id: 'cat-suscripciones', nombre: 'Suscripciones', icono: 'subs', color: '#D9B8FF', orden: 4 },
+  { id: 'cat-salidas', nombre: 'Salidas', icono: 'salidas', color: '#FF9E8A', orden: 5 },
+  { id: 'cat-salud', nombre: 'Salud', icono: 'salud', color: '#BDE7E0', orden: 6 },
 ];
+
+/** El efectivo viene incluido (pantalla "Agrega tus tarjetas"). */
+export const MEDIO_EFECTIVO: Omit<Medio, 'creado'> = {
+  id: 'medio-efectivo', nombre: 'Efectivo', tipo: 'efectivo', color: '#7FD9A8', archivado: false, orden: 0,
+};
 
 type DB = Dexie & {
   personas: EntityTable<Persona, 'id'>;
@@ -243,6 +268,51 @@ db.version(3).stores({
   movimientos: 'id, personaId, gastoId, recurrenteId, fecha',
 });
 
+// v4 (app 2.0): colores de categorías y medios, efectivo incluido, montos por persona y tipo de pendiente.
+db.version(4)
+  .stores({ pendientes: 'id, recurrenteId, fecha, tipo' })
+  .upgrade(migrarV3aV4);
+
+/** Migración v3 → v4. Exportada para poder probarla. */
+export async function migrarV3aV4(tx: Transaction) {
+  // Categorías: color e ícono del diseño 2.0. "Otros" se quita si nadie la usa.
+  const porDefecto = new Map(CATEGORIAS_DEFAULT.map((c) => [c.id, c]));
+  const usadas = new Set((await tx.table('gastos').toArray()).map((g: Gasto) => g.categoriaId).filter(Boolean));
+  const cats = (await tx.table('categorias').toArray()) as Categoria[];
+  for (const [i, c] of cats.entries()) {
+    const d = porDefecto.get(c.id);
+    if (c.id === 'cat-otros' && !usadas.has(c.id)) {
+      await tx.table('categorias').delete(c.id);
+      continue;
+    }
+    const icono = d?.icono ?? (ICONOS_CATEGORIA.includes(c.icono as never) ? c.icono : 'regalo');
+    await tx.table('categorias').put({ ...c, icono, color: c.color ?? d?.color ?? CAT_COLORS[i % CAT_COLORS.length] });
+  }
+  // Medios: el color pasa de índice a hex. El efectivo viene incluido.
+  const medios = (await tx.table('medios').toArray()) as (Omit<Medio, 'color'> & { color: unknown })[];
+  for (const m of medios) {
+    if (typeof m.color === 'number') await tx.table('medios').put({ ...m, color: MEDIO_COLORS[m.color % MEDIO_COLORS.length] });
+  }
+  if (!medios.some((m) => m.tipo === 'efectivo')) await tx.table('medios').put({ ...MEDIO_EFECTIVO, creado: new Date().toISOString() });
+  // Gastos: guarda la parte de cada participante (antes solo estaba en los movimientos).
+  const movs = (await tx.table('movimientos').toArray()) as Movimiento[];
+  await tx
+    .table('gastos')
+    .toCollection()
+    .modify((g: Gasto) => {
+      if (g.montos) return;
+      g.montos = Object.fromEntries(movs.filter((m) => m.gastoId === g.id && m.tipo === 'cargo').map((m) => [m.personaId, m.monto]));
+    });
+  await tx
+    .table('pendientes')
+    .toCollection()
+    .modify((p: Pendiente) => {
+      if (!p.tipo) p.tipo = 'confirmar';
+    });
+  const aj = await tx.table('ajustes').get('main');
+  if (aj && aj.onboardingHecho === undefined) await tx.table('ajustes').put({ ...aj, onboardingHecho: false });
+}
+
 /** Migración v1 → v2. Exportada para poder probarla. */
 export async function migrarV1aV2(tx: Transaction) {
   // Registros con la forma de la v1 (tipados sueltos a propósito).
@@ -266,8 +336,11 @@ async function sembrarCategorias(t: { count(): Promise<number>; bulkPut(x: unkno
   if ((await t.count()) === 0) await t.bulkPut(CATEGORIAS_DEFAULT.map((c) => ({ ...c, archivada: false })));
 }
 
-// Base nueva (primer uso): categorías por defecto.
-db.on('populate', (tx) => sembrarCategorias(tx.table('categorias')));
+// Base nueva (primer uso): categorías por defecto y efectivo.
+db.on('populate', async (tx) => {
+  await sembrarCategorias(tx.table('categorias'));
+  await tx.table('medios').put({ ...MEDIO_EFECTIVO, creado: new Date().toISOString() });
+});
 
 export const uid = () =>
   globalThis.crypto?.randomUUID?.() ?? Date.now().toString(36) + Math.random().toString(36).slice(2);
@@ -340,6 +413,7 @@ export function armarGasto(d: GastoDraft, split: SplitResult, id: string, creado
     participantes: solo ? [] : split.rows.map((r) => r.id),
     exactos: d.exactos,
     partes: d.partes,
+    montos: solo ? {} : Object.fromEntries(split.rows.map((r) => [r.id, r.v])),
     nota: d.nota,
     creado,
   };
@@ -493,6 +567,14 @@ export async function borrarTodo() {
       await Promise.all(
         [db.personas, db.gastos, db.movimientos, db.cobros, db.medios, db.grupos, db.recurrentes, db.pendientes, db.fotos].map((t) => t.clear()),
       );
+      await db.medios.put({ ...MEDIO_EFECTIVO, creado: now() });
     },
   );
+}
+
+/** Quita un medio: si ningún gasto lo usa se borra; si no, se archiva (deja de aparecer en las opciones). */
+export async function quitarMedio(id: string) {
+  const usado = await db.gastos.where('medioId').equals(id).count();
+  if (usado) await db.medios.update(id, { archivado: true });
+  else await db.medios.delete(id);
 }

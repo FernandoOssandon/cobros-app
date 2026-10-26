@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&display=swap" rel="stylesheet">
+<style>body{margin:0} *{scrollbar-width:none} ::-webkit-scrollbar{display:none} input,textarea,button{font:inherit;color:inherit} button{cursor:pointer} input:focus,textarea:focus{outline:none} a{color:#138A55} a:hover{color:#0E6B42}</style>
+</helmet>
+<div style="width:390px;height:844px;padding:10px;border-radius:56px;background:#0B0D0C;box-shadow:0 30px 60px -20px rgba(0,0,0,0.35)">
+<div style="position:relative;width:390px;height:844px;border-radius:46px;overflow:hidden;background:{{ t.bg }};color:{{ t.ink }};font-family:'Bricolage Grotesque',system-ui,sans-serif;font-variant-numeric:tabular-nums;display:flex;flex-direction:column;transition:background .25s">
+  <div style="height:50px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 30px 0 34px;font-size:15px;font-weight:700">
+    <span>9:41</span>
+    <div style="width:110px;height:30px;border-radius:20px;background:#000;position:absolute;left:140px;top:10px"></div>
+    <span style="font-size:12px;letter-spacing:1px;white-space:nowrap">●●● ▮</span>
+  </div>
+
+  <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+    <div style="flex:1;min-height:0;display:flex;flex-direction:column">
+      <div style="flex:none;display:flex;justify-content:space-between;align-items:center;padding:6px 20px 14px">
+        <span style="font-size:30px;font-weight:800;letter-spacing:-1px">me debes.</span>
+        <button onClick="{{ goSettings }}" style="height:40px;padding:0 16px;border-radius:20px;border:2px solid {{ t.ink }};background:transparent;font-weight:700;font-size:14px">Ajustes</button>
+      </div>
+      <sc-if value="{{ hasPeople }}" hint-placeholder-val="{{ true }}">
+        <div style="flex:none;display:flex;gap:8px;padding:0 20px 6px">
+          <sc-for list="{{ tabs }}" as="tb" hint-placeholder-count="2"><button onClick="{{ tb.set }}" style="height:40px;padding:0 16px;border-radius:20px;border:none;background:{{ tb.tabBg }};color:{{ tb.tabFg }};font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px">{{ tb.label }}<span style="font-size:13px;opacity:0.7">{{ tb.n }}</span></button></sc-for>
+        </div>
+        <div style="flex:1;overflow:auto;padding:0 16px 20px">
+          <sc-if value="{{ tabPend }}" hint-placeholder-val="{{ true }}">
+            <div style="padding:18px 4px 20px"><div style="font-size:66px;font-weight:800;letter-spacing:-3px;line-height:0.95">{{ totalFmt }}</div><div style="font-size:17px;font-weight:500;color:{{ t.muted }};margin-top:6px">te deben en total</div></div>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <sc-for list="{{ owing }}" as="item" hint-placeholder-count="4">
+                <button onClick="{{ item.open }}" style="border:none;border-radius:24px;background:{{ t.surface }};padding:16px;display:flex;flex-direction:column;gap:12px;text-align:left">
+                  <span style="display:grid;grid-template-columns:42px minmax(0,1fr) auto;gap:12px;align-items:center;width:100%">
+                    <span style="width:42px;height:42px;border-radius:21px;background:{{ item.av }};color:#0E1A12;display:grid;place-items:center;font-weight:800;font-size:15px">{{ item.ini }}</span>
+                    <span style="font-size:19px;font-weight:700;letter-spacing:-0.3px">{{ item.name }}</span>
+                    <span style="font-size:22px;font-weight:800;letter-spacing:-0.6px">{{ item.balFmt }}</span>
+                  </span>
+                  <span style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;width:100%"><span style="height:8px;border-radius:4px;background:{{ t.track }};overflow:hidden;display:block"><span style="display:block;height:8px;border-radius:4px;background:{{ t.pos }};width:{{ item.pctW }}"></span></span><span style="font-size:13px;font-weight:600;color:{{ t.muted }}">{{ item.pctLabel }}</span></span>
+                </button>
+              </sc-for>
+            </div>
+            <sc-if value="{{ noOwing }}" hint-placeholder-val="{{ false }}"><div style="padding:10px 4px;font-size:18px;font-weight:600;color:{{ t.muted }}">Nadie te debe. Disfruta el momento.</div></sc-if>
+          </sc-if>
+          <sc-if value="{{ tabOk }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:10px;padding-top:14px">
+              <sc-for list="{{ settled }}" as="item" hint-placeholder-count="1">
+                <button onClick="{{ item.open }}" style="border:none;border-radius:24px;background:{{ t.surface }};padding:16px;display:grid;grid-template-columns:42px 1fr auto;gap:12px;align-items:center;text-align:left">
+                  <span style="width:42px;height:42px;border-radius:21px;background:{{ item.av }};color:#0E1A12;display:grid;place-items:center;font-weight:800;font-size:15px">{{ item.ini }}</span>
+                  <span style="font-size:19px;font-weight:700">{{ item.name }}</span>
+                  <span style="height:30px;padding:0 12px;border-radius:15px;background:{{ t.accent }};color:{{ t.accentInk }};display:flex;align-items:center;font-size:13px;font-weight:700">a mano</span>
+                </button>
+              </sc-for>
+            </div>
+            <sc-if value="{{ noSettled }}" hint-placeholder-val="{{ false }}"><div style="padding:20px 4px;font-size:18px;font-weight:600;color:{{ t.muted }}">Todavía nadie salda sus cuentas.</div></sc-if>
+          </sc-if>
+        </div>
+      </sc-if>
+      <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ false }}">
+        <div style="flex:1;padding:90px 24px 0">
+          <div style="font-size:60px;font-weight:800;letter-spacing:-2.5px;line-height:0.95">Cero<br>deudas.</div>
+          <div style="font-size:19px;font-weight:500;color:{{ t.muted }};margin-top:16px;line-height:1.35;text-wrap:pretty">Nadie te debe ni un peso. Por ahora. Anota el próximo carrete, la cuenta del depto o ese Uber compartido.</div>
+        </div>
+      </sc-if>
+      <div style="flex:none;padding:10px 16px 32px">
+        <button onClick="{{ goCharge }}" style="width:100%;height:62px;border-radius:31px;border:none;background:{{ t.accent }};color:{{ t.accentInk }};font-weight:800;font-size:19px;display:flex;align-items:center;justify-content:center;gap:10px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>Nuevo cargo</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isPerson }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;min-height:0;display:flex;flex-direction:column">
+      <div style="flex:none;padding:4px 16px"><button onClick="{{ goHome }}" style="height:40px;padding:0 14px 0 8px;border-radius:20px;border:2px solid {{ t.ink }};background:transparent;font-weight:700;font-size:14px;display:flex;align-items:center;gap:2px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg>Volver</button></div>
+      <div style="flex:none;padding:16px 20px 14px">
+        <div style="font-size:38px;font-weight:800;letter-spacing:-1.4px;line-height:1">{{ cur.name }}</div>
+        <sc-if value="{{ curOwes }}" hint-placeholder-val="{{ true }}"><div style="display:inline-flex;align-items:baseline;gap:8px;margin-top:12px;padding:6px 14px;border-radius:14px;background:{{ t.accent }};color:{{ t.accentInk }}"><span style="font-size:17px;font-weight:600">debe</span><span style="font-size:34px;font-weight:800;letter-spacing:-1px">{{ cur.balFmt }}</span></div></sc-if>
+        <sc-if value="{{ curSettled }}" hint-placeholder-val="{{ false }}"><div style="display:inline-flex;margin-top:12px;padding:8px 14px;border-radius:14px;background:{{ t.accent }};color:{{ t.accentInk }};font-size:20px;font-weight:800">a mano, sin deudas</div></sc-if>
+      </div>
+      <div style="flex:1;overflow:auto;padding:8px 16px 16px;display:flex;flex-direction:column;gap:10px">
+        <sc-for list="{{ movesAsc }}" as="m" hint-placeholder-count="3">
+          <sc-if value="{{ m.isCargo }}" hint-placeholder-val="{{ true }}">
+            <div style="align-self:flex-end;max-width:78%;border-radius:22px 22px 6px 22px;background:{{ t.ink }};color:{{ t.bg }};padding:12px 16px"><div style="font-size:15px;font-weight:500;opacity:0.8">{{ m.desc }}</div><div style="font-size:24px;font-weight:800;letter-spacing:-0.5px">{{ m.amtFmt }}</div><div style="font-size:12px;opacity:0.65">{{ m.date }}</div></div>
+          </sc-if>
+          <sc-if value="{{ m.isPago }}" hint-placeholder-val="{{ false }}">
+            <div style="align-self:flex-start;max-width:78%;border-radius:22px 22px 22px 6px;background:{{ t.surface }};border:2px solid {{ t.pos }};padding:12px 16px"><div style="font-size:15px;font-weight:600;color:{{ t.pos }}">Pagó · {{ m.kind }}</div><div style="font-size:24px;font-weight:800;letter-spacing:-0.5px">{{ m.amtAbs }}</div><div style="font-size:12px;color:{{ t.muted }}">{{ m.date }}</div></div>
+          </sc-if>
+        </sc-for>
+        <sc-if value="{{ noMoves }}" hint-placeholder-val="{{ false }}"><div style="margin:auto;font-size:18px;font-weight:600;color:{{ t.muted }};text-align:center">Aquí aparecerá la historia con {{ cur.first }}.</div></sc-if>
+      </div>
+      <div style="flex:none;display:grid;grid-template-columns:56px 1fr 1.6fr;gap:8px;padding:10px 16px 32px">
+        <button onClick="{{ goChargeFor }}" style="height:56px;border-radius:28px;border:2px solid {{ t.ink }};background:transparent;display:grid;place-items:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg></button>
+        <button onClick="{{ goPay }}" style="height:56px;border-radius:28px;border:2px solid {{ t.ink }};background:transparent;font-weight:800;font-size:16px">Pagó</button>
+        <button onClick="{{ goWa }}" style="height:56px;border-radius:28px;border:none;background:{{ t.ink }};color:{{ t.bg }};font-weight:800;font-size:16px;opacity:{{ waOp }}">Cobrar por WhatsApp</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isCharge }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;min-height:0;display:flex;flex-direction:column">
+      <div style="flex:none;display:flex;align-items:center;justify-content:space-between;padding:2px 16px">
+        <button onClick="{{ goHome }}" style="width:44px;height:44px;border-radius:22px;border:2px solid {{ t.ink }};background:transparent;display:grid;place-items:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+        <input value="{{ desc }}" onChange="{{ setDesc }}" placeholder="¿En qué fue?" style="flex:1;min-width:0;margin-left:12px;height:44px;border:none;background:transparent;font-size:20px;font-weight:700;text-align:right"></input>
+      </div>
+      <div style="flex:none;padding:4px 20px 0;font-size:64px;font-weight:800;letter-spacing:-3px;line-height:1.05;white-space:nowrap;overflow:hidden"><span>$</span>{{ amtDisp }}</div>
+      <div style="flex:none;display:flex;gap:10px;overflow-x:auto;overflow-y:hidden;align-items:flex-start;min-height:76px;padding:10px 16px 6px">
+        <button onClick="{{ toggleMe }}" style="flex:none;border:none;background:none;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;font-weight:700;padding:0"><span style="width:48px;height:48px;border-radius:24px;box-sizing:border-box;border:3px solid {{ meSw.track }};background:{{ t.surface }};display:grid;place-items:center;font-weight:800;font-size:14px">Yo</span>{{ meLabel }}</button>
+        <sc-for list="{{ chips }}" as="c" hint-placeholder-count="5">
+          <button onClick="{{ c.toggle }}" style="flex:none;border:none;background:none;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;font-weight:700;padding:0;opacity:{{ c.op }}"><span style="width:48px;height:48px;border-radius:24px;box-sizing:border-box;border:3px solid {{ c.ring }};background:{{ c.av }};color:#0E1A12;display:grid;place-items:center;font-weight:800;font-size:15px">{{ c.ini }}</span>{{ c.first }}</button>
+        </sc-for>
+        <button onClick="{{ toggleAdding }}" style="flex:none;border:none;background:none;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;font-weight:700;padding:0;color:{{ t.muted }}"><span style="width:48px;height:48px;border-radius:24px;box-sizing:border-box;border:2px dashed {{ t.muted }};display:grid;place-items:center;font-size:22px">+</span>Nueva</button>
+      </div>
+      <sc-if value="{{ showAdd }}" hint-placeholder-val="{{ false }}">
+        <div style="flex:none;display:flex;gap:8px;padding:4px 16px"><input value="{{ newName }}" onChange="{{ setNewName }}" placeholder="Nombre de la persona" style="flex:1;min-width:0;height:42px;padding:0 14px;border-radius:21px;border:2px solid {{ t.ink }};background:transparent;font-size:15px"></input><button onClick="{{ addPerson }}" style="height:42px;padding:0 16px;border-radius:21px;border:none;background:{{ t.ink }};color:{{ t.bg }};font-weight:800">Agregar</button></div>
+      </sc-if>
+      <div style="flex:none;display:flex;gap:6px;padding:8px 16px">
+        <sc-for list="{{ modes }}" as="md" hint-placeholder-count="3"><button onClick="{{ md.set }}" style="flex:1;height:36px;border-radius:18px;border:2px solid {{ t.ink }};background:{{ md.tabBg }};color:{{ md.tabFg }};font-weight:700;font-size:14px">{{ md.label }}</button></sc-for>
+      </div>
+      <div style="flex:1;min-height:0;overflow:auto;padding:2px 20px">
+        <sc-for list="{{ rows }}" as="r" hint-placeholder-count="2">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid {{ t.line }}">
+            <span style="font-size:16px;font-weight:700">{{ r.first }}</span>
+            <div style="display:flex;align-items:center;gap:6px">
+              <sc-if value="{{ modeExact }}" hint-placeholder-val="{{ false }}"><input value="{{ r.exactShow }}" onChange="{{ r.onExact }}" inputMode="numeric" placeholder="$0" style="width:96px;height:34px;padding:0 12px;text-align:right;border-radius:17px;border:2px solid {{ t.ink }};background:transparent;font-size:15px;font-weight:700"></input></sc-if>
+              <sc-if value="{{ modeShares }}" hint-placeholder-val="{{ false }}"><button onClick="{{ r.dec }}" style="width:30px;height:30px;border-radius:15px;border:2px solid {{ t.ink }};background:none;font-weight:800">−</button><span style="font-weight:800;min-width:14px;text-align:center">{{ r.k }}</span><button onClick="{{ r.inc }}" style="width:30px;height:30px;border-radius:15px;border:2px solid {{ t.ink }};background:none;font-weight:800">+</button><span style="font-size:15px;color:{{ t.muted }};min-width:70px;text-align:right">{{ r.vFmt }}</span></sc-if>
+              <sc-if value="{{ modeEqual }}" hint-placeholder-val="{{ true }}"><span style="font-size:18px;font-weight:800">{{ r.vFmt }}</span></sc-if>
+            </div>
+          </div>
+        </sc-for>
+        <sc-if value="{{ me }}" hint-placeholder-val="{{ true }}"><div style="display:flex;justify-content:space-between;padding:6px 0;font-size:15px;color:{{ t.muted }};font-weight:600"><span>Tu parte</span><span>{{ mineFmt }}</span></div></sc-if>
+        <sc-if value="{{ showSplitMsg }}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;font-weight:600;color:{{ splitMsgColor }};padding:2px 0">{{ splitMsg }}</div></sc-if>
+        <sc-if value="{{ noSel }}" hint-placeholder-val="{{ false }}"><div style="font-size:15px;font-weight:600;color:{{ t.muted }};padding:8px 0">Toca a las personas que participaron.</div></sc-if>
+      </div>
+      <div style="flex:none;display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:6px 16px">
+        <sc-for list="{{ keysAmt }}" as="k" hint-placeholder-count="12"><button onClick="{{ k.press }}" style="height:44px;border-radius:14px;border:none;background:transparent;font-size:24px;font-weight:700" style-active="background:rgba(127,127,127,0.15)">{{ k.k }}</button></sc-for>
+      </div>
+      <div style="flex:none;padding:4px 16px 30px"><button onClick="{{ saveCharge }}" style="width:100%;height:56px;border-radius:28px;border:none;background:{{ t.accent }};color:{{ t.accentInk }};font-weight:800;font-size:18px;opacity:{{ saveOp }}">Guardar cargo</button></div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isPay }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;min-height:0;display:flex;flex-direction:column">
+      <div style="flex:none;padding:2px 16px"><button onClick="{{ goPerson }}" style="width:44px;height:44px;border-radius:22px;border:2px solid {{ t.ink }};background:transparent;display:grid;place-items:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button></div>
+      <div style="flex:1;padding:18px 20px 0">
+        <div style="font-size:30px;font-weight:800;letter-spacing:-1px;line-height:1.05">¿Cuánto pagó {{ cur.first }}?</div>
+        <div style="font-size:72px;font-weight:800;letter-spacing:-3px;margin-top:20px;white-space:nowrap;overflow:hidden"><span>$</span>{{ payDisp }}</div>
+        <div style="font-size:16px;font-weight:600;color:{{ t.muted }}">Debe {{ cur.balFmt }} · queda {{ afterPayFmt }}</div>
+        <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
+          <sc-for list="{{ quick }}" as="q" hint-placeholder-count="2"><button onClick="{{ q.set }}" style="height:38px;padding:0 14px;border-radius:19px;border:2px solid {{ t.ink }};background:transparent;font-weight:700;font-size:14px">{{ q.label }}</button></sc-for>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <sc-for list="{{ methods }}" as="md" hint-placeholder-count="2"><button onClick="{{ md.set }}" style="height:38px;padding:0 14px;border-radius:19px;border:2px solid {{ t.ink }};background:{{ md.tabBg }};color:{{ md.tabFg }};font-weight:700;font-size:14px">{{ md.label }}</button></sc-for>
+        </div>
+      </div>
+      <div style="flex:none;display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:6px 16px">
+        <sc-for list="{{ keysPay }}" as="k" hint-placeholder-count="12"><button onClick="{{ k.press }}" style="height:48px;border-radius:14px;border:none;background:transparent;font-size:24px;font-weight:700" style-active="background:rgba(127,127,127,0.15)">{{ k.k }}</button></sc-for>
+      </div>
+      <div style="flex:none;padding:4px 16px 30px"><button onClick="{{ savePay }}" style="width:100%;height:56px;border-radius:28px;border:none;background:{{ t.accent }};color:{{ t.accentInk }};font-weight:800;font-size:18px;opacity:{{ payOp }}">Registrar pago</button></div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isWa }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;min-height:0;display:flex;flex-direction:column">
+      <div style="flex:none;padding:2px 16px"><button onClick="{{ goPerson }}" style="height:40px;padding:0 14px 0 8px;border-radius:20px;border:2px solid {{ t.ink }};background:transparent;font-weight:700;font-size:14px;display:flex;align-items:center;gap:2px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg>{{ cur.first }}</button></div>
+      <div style="flex:1;overflow:auto;padding:16px 16px 16px;display:flex;flex-direction:column;gap:10px">
+        <div style="font-size:32px;font-weight:800;letter-spacing:-1px;padding:0 4px 6px">¿Cómo le cobras?</div>
+        <sc-for list="{{ tones }}" as="tn" hint-placeholder-count="3">
+          <button onClick="{{ tn.set }}" style="border:2px solid {{ tn.tabRing }};border-radius:22px;background:{{ tn.tabBg }};color:{{ tn.tabFg }};padding:12px 16px;text-align:left"><span style="display:block;font-size:18px;font-weight:800">{{ tn.label }}</span><span style="display:block;font-size:14px;font-weight:500;opacity:0.75;margin-top:2px">{{ tn.sample }}</span></button>
+        </sc-for>
+        <textarea value="{{ waText }}" onChange="{{ setWaText }}" rows="6" style="margin-top:6px;resize:none;padding:14px 16px;border-radius:22px;border:none;background:{{ t.surface }};font-size:15px;line-height:1.45"></textarea>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 4px"><span style="font-size:15px;font-weight:700">Con mis datos bancarios</span><button onClick="{{ toggleBank }}" style="flex:none;width:52px;height:30px;border-radius:15px;border:2px solid {{ t.ink }};background:{{ bankSw.track }};padding:2px;display:flex;box-sizing:border-box"><span style="width:22px;height:22px;border-radius:11px;background:{{ t.ink }};transform:{{ bankSw.x }};transition:transform .2s"></span></button></div>
+      </div>
+      <div style="flex:none;padding:8px 16px 30px"><button onClick="{{ sendWa }}" style="width:100%;height:60px;border-radius:30px;border:none;background:{{ t.accent }};color:{{ t.accentInk }};font-weight:800;font-size:18px">Mandar por WhatsApp</button></div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isSettings }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;min-height:0;overflow:auto;padding:2px 20px 30px">
+      <button onClick="{{ goHome }}" style="height:40px;padding:0 14px 0 8px;border-radius:20px;border:2px solid {{ t.ink }};background:transparent;font-weight:700;font-size:14px;display:flex;align-items:center;gap:2px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg>Volver</button>
+      <div style="font-size:40px;font-weight:800;letter-spacing:-1.5px;margin:18px 0 18px">ajustes.</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-top:2px solid {{ t.ink }}"><span style="font-size:20px;font-weight:700">Modo oscuro</span><button onClick="{{ toggleDark }}" style="width:52px;height:30px;border-radius:15px;border:2px solid {{ t.ink }};background:{{ darkSw.track }};padding:2px;display:flex;box-sizing:border-box"><span style="width:22px;height:22px;border-radius:11px;background:{{ t.ink }};transform:{{ darkSw.x }};transition:transform .2s"></span></button></div>
+      <label style="display:flex;flex-direction:column;gap:2px;padding:14px 0;border-top:2px solid {{ t.ink }}"><span style="font-size:13px;font-weight:600;color:{{ t.muted }}">Firmo los cobros como</span><input value="{{ myName }}" onChange="{{ setMyName }}" style="border:none;background:transparent;font-size:20px;font-weight:700;padding:0"></input></label>
+      <label style="display:flex;flex-direction:column;gap:2px;padding:14px 0;border-top:2px solid {{ t.ink }}"><span style="font-size:13px;font-weight:600;color:{{ t.muted }}">Mis datos de transferencia</span><input value="{{ bank }}" onChange="{{ setBank }}" style="border:none;background:transparent;font-size:17px;font-weight:600;padding:0"></input></label>
+      <div style="padding:16px 0;border-top:2px solid {{ t.ink }};display:flex;flex-direction:column;gap:12px">
+        <div style="font-size:20px;font-weight:700">Respaldo</div>
+        <div style="font-size:15px;font-weight:500;color:{{ t.muted }};line-height:1.4">Todo vive en este teléfono. Último respaldo {{ lastBackup }} · {{ statsLabel }}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button onClick="{{ exportBackup }}" style="height:50px;border-radius:25px;border:none;background:{{ t.accent }};color:{{ t.accentInk }};font-weight:800;font-size:15px">Exportar</button><button onClick="{{ importBackup }}" style="height:50px;border-radius:25px;border:2px solid {{ t.ink }};background:transparent;font-weight:800;font-size:15px">Importar</button></div>
+      </div>
+      <button onClick="{{ resetAll }}" style="width:100%;text-align:left;padding:16px 0;border:none;border-top:2px solid {{ t.ink }};background:transparent;color:{{ t.danger }};font-size:20px;font-weight:700">Borrar todo</button>
+      <div style="font-size:13px;font-weight:600;color:{{ t.muted }};padding-top:8px">Me Debes 1.0 · funciona sin conexión</div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ hasToast }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;left:16px;right:16px;bottom:104px;padding:16px 18px;border-radius:22px;background:{{ t.ink }};color:{{ t.bg }};font-size:16px;font-weight:700;text-align:center">{{ toast }}</div>
+  </sc-if>
+  <sc-if value="{{ sending }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;background:{{ t.accent }};display:grid;place-items:center"><div style="font-size:34px;font-weight:800;letter-spacing:-1px;color:{{ t.accentInk }}">Abriendo WhatsApp…</div></div>
+  </sc-if>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:410,&quot;height&quot;:864},&quot;screen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;home&quot;,&quot;empty&quot;,&quot;person&quot;,&quot;settled&quot;,&quot;charge&quot;,&quot;pay&quot;,&quot;wa&quot;,&quot;settings&quot;],&quot;default&quot;:&quot;home&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;dark&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;}}">
+const THEME = {
+  light: { bg:'#F3F0E6', surface:'#FFFFFF', ink:'#0E1A12', muted:'#585F57', line:'rgba(14,26,18,0.10)', track:'#DCD7C8', accent:'#C4F25E', accentInk:'#0E1A12', soft:'#E8E4D6', pos:'#13874F', danger:'#B23A26' },
+  dark:  { bg:'#0B110D', surface:'#161F19', ink:'#F1F5EE', muted:'#9AA59B', line:'rgba(241,245,238,0.10)', track:'#2A352D', accent:'#C4F25E', accentInk:'#0E1A12', soft:'#1E2921', pos:'#7EE2A8', danger:'#FF8E7A' }
+};
+const AV = ['#C4F25E','#7FD9A8','#FFD36E','#9EC9FF','#FF9E8A'];
+const fmt = n => (n < 0 ? '−' : '') + '$' + Math.abs(Math.round(n)).toLocaleString('es-CL');
+const dg = s => parseInt(String(s ?? '').replace(/\D/g, ''), 10) || 0;
+const show = s => (s === '' || s == null) ? '' : dg(s).toLocaleString('es-CL');
+const seed = () => [
+  { id:'p1', name:'Camila Rojas', phone:'+56 9 8123 4567', moves:[{t:'c',d:'Uber al aeropuerto',a:7200,f:'3 oct'},{t:'c',d:'Asado del sábado',a:18500,f:'12 oct'},{t:'p',d:'Transferencia',a:10000,f:'15 oct'}] },
+  { id:'p2', name:'Diego Fuentes', phone:'+56 9 7654 3210', moves:[{t:'c',d:'Entradas concierto',a:32000,f:'20 sep'},{t:'p',d:'Efectivo',a:12000,f:'1 oct'}] },
+  { id:'p3', name:'Javiera Soto', phone:'+56 9 6234 9988', moves:[{t:'c',d:'Cuenta de la luz',a:14350,f:'5 oct'},{t:'c',d:'Supermercado',a:22950,f:'18 oct'}] },
+  { id:'p4', name:'Matías Pérez', phone:'+56 9 5512 3344', moves:[{t:'c',d:'Pizza del viernes',a:9000,f:'27 sep'},{t:'p',d:'Transferencia',a:9000,f:'30 sep'}] },
+  { id:'p5', name:'Fernanda Muñoz', phone:'+56 9 9001 2233', moves:[{t:'c',d:'Regalo para la Vale',a:6500,f:'19 oct'}] }
+];
+const bal = p => p.moves.reduce((s, m) => s + (m.t === 'c' ? m.a : -m.a), 0);
+const ini = n => n.trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+const TONES = ['Amable', 'Directo', 'Con humor'];
+const today = () => { const d = new Date(); return d.getDate() + ' ' + ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][d.getMonth()]; };
+
+class Component extends DCLogic {
+  state = this.init();
+  init() {
+    const p = this.props || {}, s = p.screen || 'home', empty = s === 'empty', demo = s === 'charge';
+    return { screen: empty ? 'home' : (s === 'settled' ? 'person' : s), people: empty ? [] : seed(), pid: s === 'settled' ? 'p4' : 'p1', dark: !!p.dark,
+      desc: demo ? 'Sushi del viernes' : '', amt: demo ? '36000' : '', mode: 'equal', sel: demo ? ['p1','p3'] : [], me: true, exact: {}, parts: {}, myParts: 1, newName: '', adding: false, step: demo ? 3 : 1,
+      pay: '', method: 'Transferencia', tone: 0, waText: null, incBank: true, sending: false, toast: '',
+      myName: 'Sebastián', bank: 'Banco Estado · Cuenta RUT 17.234.567-8', lastBackup: '18 oct, 21:04', sheet: false, tab: 'pend' };
+  }
+  componentDidUpdate(pp) { if (pp.dark !== this.props.dark) this.setState({ dark: !!this.props.dark }); }
+  componentWillUnmount() { clearTimeout(this._t); clearTimeout(this._s); }
+  flash(m) { clearTimeout(this._t); this.setState({ toast: m }); this._t = setTimeout(() => this.setState({ toast: '' }), 2400); }
+  go(screen, x) { this.setState({ screen, sheet: false, ...(x || {}) }); }
+  blank() { return { desc:'', amt:'', mode:'equal', sel:[], exact:{}, parts:{}, myParts:1, me:true, step:1, newName:'', adding:false }; }
+  addMove(pid, m) { this.setState(s => ({ people: s.people.map(p => p.id === pid ? { ...p, moves: [...p.moves, m] } : p) })); }
+  split() {
+    const { people, sel, me, mode, exact, parts, myParts } = this.state, amount = dg(this.state.amt);
+    const chosen = people.filter(p => sel.includes(p.id));
+    let rows = [], mine = 0, remaining = 0, ok = amount > 0 && chosen.length > 0;
+    if (mode === 'equal') {
+      const n = chosen.length + (me ? 1 : 0), base = n ? Math.floor(amount / n) : 0, rem = amount - base * n;
+      rows = chosen.map((p, i) => ({ p, v: base + (!me && i < rem ? 1 : 0) })); mine = me ? base + rem : 0;
+    } else if (mode === 'exact') {
+      rows = chosen.map(p => ({ p, v: dg(exact[p.id]) })); remaining = amount - rows.reduce((s, r) => s + r.v, 0);
+      mine = me ? Math.max(remaining, 0) : 0; ok = ok && (me ? remaining >= 0 : remaining === 0);
+    } else {
+      const tp = chosen.reduce((s, p) => s + (parts[p.id] || 1), 0) + (me ? myParts : 0);
+      rows = chosen.map(p => ({ p, k: parts[p.id] || 1, v: tp ? Math.round(amount * (parts[p.id] || 1) / tp) : 0 }));
+      mine = amount - rows.reduce((s, r) => s + r.v, 0);
+      if (!me) { if (rows.length) rows[0].v += mine; mine = 0; }
+    }
+    return { amount, rows, mine, remaining, ok };
+  }
+  keys(field) {
+    return ['1','2','3','4','5','6','7','8','9','00','0','⌫'].map(k => ({ k, press: () => this.setState(s => {
+      let v = String(s[field] || ''); v = k === '⌫' ? v.slice(0, -1) : (v + k).replace(/^0+/, '');
+      return v.length > 9 ? null : { [field]: v };
+    }) }));
+  }
+  renderVals() {
+    const S = this.state, t = THEME[S.dark ? 'dark' : 'light'];
+    const seg = a => ({ seg: a ? t.surface : 'transparent', segFg: a ? t.ink : t.muted, bg: a ? t.accent : t.surface, fg: a ? t.accentInk : t.ink, bd: a ? t.accent : t.track, active: a, tabBg: a ? t.ink : 'transparent', tabFg: a ? t.bg : t.ink, tabRing: a ? t.ink : t.track });
+    const sw = v => ({ track: v ? t.accent : t.track, x: v ? 'translateX(20px)' : 'translateX(0px)' });
+    const people = S.people.map((p, i) => {
+      const b = bal(p), last = p.moves[p.moves.length - 1];
+      const charged = p.moves.filter(m => m.t === 'c').reduce((s, m) => s + m.a, 0), paid = charged - b;
+      const pct = charged ? Math.max(0, Math.min(100, Math.round(paid / charged * 100))) : 0;
+      return { ...p, b, balFmt: fmt(Math.max(b, 0)), ini: ini(p.name), first: p.name.split(' ')[0], av: AV[i % AV.length],
+        last: last ? (last.t === 'c' ? last.d : 'Pagó ' + fmt(last.a)) + ' · ' + last.f : 'Sin movimientos', pct, pctW: pct + '%', pctLabel: pct ? 'pagó ' + pct + '%' : 'sin abonos',
+        open: () => this.go('person', { pid: p.id, waText: null }), payFor: () => this.go('pay', { pid: p.id, pay: '' }) };
+    });
+    const owing = people.filter(p => p.b > 0).sort((a, b) => b.b - a.b), settled = people.filter(p => p.b <= 0);
+    const total = owing.reduce((s, p) => s + p.b, 0);
+    const cur = people.find(p => p.id === S.pid) || people[0] || { name:'', first:'', phone:'', balFmt:'$0', b:0, moves:[], ini:'', av:AV[0] };
+    let run = 0;
+    const moves = cur.moves.map(m => { run += m.t === 'c' ? m.a : -m.a; return { isCargo: m.t === 'c', isPago: m.t !== 'c', desc: m.t === 'c' ? m.d : 'Pago recibido', kind: m.t === 'c' ? 'Cargo' : m.d, date: m.f, amtFmt: (m.t === 'c' ? '+' : '−') + fmt(m.a), amtAbs: (m.t === 'c' ? '' : '−') + fmt(m.a), sign: m.t === 'c' ? '+' : '−', iconBg: m.t === 'c' ? t.soft : t.accent, iconFg: m.t === 'c' ? t.ink : t.accentInk, runFmt: fmt(run), color: m.t === 'c' ? t.ink : t.pos }; }).reverse();
+    const sp = this.split();
+    const chips = people.map(p => { const a = S.sel.includes(p.id); return { ...p, selected: a, ...seg(a), op: a ? 1 : 0.45, ring: a ? t.pos : 'transparent', toggle: () => this.setState(s => ({ sel: a ? s.sel.filter(x => x !== p.id) : [...s.sel, p.id] })) }; });
+    const rows = sp.rows.map(r => ({ name: r.p.name, first: r.p.name.split(' ')[0], ini: ini(r.p.name), av: people.find(x => x.id === r.p.id)?.av, vFmt: fmt(r.v), k: r.k || 1,
+      exactShow: show(S.exact[r.p.id]), onExact: e => { const v = e.target.value.replace(/\D/g, ''); this.setState(s => ({ exact: { ...s.exact, [r.p.id]: v } })); },
+      inc: () => this.setState(s => ({ parts: { ...s.parts, [r.p.id]: Math.min(9, (s.parts[r.p.id] || 1) + 1) } })),
+      dec: () => this.setState(s => ({ parts: { ...s.parts, [r.p.id]: Math.max(1, (s.parts[r.p.id] || 1) - 1) } })) }));
+    let splitMsg = '', splitMsgColor = t.muted;
+    if (S.mode === 'exact' && sp.amount > 0 && sp.rows.length) {
+      if (sp.remaining < 0) { splitMsg = 'Te pasaste por ' + fmt(-sp.remaining); splitMsgColor = t.danger; }
+      else if (sp.remaining > 0 && !S.me) { splitMsg = 'Faltan ' + fmt(sp.remaining) + ' por asignar'; splitMsgColor = t.danger; }
+      else if (sp.remaining === 0) splitMsg = 'Todo asignado';
+      else splitMsg = 'Lo que no asignes queda como tu parte';
+    }
+    if (S.mode === 'shares' && sp.rows.length) splitMsg = 'Ej.: 2 partes paga el doble que 1 parte' + (S.me ? '. Tú tienes ' + S.myParts + ' parte.' : '.');
+    const payAmt = dg(S.pay);
+    const pend = cur.moves.filter(m => m.t === 'c').slice(-3).map(m => m.d.toLowerCase()).join(', ');
+    const msgs = [
+      `Hola ${cur.first}! Te escribo por lo pendiente (${pend}). En total son ${cur.balFmt}. Cuando puedas me transfieres. ¡Gracias!`,
+      `Hola ${cur.first}, te recuerdo que me debes ${cur.balFmt} por ${pend}. ¿Me lo transfieres hoy?`,
+      `${cur.first}, tu deuda conmigo ya está por cumplir años: ${cur.balFmt}. Acepto transferencias, efectivo y disculpas.`
+    ];
+    const waText = S.waText ?? (msgs[S.tone] + (S.incBank && S.bank ? `\n\n${S.bank}\n${S.myName}` : ''));
+    const nMoves = S.people.reduce((s, p) => s + p.moves.length, 0);
+    const steps = [1, 2, 3].map(n => ({ n, on: n <= S.step, dot: n <= S.step ? t.accent : t.track }));
+    const canNext = S.step === 1 ? sp.amount > 0 : S.step === 2 ? S.sel.length > 0 : sp.ok;
+    return {
+      t, S, isHome: S.screen === 'home', isPerson: S.screen === 'person', isCharge: S.screen === 'charge', isPay: S.screen === 'pay', isWa: S.screen === 'wa', isSettings: S.screen === 'settings',
+      hasPeople: people.length > 0, isEmpty: people.length === 0, owing, settled, hasSettled: settled.length > 0, hasOwing: owing.length > 0, noOwing: people.length > 0 && owing.length === 0,
+      owingCount: owing.length, settledCount: settled.length, totalFmt: fmt(total), owingLabel: owing.length === 1 ? '1 persona con saldo pendiente' : owing.length + ' personas con saldo pendiente',
+      tabPend: S.tab === 'pend', tabOk: S.tab === 'ok', tabs: [{ label: 'Pendientes', n: owing.length, ...seg(S.tab === 'pend'), set: () => this.setState({ tab: 'pend' }) }, { label: 'Al día', n: settled.length, ...seg(S.tab === 'ok'), set: () => this.setState({ tab: 'ok' }) }],
+      cur, curSettled: cur.b <= 0, curOwes: cur.b > 0, moves, movesAsc: moves.slice().reverse(), noMoves: moves.length === 0, noSettled: settled.length === 0, meLabel: S.me ? 'Incluido' : 'No pago', amtDisp: show(S.amt) || '0', payDisp: show(S.pay) || '0', hasMoves: moves.length > 0,
+      goHome: () => this.go('home'), goSettings: () => this.go('settings'), goPerson: () => this.go('person'),
+      goCharge: () => this.go('charge', this.blank()), goChargeFor: () => this.go('charge', { ...this.blank(), sel: [cur.id] }),
+      cancelCharge: () => this.go(S.sel.length === 1 && S.screen === 'charge' && S.pid === S.sel[0] ? 'home' : 'home'),
+      goPay: () => this.go('pay', { pay: '' }), goWa: () => cur.b > 0 ? this.go('wa', { waText: null }) : this.flash(cur.first + ' no tiene saldo pendiente'), waOp: cur.b > 0 ? 1 : 0.4,
+      sheetOpen: S.sheet, openSheet: () => this.setState({ sheet: true }), closeSheet: () => this.setState({ sheet: false }),
+      desc: S.desc, setDesc: e => this.setState({ desc: e.target.value }), amtShow: show(S.amt), amtRaw: S.amt, setAmt: e => this.setState({ amt: e.target.value.replace(/\D/g, '').slice(0, 9) }),
+      amountFmt: fmt(sp.amount), chips, rows, me: S.me, meSw: sw(S.me), toggleMe: () => this.setState(s => ({ me: !s.me })), mineFmt: fmt(sp.mine), myParts: S.myParts,
+      myInc: () => this.setState(s => ({ myParts: Math.min(9, s.myParts + 1) })), myDec: () => this.setState(s => ({ myParts: Math.max(1, s.myParts - 1) })),
+      modes: [['equal','Iguales','Todos pagan lo mismo'],['exact','Exactos','Tú defines cada monto'],['shares','Partes','Por porciones, ej. 2 y 1']].map(([k, label, hint]) => ({ k, label, hint, ...seg(S.mode === k), radio: S.mode === k ? t.accent : t.track, ring: S.mode === k ? '6px' : '2px', set: () => this.setState({ mode: k }) })),
+      modeEqual: S.mode === 'equal', modeExact: S.mode === 'exact', modeShares: S.mode === 'shares',
+      showSplitMsg: !!splitMsg, splitMsg, splitMsgColor, saveOp: sp.ok ? 1 : 0.4, selCount: S.sel.length, hasSel: S.sel.length > 0, noSel: S.sel.length === 0,
+      saveCharge: () => {
+        if (!sp.ok) { this.flash(sp.amount ? 'Revisa cómo se reparte el monto' : 'Ingresa un monto'); return; }
+        const d = S.desc.trim() || 'Gasto compartido', f = today();
+        this.setState(s => ({ people: s.people.map(p => { const r = sp.rows.find(x => x.p.id === p.id); return r && r.v > 0 ? { ...p, moves: [...p.moves, { t: 'c', d, a: r.v, f }] } : p; }), screen: 'home', ...this.blank() }));
+        this.flash('Cargo guardado · ' + fmt(sp.amount - sp.mine) + ' por cobrar');
+      },
+      showAdd: S.adding || people.length === 0, toggleAdding: () => this.setState(s => ({ adding: !s.adding })), newName: S.newName, setNewName: e => this.setState({ newName: e.target.value }),
+      addPerson: () => { const n = S.newName.trim(); if (!n) return; const id = 'n' + Date.now(); this.setState(s => ({ people: [...s.people, { id, name: n, phone: '', moves: [] }], sel: [...s.sel, id], newName: '', adding: false })); },
+      step1: S.step === 1, step2: S.step === 2, step3: S.step === 3, steps, stepLabel: 'Paso ' + S.step + ' de 3', nextOp: canNext ? 1 : 0.4, isLastStep: S.step === 3, notLastStep: S.step < 3,
+      next: () => { if (!canNext) { this.flash(S.step === 1 ? 'Ingresa un monto' : 'Elige al menos una persona'); return; } this.setState(s => ({ step: s.step + 1 })); },
+      prev: () => S.step > 1 ? this.setState(s => ({ step: s.step - 1 })) : this.go('home', this.blank()),
+      keysAmt: this.keys('amt'), keysPay: this.keys('pay'),
+      payShow: show(S.pay), payFmt: fmt(payAmt), setPay: e => this.setState({ pay: e.target.value.replace(/\D/g, '').slice(0, 9) }), payOp: payAmt > 0 ? 1 : 0.4,
+      afterPayFmt: fmt(Math.max(cur.b - payAmt, 0)) + (payAmt > cur.b ? ' (+' + fmt(payAmt - cur.b) + ' a favor)' : ''),
+      quick: cur.b > 0 ? [{ label: 'Todo · ' + fmt(cur.b), set: () => this.setState({ pay: String(cur.b) }) }, { label: 'Mitad · ' + fmt(Math.round(cur.b / 2)), set: () => this.setState({ pay: String(Math.round(cur.b / 2)) }) }] : [],
+      methods: ['Transferencia', 'Efectivo'].map(m => ({ label: m, ...seg(S.method === m), set: () => this.setState({ method: m }) })),
+      savePay: () => { if (!payAmt) { this.flash('Ingresa el monto recibido'); return; } this.addMove(cur.id, { t: 'p', d: S.method, a: payAmt, f: today() }); this.go('person', { pay: '' }); this.flash('Pago de ' + fmt(payAmt) + ' registrado'); },
+      tones: TONES.map((label, i) => ({ label, ...seg(S.tone === i), radio: S.tone === i ? t.accent : t.track, sample: msgs[i].slice(0, 60) + '…', set: () => this.setState({ tone: i, waText: null }) })),
+      waText, setWaText: e => this.setState({ waText: e.target.value }), bank: S.bank, bankSw: sw(S.incBank), toggleBank: () => this.setState(s => ({ incBank: !s.incBank, waText: null })),
+      sending: S.sending, sendWa: () => { this.setState({ sending: true }); clearTimeout(this._s); this._s = setTimeout(() => { this.setState({ sending: false, screen: 'person' }); this.flash('Cobro enviado a ' + cur.first); }, 1300); },
+      darkSw: sw(S.dark), toggleDark: () => this.setState(s => ({ dark: !s.dark })), isDark: S.dark,
+      myName: S.myName, setMyName: e => this.setState({ myName: e.target.value }), setBank: e => this.setState({ bank: e.target.value }),
+      lastBackup: S.lastBackup, statsLabel: S.people.length + ' personas · ' + nMoves + ' mov.',
+      exportBackup: () => { const d = new Date(); this.setState({ lastBackup: 'Hoy, ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') }); this.flash('Respaldo guardado: me-debes-respaldo.json'); },
+      importBackup: () => { this.setState({ people: seed() }); this.flash('Respaldo restaurado · 5 personas'); },
+      resetAll: () => { this.setState({ people: [], screen: 'home' }); this.flash('Se borraron todos los datos'); },
+      hasToast: !!S.toast, toast: S.toast
+    };
+  }
+}
+</script>
+</body>
+</html>

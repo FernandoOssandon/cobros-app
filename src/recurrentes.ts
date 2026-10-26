@@ -44,15 +44,18 @@ export function repartoRecurrente(r: Recurrente, monto: number): SplitResult {
   return computeSplit({ ...base, mode: 'shares', parts: rep.exactos, myParts: miParteBase });
 }
 
-/** Anota una ocurrencia con el monto dado. */
-export async function materializar(r: Recurrente, fecha: string, monto: number) {
+const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+export const mesNombre = (fecha: string) => MESES[Number(fecha.slice(5, 7)) - 1];
+
+/** Anota una ocurrencia con el monto dado. `descripcion` reemplaza al nombre (ej. "Luz de noviembre"). */
+export async function materializar(r: Recurrente, fecha: string, monto: number, descripcion = r.nombre) {
   const id = idOcurrencia(r.id, fecha);
   if (r.tipo === 'cobro') {
     if (!r.personaId || monto <= 0) return;
-    await db.movimientos.put({ id, personaId: r.personaId, tipo: 'cargo', detalle: r.nombre, monto, fecha, recurrenteId: r.id, creado: now() });
+    await db.movimientos.put({ id, personaId: r.personaId, tipo: 'cargo', detalle: descripcion, monto, fecha, recurrenteId: r.id, creado: now() });
     return;
   }
-  const comun = { descripcion: r.nombre, fecha, medioId: r.medioId, categoriaId: r.categoriaId, recurrenteId: r.id, exactos: {}, partes: {}, misPartes: 1 };
+  const comun = { descripcion, fecha, medioId: r.medioId, categoriaId: r.categoriaId, recurrenteId: r.id, exactos: {}, partes: {}, misPartes: 1 };
   if (r.tipo === 'mio') {
     await guardarGasto({ ...comun, modo: 'solo', yoIncluido: true }, { amount: monto, rows: [], mine: monto, remaining: 0, ok: true }, undefined, id);
     return;
@@ -66,29 +69,59 @@ export async function materializar(r: Recurrente, fecha: string, monto: number) 
   );
 }
 
+export interface ResultadoGeneracion {
+  /** Fijos del mes en curso que se anotaron solos. */
+  anotados: number;
+  /** Variables que esperan el monto real. */
+  porConfirmar: number;
+  /** Fijos de meses anteriores que se juntaron (banner "Tienes N … por anotar"). */
+  atrasados: number;
+}
+
 /**
  * Se pone al día con todos los recurrentes hasta `hoy`. Se llama al abrir la app.
- * Devuelve cuántas ocurrencias se anotaron solas y cuántas quedaron por confirmar.
+ * - Fijos del mes en curso: se anotan solos.
+ * - Fijos de meses anteriores (la app no se abrió a tiempo): quedan "por anotar" para revisarlos.
+ * - Variables: quedan "por confirmar".
  */
-export async function generarRecurrentes(hoy = todayISO()): Promise<{ anotados: number; porConfirmar: number }> {
-  let anotados = 0;
-  let porConfirmar = 0;
+export async function generarRecurrentes(hoy = todayISO()): Promise<ResultadoGeneracion> {
+  const res: ResultadoGeneracion = { anotados: 0, porConfirmar: 0, atrasados: 0 };
+  const mesActual = hoy.slice(0, 7);
   const lista = (await db.recurrentes.toArray()).filter((r) => r.activo);
   for (const r of lista) {
     const fechas = ocurrenciasEntre(r.frecuencia, r.inicio, r.generadoHasta, hoy, r.fin);
     if (!fechas.length) continue;
     for (const fecha of fechas) {
+      const pid = idOcurrencia(r.id, fecha);
       if (r.montoTipo === 'variable') {
-        await db.pendientes.put({ id: idOcurrencia(r.id, fecha), recurrenteId: r.id, fecha, creado: now() });
-        porConfirmar++;
+        await db.pendientes.put({ id: pid, recurrenteId: r.id, fecha, tipo: 'confirmar', creado: now() });
+        res.porConfirmar++;
+      } else if (fecha.slice(0, 7) < mesActual) {
+        await db.pendientes.put({ id: pid, recurrenteId: r.id, fecha, tipo: 'anotar', creado: now() });
+        res.atrasados++;
       } else {
         await materializar(r, fecha, r.monto);
-        anotados++;
+        res.anotados++;
       }
     }
     await db.recurrentes.update(r.id, { generadoHasta: fechas[fechas.length - 1] });
   }
-  return { anotados, porConfirmar };
+  return res;
+}
+
+/** "Anotar los N": anota todos los fijos atrasados. Devuelve cuántos y el total. */
+export async function anotarAtrasados(): Promise<{ n: number; total: number }> {
+  const ps = await db.pendientes.where('tipo').equals('anotar').toArray();
+  let total = 0;
+  for (const p of ps) {
+    const r = await db.recurrentes.get(p.recurrenteId);
+    if (r) {
+      await materializar(r, p.fecha, r.monto);
+      total += r.monto;
+    }
+    await db.pendientes.delete(p.id);
+  }
+  return { n: ps.length, total };
 }
 
 /** Confirma una ocurrencia variable con el monto real (y lo deja como referencia para la próxima). */
@@ -97,8 +130,9 @@ export async function confirmarPendiente(pendienteId: string, monto: number) {
   if (!p) return;
   const r = await db.recurrentes.get(p.recurrenteId);
   if (r) {
-    await materializar(r, p.fecha, monto);
-    await db.recurrentes.update(r.id, { monto });
+    const descripcion = p.tipo === 'confirmar' ? `${r.nombre} de ${mesNombre(p.fecha)}` : r.nombre;
+    await materializar(r, p.fecha, monto, descripcion);
+    if (p.tipo === 'confirmar') await db.recurrentes.update(r.id, { monto, ultimoConfirmado: p.fecha });
   }
   await db.pendientes.delete(pendienteId);
 }

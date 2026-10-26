@@ -29,7 +29,7 @@ describe('migración de la base v1 → v3', () => {
     // 2) Se abre con el código nuevo (corre la migración).
     const { db, CATEGORIAS_DEFAULT } = await import('../db');
     await db.open();
-    expect(db.verno).toBe(3);
+    expect(db.verno).toBe(4);
     expect(db.tables.map((t) => t.name)).not.toContain('cargos');
 
     expect(await db.personas.count()).toBe(2);
@@ -41,6 +41,12 @@ describe('migración de la base v1 → v3', () => {
     expect(await db.movimientos.get('m3')).toMatchObject({ tipo: 'pago', monto: 5000 });
     expect(await db.cobros.count()).toBe(1);
     expect(await db.ajustes.get('main')).toMatchObject({ miNombre: 'Seba', tema: 'oscuro', recordarRespaldo: true, ultimoRespaldo: '2026-10-18T21:04:00Z' });
-    expect(await db.categorias.count()).toBe(CATEGORIAS_DEFAULT.length);
+    // v4: colores, efectivo incluido y montos por persona.
+    const cats = await db.categorias.toArray();
+    expect(cats).toHaveLength(CATEGORIAS_DEFAULT.length); // "Otros" se quitó porque nadie la usaba
+    expect(cats.find((c) => c.id === 'cat-suscripciones')).toMatchObject({ icono: 'subs', color: '#D9B8FF' });
+    expect((await db.medios.toArray()).map((m) => m.nombre)).toEqual(['Efectivo']);
+    expect((await db.gastos.get('c1'))?.montos).toEqual({ p1: 10000, p2: 10000 });
+    expect((await db.ajustes.get('main'))?.onboardingHecho).toBe(false);
   });
 });

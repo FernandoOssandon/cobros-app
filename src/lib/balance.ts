@@ -39,6 +39,23 @@ export function estadosCargos(movs: Movimiento[]): Map<string, { estado: EstadoC
   return out;
 }
 
+/**
+ * Lo mismo en sentido inverso: estado de lo que yo le debo a una persona (sus "pagó por ti").
+ * Lo cubierto = lo que le debo − max(lo que le debo neto, 0), aplicado del más antiguo al más nuevo.
+ */
+export function estadosDeudas(movs: Movimiento[]): Map<string, { estado: EstadoCargo; pendiente: number }> {
+  const debo = suma(movs, 'deuda');
+  let cubre = Math.max(0, debo - Math.max(-saldo(movs), 0));
+  const out = new Map<string, { estado: EstadoCargo; pendiente: number }>();
+  for (const m of movs.filter((x) => x.tipo === 'deuda').sort(byDate)) {
+    const aplicado = Math.min(cubre, m.monto);
+    cubre -= aplicado;
+    const pendiente = m.monto - aplicado;
+    out.set(m.id, { estado: pendiente === 0 ? 'pagado' : aplicado > 0 ? 'parcial' : 'pendiente', pendiente });
+  }
+  return out;
+}
+
 /** Descripciones de los cargos que siguen pendientes (los más recientes primero, máx. n). */
 export function cargosPendientes(movs: Movimiento[], n = 3): string[] {
   const est = estadosCargos(movs);

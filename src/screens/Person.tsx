@@ -1,56 +1,50 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { borrarCobro, borrarMovimiento, db, restaurar, type Cobro, type Movimiento } from '../db';
-import { usePeople } from '../hooks';
-import { estadosCargos } from '../lib/balance';
-import { fmt, relativeDays, shortDate, todayISO } from '../lib/format';
-import { BackButton, IconPlus, Sheet } from '../ui/kit';
+import { useParams } from 'react-router-dom';
+import { borrarCobro, borrarMovimiento, restaurar, type Cobro, type Movimiento } from '../db';
+import { useDatos } from '../hooks';
+import { fmt, shortDate, todayISO } from '../lib/format';
+import { useNav } from '../nav';
+import { Icon } from '../ui/icons';
+import { BackButton, Sheet } from '../ui/kit';
 import { useToast } from '../ui/toast';
 
-type Item =
-  | { kind: 'mov'; key: string; m: Movimiento }
-  | { kind: 'cobro'; key: string; c: Cobro };
+type Item = { kind: 'mov'; key: string; m: Movimiento } | { kind: 'cobro'; key: string; c: Cobro };
+const ORDEN = { cargo: 1, deuda: 1, pago: 2, abono: 2 } as const;
 
 export default function Person() {
   const { id = '' } = useParams();
-  const nav = useNavigate();
+  const { push, back, backLabel } = useNav();
   const toast = useToast();
-  const all = usePeople();
-  const cargos = useLiveQuery(() => db.gastos.toArray());
+  const d = useDatos();
   const [sheet, setSheet] = useState<Item | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
+  const v = d?.persona.get(id);
 
-  const v = all?.find((x) => x.p.id === id);
   const items = useMemo<Item[]>(() => {
     if (!v) return [];
-    const a: Item[] = v.movs.map((m) => ({ kind: 'mov', key: `${m.fecha}|${m.creado}`, m }));
-    const b: Item[] = v.cobros.map((c) => ({ kind: 'cobro', key: `${todayISO(new Date(c.fecha))}|${c.fecha}`, c }));
+    const a: Item[] = v.movs.map((m) => ({ kind: 'mov', key: `${m.fecha}|${ORDEN[m.tipo]}|${m.creado}`, m }));
+    const b: Item[] = v.cobros.map((c) => ({ kind: 'cobro', key: `${todayISO(new Date(c.fecha))}|3|${c.fecha}`, c }));
     return [...a, ...b].sort((x, y) => x.key.localeCompare(y.key));
   }, [v]);
-  const estados = useMemo(() => (v ? estadosCargos(v.movs) : new Map()), [v]);
 
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight });
   }, [items.length]);
 
-  if (!all) return <div className="screen" />;
+  if (!d) return <div className="screen" />;
   if (!v) {
     return (
-      <div className="screen" style={{ padding: 20, gap: 16 }}>
-        <BackButton onClick={() => nav('/')} />
-        <div className="empty-note">Esta persona ya no existe.</div>
+      <div className="screen" style={{ padding: 16, gap: 16 }}>
+        <div>
+          <BackButton onClick={() => back('/personas')} label={backLabel} />
+        </div>
+        <div className="t-note">Esta persona ya no existe.</div>
       </div>
     );
   }
 
-  const owes = v.saldo > 0;
-  const cargoInfo = (m: Movimiento) => {
-    const c = m.gastoId ? cargos?.find((x) => x.id === m.gastoId) : undefined;
-    const n = c ? c.participantes.length + (c.yoIncluido ? 1 : 0) : 0;
-    return n > 1 ? `dividido entre ${n}` : '';
-  };
-
+  const bal = v.saldo;
+  const color = bal > 0 ? 'var(--pos)' : 'var(--owe)';
   const undoable = async (p: Promise<Parameters<typeof restaurar>[0]>, msg: string) => {
     const snap = await p;
     setSheet(null);
@@ -59,121 +53,120 @@ export default function Person() {
 
   return (
     <div className="screen">
-      <div style={{ flex: 'none', padding: '4px 16px', display: 'flex', justifyContent: 'space-between' }}>
-        <BackButton onClick={() => nav('/')} />
-        <button className="btn-outline" onClick={() => nav(`/persona/${id}/editar`)}>
+      <div className="row-between" style={{ flex: 'none', padding: '4px 16px' }}>
+        <BackButton onClick={() => back('/personas')} label={backLabel} />
+        <button className="btn-o" onClick={() => push(`/persona/${id}/editar`)}>
           Editar
         </button>
       </div>
       <div style={{ flex: 'none', padding: '16px 20px 14px' }}>
-        <h1 className="title" style={{ margin: 0 }}>{v.p.nombre}</h1>
-        {owes ? (
-          <div className="balance-chip">
-            <span className="lbl">debe</span>
-            <span className="amt">{fmt(v.saldo)}</span>
+        <h1 style={{ fontSize: 38, fontWeight: 800, letterSpacing: -1.4, lineHeight: 1, overflowWrap: 'anywhere' }}>{v.p.nombre}</h1>
+        {bal === 0 ? (
+          <div style={{ display: 'inline-flex', marginTop: 12, height: 44, padding: '0 16px', borderRadius: 22, border: '2px solid var(--ink)', alignItems: 'center', fontSize: 18, fontWeight: 800 }}>
+            a mano, sin deudas
           </div>
         ) : (
-          <div className="balance-chip settled">a mano, sin deudas</div>
-        )}
-        {(v.p.archivada || v.saldo < 0 || v.ultimoCobro) && (
-          <div className="meta" style={{ marginTop: 10 }}>
-            {[
-              v.p.archivada && 'Archivada',
-              v.saldo < 0 && `${fmt(-v.saldo)} a su favor`,
-              v.ultimoCobro && `Último cobro ${relativeDays(v.ultimoCobro.fecha)}`,
-            ]
-              .filter(Boolean)
-              .join(' · ')}
+          <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 8, marginTop: 12, padding: '4px 16px 6px', borderRadius: 18, border: `2px solid ${color}`, color }}>
+            <span style={{ fontSize: 17, fontWeight: 700 }}>{bal > 0 ? 'te debe' : 'le debes'}</span>
+            <span style={{ fontSize: 34, fontWeight: 800, letterSpacing: -1 }}>{fmt(Math.abs(bal))}</span>
           </div>
         )}
+        {v.p.archivada && <div className="t-meta" style={{ marginTop: 8 }}>Archivada</div>}
       </div>
 
-      <div className="scroll history" ref={scroller}>
+      <div className="scroll chat" ref={scroller}>
         {items.length === 0 && (
-          <div className="empty-note" style={{ margin: 'auto', textAlign: 'center' }}>
+          <div className="t-note" style={{ margin: 'auto', textAlign: 'center' }}>
             Aquí aparecerá la historia con {v.first}.
           </div>
         )}
         {items.map((it) => {
           if (it.kind === 'cobro') {
             return (
-              <button key={it.c.id} className="event" onClick={() => setSheet(it)}>
-                Le cobraste <b>{fmt(it.c.monto)}</b> por WhatsApp · {shortDate(todayISO(new Date(it.c.fecha)))}
+              <button key={it.c.id} className="aviso" onClick={() => setSheet(it)}>
+                Le cobraste por WhatsApp · {shortDate(todayISO(new Date(it.c.fecha)))}
               </button>
             );
           }
           const m = it.m;
-          if (m.tipo === 'cargo') {
-            const e = estados.get(m.id);
-            const shared = cargoInfo(m);
-            return (
-              <button key={m.id} className="bubble cargo" onClick={() => (m.gastoId ? nav(`/cargo/${m.gastoId}`) : undefined)}>
-                <div className="b-desc">{m.detalle}</div>
-                <div className="b-amt">+{fmt(m.monto)}</div>
-                <div className="b-meta">
-                  <span>{shortDate(m.fecha)}</span>
-                  {shared && <span>· {shared}</span>}
-                  {e?.estado === 'pagado' && <span className="tag solid">pagado</span>}
-                  {e?.estado === 'parcial' && <span className="tag">quedan {fmt(e.pendiente)}</span>}
-                </div>
-              </button>
-            );
+          const g = m.gastoId ? d.gasto.get(m.gastoId) : undefined;
+          const deTotal = g && g.total !== m.monto ? `de ${fmt(g.total)} · ` : '';
+          const abrirGasto = () => (m.gastoId ? push(`/gasto/${m.gastoId}`) : undefined);
+          switch (m.tipo) {
+            case 'cargo':
+              return (
+                <button key={m.id} className="bub cargo" onClick={abrirGasto}>
+                  <div className="b1">{m.detalle}</div>
+                  <div className="b2">+{fmt(m.monto)}</div>
+                  <div className="b3">{deTotal + shortDate(m.fecha)}</div>
+                </button>
+              );
+            case 'deuda':
+              return (
+                <button key={m.id} className="bub porti" onClick={abrirGasto}>
+                  <div className="b1">Pagó por ti · {m.detalle}</div>
+                  <div className="b2">{fmt(m.monto)}</div>
+                  <div className="b3">{deTotal + shortDate(m.fecha)}</div>
+                </button>
+              );
+            case 'pago':
+              return (
+                <button key={m.id} className="bub pago" onClick={() => setSheet(it)}>
+                  <div className="b1">Te pagó · {m.detalle}</div>
+                  <div className="b2">−{fmt(m.monto)}</div>
+                  <div className="b3">{shortDate(m.fecha)}</div>
+                </button>
+              );
+            case 'abono':
+              return (
+                <button key={m.id} className="bub abono" onClick={() => setSheet(it)}>
+                  <div className="b1">Le pagaste · {m.detalle}</div>
+                  <div className="b2">{fmt(m.monto)}</div>
+                  <div className="b3">{shortDate(m.fecha)}</div>
+                </button>
+              );
           }
-          // Provisorio hasta el diseño nuevo: "pagó por ti" (deuda) y "le pagaste" (abono).
-          const label = m.tipo === 'pago' ? `Pagó · ${m.detalle}` : m.tipo === 'deuda' ? `Pagó por ti · ${m.detalle}` : `Le pagaste · ${m.detalle}`;
-          const signo = m.tipo === 'abono' ? '+' : '−';
-          return (
-            <button key={m.id} className={'bubble pago'} onClick={() => (m.tipo === 'deuda' && m.gastoId ? nav(`/cargo/${m.gastoId}`) : setSheet(it))}>
-              <div className="b-desc">{label}</div>
-              <div className="b-amt">{signo}{fmt(m.monto)}</div>
-              <div className="b-meta">{shortDate(m.fecha)}</div>
-            </button>
-          );
         })}
       </div>
 
       <div className="actions">
-        <button className="btn-line" onClick={() => nav(`/cargo/nuevo?p=${id}`)} aria-label={`Nuevo cargo para ${v.first}`}>
-          <IconPlus size={22} w={2.6} />
+        <button className="btn-line" onClick={() => push(`/gasto/nuevo?p=${id}`)} aria-label={`Nuevo gasto con ${v.first}`}>
+          <Icon name="plus" size={22} w={2.6} />
         </button>
-        <button className="btn-line" onClick={() => nav(`/persona/${id}/pago`)}>
-          Pagó
+        <button className="btn-line" onClick={() => push(`/persona/${id}/pago`)}>
+          {bal < 0 ? 'Le pagué' : 'Pagó'}
         </button>
         <button
           className="btn-ink"
-          style={{ opacity: owes ? 1 : 0.4 }}
-          onClick={() => (owes ? nav(`/persona/${id}/cobro`) : toast(`${v.first} no tiene saldo pendiente`))}
+          style={{ opacity: bal > 0 ? 1 : 0.4 }}
+          onClick={() => (bal > 0 ? push(`/persona/${id}/cobro`) : toast(bal < 0 ? 'Aquí el que debe eres tú' : `${v.first} no tiene saldo pendiente`))}
         >
           Cobrar por WhatsApp
         </button>
       </div>
 
       {sheet?.kind === 'mov' && (
-        <Sheet onClose={() => setSheet(null)} label="Pago">
-          <div className="s-title">Pago de {fmt(sheet.m.monto)}</div>
-          <div className="s-body">
+        <Sheet onClose={() => setSheet(null)} label="Pago" style={{ gap: 10 }}>
+          <div className="sheet-title">{sheet.m.tipo === 'abono' ? 'Le pagaste' : 'Te pagó'} {fmt(sheet.m.monto)}</div>
+          <div className="sheet-body" style={{ paddingBottom: 6 }}>
             {sheet.m.detalle} · {shortDate(sheet.m.fecha)}
           </div>
-          <button className="btn-ink" onClick={() => nav(`/persona/${id}/pago/${sheet.m.id}`)}>
+          <button className="btn-ink" onClick={() => push(`/persona/${id}/pago/${sheet.m.id}`)}>
             Editar pago
           </button>
-          <button className="btn-line" style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }} onClick={() => undoable(borrarMovimiento(sheet.m.id), 'Pago borrado')}>
+          <button className="btn-line danger" onClick={() => undoable(borrarMovimiento(sheet.m.id), 'Pago borrado')}>
             Borrar pago
           </button>
         </Sheet>
       )}
       {sheet?.kind === 'cobro' && (
-        <Sheet onClose={() => setSheet(null)} label="Cobro">
-          <div className="s-title">
-            Cobro {sheet.c.tono.toLowerCase()} · {shortDate(todayISO(new Date(sheet.c.fecha)))}
-          </div>
-          <div className="s-body" style={{ whiteSpace: 'pre-wrap', maxHeight: 220, overflow: 'auto', background: 'var(--surface)', color: 'var(--ink)', borderRadius: 18, padding: '12px 14px', fontSize: 15 }}>
-            {sheet.c.mensaje}
-          </div>
+        <Sheet onClose={() => setSheet(null)} label="Cobro" style={{ gap: 10 }}>
+          <div className="sheet-title">Cobro {sheet.c.tono.toLowerCase()} · {shortDate(todayISO(new Date(sheet.c.fecha)))}</div>
+          <div style={{ whiteSpace: 'pre-wrap', maxHeight: 220, overflow: 'auto', background: 'var(--surface)', borderRadius: 18, padding: '12px 14px', fontSize: 15, lineHeight: 1.45 }}>{sheet.c.mensaje}</div>
           <button className="btn-line" onClick={() => setSheet(null)}>
             Cerrar
           </button>
-          <button className="btn-text" style={{ color: 'var(--danger)', height: 40 }} onClick={() => undoable(borrarCobro(sheet.c.id), 'Registro de cobro borrado')}>
+          <button className="btn-text" style={{ color: 'var(--danger)' }} onClick={() => undoable(borrarCobro(sheet.c.id), 'Registro de cobro borrado')}>
             Borrar este registro
           </button>
         </Sheet>

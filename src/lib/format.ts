@@ -68,3 +68,34 @@ export const stampLabel = (isoStamp: string, now = new Date()): string => {
   const day = todayISO(d) === todayISO(now) ? 'Hoy' : shortDate(todayISO(d), now);
   return `${day}, ${hm}`;
 };
+
+export const MESES_LARGOS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/** "noviembre 2026" a partir de "2026-11". */
+export const mesLargo = (mes: string) => `${MESES_LARGOS[Number(mes.slice(5, 7)) - 1]} ${mes.slice(0, 4)}`;
+
+/** Mes anterior/siguiente en formato YYYY-MM. */
+export const sumarMes = (mes: string, n: number) => {
+  const d = new Date(Number(mes.slice(0, 4)), Number(mes.slice(5, 7)) - 1 + n, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+};
+
+/** Encabezado de día del registro: "Hoy", "Ayer", "Lunes 23" (o "Lunes 23 oct" si es de otro mes). */
+export function diaLabel(iso: string, now = new Date()): string {
+  const hoy = todayISO(now);
+  const dd = daysBetween(iso, hoy);
+  if (dd === 0) return 'Hoy';
+  if (dd === 1) return 'Ayer';
+  const d = parseISO(iso);
+  const base = `${cap(DIAS[d.getDay()])} ${d.getDate()}`;
+  if (iso.slice(0, 7) === hoy.slice(0, 7)) return base;
+  return `${base} ${MESES[d.getMonth()]}${d.getFullYear() === now.getFullYear() ? '' : ' ' + d.getFullYear()}`;
+}
+
+/** "y" para unir nombres: "Camila, Javiera y Fernanda". */
+export const juntarY = (a: string[]) => (a.length <= 1 ? a[0] ?? '' : a.slice(0, -1).join(', ') + ' y ' + a[a.length - 1]);
+
+/** Día y mes corto por separado (para la lista de próximos pagos). */
+export const diaMes = (iso: string) => ({ dia: Number(iso.slice(8, 10)), mes: MESES[Number(iso.slice(5, 7)) - 1] });

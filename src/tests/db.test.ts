@@ -17,8 +17,19 @@ describe('base de datos', () => {
     await borrarTodo();
   });
 
-  it('trae las categorías por defecto en una base nueva', async () => {
-    expect(await db.categorias.count()).toBe(CATEGORIAS_DEFAULT.length);
+  it('trae las categorías por defecto (con color) y el efectivo en una base nueva', async () => {
+    const cats = await db.categorias.toArray();
+    expect(cats).toHaveLength(CATEGORIAS_DEFAULT.length);
+    expect(cats.every((c) => /^#/.test(c.color))).toBe(true);
+    expect((await db.medios.toArray()).map((m) => m.nombre)).toEqual(['Efectivo']);
+  });
+
+  it('guarda la parte de cada participante en el gasto', async () => {
+    const a = await crearPersona('A');
+    const d = await crearPersona('D');
+    const id = await guardarGasto({ ...draft, pagador: d }, iguales(30000, [a, d]));
+    expect((await db.gastos.get(id))?.montos).toEqual({ [a]: 10000, [d]: 10000 });
+    expect((await db.movimientos.toArray()).map((m) => [m.personaId, m.tipo, m.monto])).toEqual([[d, 'deuda', 10000]]);
   });
 
   it('un gasto compartido crea un cargo vinculado por persona', async () => {
@@ -86,7 +97,7 @@ describe('base de datos', () => {
 
   it('respaldo v3 de ida y vuelta, con fotos y medios', async () => {
     const a = await crearPersona('A');
-    const medio = await guardarMedio({ nombre: 'Visa BCI', tipo: 'credito', color: 0 });
+    const medio = await guardarMedio({ nombre: 'Visa BCI', tipo: 'credito', color: '#9EC9FF' });
     const id = await guardarGasto({ ...draft, medioId: medio }, iguales(5000, [a], false));
     await agregarFoto(id, new Blob([new Uint8Array([1, 2, 3, 250])], { type: 'image/jpeg' }));
     await registrarCobro({ personaId: a, tono: 'Amable', monto: 5000, mensaje: 'hola' });
@@ -129,7 +140,7 @@ describe('base de datos', () => {
 
   it('días sin respaldo: desde el último respaldo o desde el primer registro', () => {
     const hoy = new Date('2026-10-25T12:00:00');
-    const base = { id: 'main' as const, miNombre: '', datosBancarios: '', incluirDatos: true, tema: 'sistema' as const, recordarRespaldo: true };
+    const base = { id: 'main' as const, miNombre: '', datosBancarios: '', incluirDatos: true, tema: 'sistema' as const, recordarRespaldo: true, onboardingHecho: true };
     expect(diasSinRespaldo(base, undefined, hoy)).toBeNull();
     expect(diasSinRespaldo(base, '2026-10-15T12:00:00', hoy)).toBe(10);
     expect(diasSinRespaldo({ ...base, ultimoRespaldo: '2026-10-22T12:00:00' }, '2026-10-01', hoy)).toBe(3);

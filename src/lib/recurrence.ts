@@ -61,20 +61,18 @@ export function proxima(f: Frecuencia, inicio: string, despues?: string, fin?: s
   return undefined;
 }
 
-/** Texto legible: "Todos los meses, el día 5", "Cada 2 semanas"… */
+const DIAS_PLURAL = ['domingos', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábados'];
+const UNIDAD = { dia: ['día', 'días'], semana: ['semana', 'semanas'], mes: ['mes', 'meses'], anio: ['año', 'años'] } as const;
+
+/** Texto legible: "Cada mes, el día 5", "Todos los lunes", "Cada 2 semanas"… */
 export function describirFrecuencia(f: Frecuencia, inicio: string): string {
   const cada = Math.max(1, f.cada || 1);
-  const [, , d] = parts(inicio);
-  switch (f.unidad) {
-    case 'dia':
-      return cada === 1 ? 'Todos los días' : `Cada ${cada} días`;
-    case 'semana':
-      return cada === 1 ? 'Todas las semanas' : `Cada ${cada} semanas`;
-    case 'mes':
-      return `${cada === 1 ? 'Todos los meses' : `Cada ${cada} meses`}, el día ${f.dia ?? d}`;
-    case 'anio':
-      return cada === 1 ? 'Todos los años' : `Cada ${cada} años`;
-  }
+  const [y, m, d] = parts(inicio);
+  if (f.unidad === 'mes') return `${cada === 1 ? 'Cada mes' : `Cada ${cada} meses`}, el día ${f.dia ?? d}`;
+  if (f.unidad === 'semana' && cada === 1) return `Todos los ${DIAS_PLURAL[new Date(y, m - 1, d).getDay()]}`;
+  if (f.unidad === 'anio' && cada === 1) return 'Cada año';
+  if (f.unidad === 'dia' && cada === 1) return 'Todos los días';
+  return `Cada ${cada} ${UNIDAD[f.unidad][1]}`;
 }
 
 /** Equivalente mensual de un monto según su frecuencia (para "total mensual comprometido"). */

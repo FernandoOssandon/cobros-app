@@ -1,5 +1,7 @@
 # Me Debes
 
+**Versión 2.0**: la app pasó de "quién me debe" a "a dónde se va mi plata". Implementa el handoff de diseño v2 (`design_handoff_me_debes/`): barra inferior con Resumen, Gastos, Personas y Recurrentes; gastos solo míos, compartidos o pagados por otra persona; deudas en ambos sentidos; medios de pago con nombre y barra apilada (tuyo / recuperado / pendiente); recurrentes fijos, variables ("por confirmar") y atrasados ("Anotar los N"); grupos y eventos; categorías con color; foto de la boleta; búsqueda y filtros; onboarding "Agrega tus tarjetas".
+
 PWA móvil para llevar la cuenta de quién te debe plata. Está construida a partir del handoff de diseño "Lúdica" (`design_handoff_me_debes`). Funciona sin conexión y guarda los datos solo en el teléfono, en IndexedDB.
 
 **Stack:** React 19 + Vite + TypeScript, `vite-plugin-pwa` (Workbox) y Dexie (IndexedDB). La fuente Bricolage Grotesque viene incluida en la app, así que también funciona offline.
@@ -52,14 +54,14 @@ También sirven GitHub Pages o Cloudflare Pages. La app usa rutas con `#` y una 
 | Estado de cada cargo | Los pagos se aplican a los cargos más antiguos primero. Cada burbuja muestra "pagado" o "quedan $X". |
 | Confirmaciones | "Importar" y "Borrar todo" piden confirmación en una hoja inferior, como recomienda el handoff para producción. |
 
-## Modelo de datos (v1.1)
+## Modelo de datos (base v4, app 2.0)
 
 | Tabla | Qué guarda |
 |---|---|
 | `gastos` | Todo lo que se paga: total, fecha, `pagador` (`'yo'` o una persona), medio de pago, categoría, grupo, `miParte` y reparto (`solo`, `equal`, `exact`, `shares`). |
 | `movimientos` | Lo que cambia el saldo con una persona: `cargo` (me debe), `pago` (me pagó), `deuda` (le debo: pagó por mí) y `abono` (le pagué). Saldo neto = cargos − pagos − deudas + abonos. |
 | `recurrentes` | Plantillas de 3 tipos: `mio` (arriendo, luz), `compartido` (Netflix con amigos) y `cobro` (cuota que alguien me paga). El monto puede ser `fijo` (se anota solo) o `variable` (queda en `pendientes` para confirmar). Se generan al abrir la app. |
-| `medios`, `categorias`, `grupos`, `fotos` | Tarjetas con nombre, categorías (vienen 7 por defecto), eventos y fotos de boletas. |
+| `medios`, `categorias`, `grupos`, `fotos` | Tarjetas con nombre y color (el efectivo viene incluido), categorías con ícono y color (vienen 6), eventos y fotos de boletas (se achican antes de guardarse). |
 | `personas`, `cobros`, `ajustes` | Igual que en la 1.0, más el recordatorio de respaldo. |
 
 La lógica pura vive en `src/lib/`: `resumen.ts` (gasto real del mes y desglose por tarjeta), `recurrence.ts` (fechas), `search.ts` (búsqueda) y `balance.ts` (saldos netos). Las pantallas del rediseño (Resumen, Gastos, Recurrentes) se conectan sobre esa base.
@@ -73,14 +75,18 @@ src/
   recurrentes.ts     Motor de recurrentes (generar, confirmar, saltar)
   hooks.ts           Consultas en vivo y tema claro/oscuro
   lib/               Lógica pura: format, split, balance, resumen, recurrence, search, messages, csv, contacts
-  screens/           Home, Person, ChargeForm, ChargeDetail, Pay, Collect, Settings, EditPerson, Archived
-  ui/                Kit, toast, aviso de versión nueva (UpdatePrompt) y recordatorio de respaldo (BackupBanner)
+  nav.ts             Pestañas y pila de pantallas ("‹ {pantalla anterior}")
+  screens/           Resumen, Gastos, NuevoGasto, GastoDetalle, Personas, Person, Pay, Collect, Recurrentes,
+                     NuevoRecurrente, Grupos, Categorias, Medios, Onboarding, Ajustes, EditPerson, Archivadas
+  ui/                Kit (botones, chips, hojas), íconos, filas (gasto, tarjeta de medio, barra inferior),
+                     hojas compartidas (por confirmar, nueva persona, categoría), toast y aviso de versión nueva
   tests/             Pruebas con Vitest
 ```
 
 ## Rutas
 
-`/` · `/persona/:id` · `/persona/:id/editar` · `/persona/:id/pago[/:movId]` · `/persona/:id/cobro` · `/cargo/nuevo[?p=id]` · `/cargo/:id` · `/cargo/:id/editar` · `/ajustes` · `/archivadas`
+Pestañas: `/` (Resumen) · `/gastos` · `/personas` · `/recurrentes`
+Pantallas: `/gasto/nuevo[?p=id]` · `/gasto/:id[/editar]` · `/persona/:id[/editar|/pago|/cobro]` · `/recurrente/nuevo` · `/recurrente/:id` · `/grupos` · `/grupo/:id` · `/categorias` · `/medios` · `/medio/nuevo` · `/medio/:id` · `/ajustes` · `/bienvenida` · `/archivadas`
 
 ## Datos y respaldo
 

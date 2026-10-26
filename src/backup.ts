@@ -1,7 +1,7 @@
 // Respaldo: exportar e importar todos los datos en un archivo JSON.
 // Formato v3 (actual). También acepta respaldos v2 (primera versión de la app) y los convierte.
 import {
-  AJUSTES_DEFAULT, db, now, guardarAjustes,
+  AJUSTES_DEFAULT, CAT_COLORS, CATEGORIAS_DEFAULT, ICONOS_CATEGORIA, MEDIO_COLORS, MEDIO_EFECTIVO, db, now, guardarAjustes,
   type Ajustes, type Categoria, type Cobro, type Gasto, type Grupo, type Medio,
   type Movimiento, type Pendiente, type Persona, type Recurrente,
 } from './db';
@@ -77,11 +77,32 @@ export function validarRespaldo(data: unknown): Respaldo {
   for (const m of v3.movimientos) {
     if (typeof m.monto !== 'number' || !m.personaId || !TIPOS.has(m.tipo)) throw new Error('El respaldo tiene movimientos dañados');
   }
-  return {
+  return normalizar({
     ...v3,
     medios: v3.medios ?? [], categorias: v3.categorias ?? [], grupos: v3.grupos ?? [],
     recurrentes: v3.recurrentes ?? [], pendientes: v3.pendientes ?? [], fotos: v3.fotos ?? [],
-  };
+  });
+}
+
+/** Lleva un respaldo de la app 1.x al formato de datos de la 2.0 (colores, efectivo, montos, tipo de pendiente). */
+function normalizar(r: Respaldo): Respaldo {
+  const porDefecto = new Map(CATEGORIAS_DEFAULT.map((c) => [c.id, c]));
+  const categorias = r.categorias
+    .filter((c) => c.id !== 'cat-otros' || r.gastos.some((g) => g.categoriaId === c.id))
+    .map((c, i) => {
+      const d = porDefecto.get(c.id);
+      const icono = d?.icono ?? (ICONOS_CATEGORIA.includes(c.icono as never) ? c.icono : 'regalo');
+      return { ...c, icono, color: c.color ?? d?.color ?? CAT_COLORS[i % CAT_COLORS.length] };
+    });
+  let medios = r.medios.map((m) => (typeof m.color === 'number' ? { ...m, color: MEDIO_COLORS[(m.color as number) % MEDIO_COLORS.length] } : m));
+  if (!medios.some((m) => m.tipo === 'efectivo')) medios = [{ ...MEDIO_EFECTIVO, creado: now() }, ...medios];
+  const gastos = r.gastos.map((g) =>
+    g.montos
+      ? g
+      : { ...g, montos: Object.fromEntries(r.movimientos.filter((m) => m.gastoId === g.id && m.tipo === 'cargo').map((m) => [m.personaId, m.monto])) },
+  );
+  const pendientes = r.pendientes.map((p) => ({ ...p, tipo: p.tipo ?? ('confirmar' as const) }));
+  return { ...r, categorias, medios, gastos, pendientes, ajustes: { ...AJUSTES_DEFAULT, ...r.ajustes, onboardingHecho: r.ajustes?.onboardingHecho ?? true } };
 }
 
 /** Respaldo v2 (cargos) → v3 (gastos). */

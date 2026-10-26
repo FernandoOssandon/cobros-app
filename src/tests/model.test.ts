@@ -1,11 +1,11 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { borrarTodo, crearPersona, db, guardarGasto, guardarMedio, guardarPago, type Gasto, type Movimiento } from '../db';
-import { confirmarPendiente, generarRecurrentes, guardarRecurrente, saltarPendiente } from '../recurrentes';
+import { anotarAtrasados, confirmarPendiente, generarRecurrentes, guardarRecurrente, saltarPendiente } from '../recurrentes';
 import { describirFrecuencia, montoMensual, ocurrenciasEntre, proxima } from '../lib/recurrence';
 import { periodoFacturacion, resumenMes } from '../lib/resumen';
 import { agruparPorDia, filtrarGastos, normalizar } from '../lib/search';
-import { estadosCargos, saldo } from '../lib/balance';
+import { estadosCargos, estadosDeudas, saldo } from '../lib/balance';
 import { computeSplit } from '../lib/split';
 
 describe('fechas de recurrentes', () => {
@@ -26,7 +26,9 @@ describe('fechas de recurrentes', () => {
   it('próxima, descripción y equivalente mensual', () => {
     expect(proxima({ unidad: 'mes', cada: 1, dia: 5 }, '2026-01-05', '2026-10-25')).toBe('2026-11-05');
     expect(proxima({ unidad: 'mes', cada: 1 }, '2026-01-05', '2026-10-25', '2026-10-31')).toBeUndefined();
-    expect(describirFrecuencia({ unidad: 'mes', cada: 1, dia: 5 }, '2026-01-05')).toBe('Todos los meses, el día 5');
+    expect(describirFrecuencia({ unidad: 'mes', cada: 1, dia: 5 }, '2026-01-05')).toBe('Cada mes, el día 5');
+    expect(describirFrecuencia({ unidad: 'semana', cada: 1 }, '2026-10-26')).toBe('Todos los lunes');
+    expect(describirFrecuencia({ unidad: 'semana', cada: 2 }, '2026-10-26')).toBe('Cada 2 semanas');
     expect(montoMensual(120000, { unidad: 'anio', cada: 1 })).toBe(10000);
   });
 });
@@ -36,13 +38,17 @@ describe('motor de recurrentes', () => {
     await borrarTodo();
   });
 
-  it('gasto fijo mío: se anota solo y no se duplica', async () => {
+  it('gasto fijo mío: el del mes se anota solo, los de meses anteriores quedan por anotar', async () => {
     await guardarRecurrente({ nombre: 'Arriendo', tipo: 'mio', montoTipo: 'fijo', monto: 350000, frecuencia: { unidad: 'mes', cada: 1, dia: 5 }, inicio: '2026-08-05', categoriaId: 'cat-casa' });
-    expect(await generarRecurrentes('2026-10-25')).toEqual({ anotados: 3, porConfirmar: 0 });
-    expect(await generarRecurrentes('2026-10-25')).toEqual({ anotados: 0, porConfirmar: 0 });
+    expect(await generarRecurrentes('2026-10-25')).toEqual({ anotados: 1, porConfirmar: 0, atrasados: 2 });
+    expect(await generarRecurrentes('2026-10-25')).toEqual({ anotados: 0, porConfirmar: 0, atrasados: 0 });
+    expect((await db.gastos.toArray()).map((g) => g.fecha)).toEqual(['2026-10-05']);
+    expect((await db.pendientes.toArray()).map((p) => [p.fecha, p.tipo])).toEqual([['2026-08-05', 'anotar'], ['2026-09-05', 'anotar']]);
+    expect(await anotarAtrasados()).toEqual({ n: 2, total: 700000 });
     const gs = await db.gastos.toArray();
     expect(gs.map((g) => g.fecha).sort()).toEqual(['2026-08-05', '2026-09-05', '2026-10-05']);
-    expect(gs.every((g) => g.modo === 'solo' && g.miParte === 350000 && g.categoriaId === 'cat-casa')).toBe(true);
+    expect(gs.every((g) => g.modo === 'solo' && g.miParte === 350000 && g.categoriaId === 'cat-casa' && g.descripcion === 'Arriendo')).toBe(true);
+    expect(await db.pendientes.count()).toBe(0);
     expect(await db.movimientos.count()).toBe(0);
   });
 
@@ -51,10 +57,12 @@ describe('motor de recurrentes', () => {
     const b = await crearPersona('Beto');
     const c = await crearPersona('Caro');
     await guardarRecurrente({
-      nombre: 'Netflix', tipo: 'compartido', montoTipo: 'fijo', monto: 13900, frecuencia: { unidad: 'mes', cada: 1, dia: 12 }, inicio: '2026-09-12',
+      nombre: 'Netflix', tipo: 'compartido', montoTipo: 'fijo', monto: 13900, frecuencia: { unidad: 'mes', cada: 1, dia: 12 }, inicio: '2026-10-12',
       reparto: { modo: 'equal', yoIncluido: true, misPartes: 1, participantes: [a, b, c], exactos: {}, partes: {} },
     });
-    await generarRecurrentes('2026-10-25');
+    await generarRecurrentes('2026-11-25'); // noviembre se anota solo; octubre queda atrasado
+    expect(await db.movimientos.count()).toBe(3);
+    await anotarAtrasados();
     const movs = await db.movimientos.toArray();
     expect(movs).toHaveLength(6);
     expect(movs.every((m) => m.tipo === 'cargo' && m.monto === 3475)).toBe(true);
@@ -65,6 +73,8 @@ describe('motor de recurrentes', () => {
   it('cobro a una persona: cargo mensual sin gasto mío', async () => {
     const d = await crearPersona('Diego');
     await guardarRecurrente({ nombre: 'Cuota préstamo', tipo: 'cobro', montoTipo: 'fijo', monto: 20000, frecuencia: { unidad: 'mes', cada: 1, dia: 1 }, inicio: '2026-09-01', fin: '2026-10-01', personaId: d });
+    await generarRecurrentes('2026-10-15');
+    await anotarAtrasados();
     await generarRecurrentes('2026-12-31');
     expect(await db.gastos.count()).toBe(0);
     expect(saldo(await db.movimientos.toArray())).toBe(40000);
@@ -72,16 +82,16 @@ describe('motor de recurrentes', () => {
 
   it('variable: queda por confirmar; confirmar anota el monto real y lo guarda como referencia', async () => {
     const rid = await guardarRecurrente({ nombre: 'Luz', tipo: 'mio', montoTipo: 'variable', monto: 25000, frecuencia: { unidad: 'mes', cada: 1, dia: 20 }, inicio: '2026-09-20' });
-    expect(await generarRecurrentes('2026-10-25')).toEqual({ anotados: 0, porConfirmar: 2 });
+    expect(await generarRecurrentes('2026-10-25')).toEqual({ anotados: 0, porConfirmar: 2, atrasados: 0 });
     const [p1, p2] = (await db.pendientes.toArray()).sort((x, y) => x.fecha.localeCompare(y.fecha));
     await confirmarPendiente(p1.id, 27350);
     await saltarPendiente(p2.id);
     expect(await db.pendientes.count()).toBe(0);
     const gs = await db.gastos.toArray();
     expect(gs).toHaveLength(1);
-    expect(gs[0]).toMatchObject({ total: 27350, fecha: '2026-09-20' });
-    expect((await db.recurrentes.get(rid))?.monto).toBe(27350);
-    expect(await generarRecurrentes('2026-10-25')).toEqual({ anotados: 0, porConfirmar: 0 });
+    expect(gs[0]).toMatchObject({ total: 27350, fecha: '2026-09-20', descripcion: 'Luz de septiembre' });
+    expect(await db.recurrentes.get(rid)).toMatchObject({ monto: 27350, ultimoConfirmado: '2026-09-20' });
+    expect(await generarRecurrentes('2026-10-25')).toEqual({ anotados: 0, porConfirmar: 0, atrasados: 0 });
   });
 
   it('variable compartido con montos exactos: si cambia el total, se reparte en proporción', async () => {
@@ -111,8 +121,8 @@ describe('resumen del mes', () => {
   });
 
   it('separa lo mío, lo cobrado y lo pendiente por medio de pago', async () => {
-    const visa = await guardarMedio({ nombre: 'Visa BCI', tipo: 'credito', color: 0 });
-    const debito = await guardarMedio({ nombre: 'Débito', tipo: 'debito', color: 1 });
+    const visa = await guardarMedio({ nombre: 'Visa BCI', tipo: 'credito', color: '#9EC9FF' });
+    const debito = await guardarMedio({ nombre: 'Débito', tipo: 'debito', color: '#FFD36E' });
     const cami = await crearPersona('Camila');
     const diego = await crearPersona('Diego');
     const base = { fecha: '2026-10-05', yoIncluido: true, misPartes: 1, exactos: {}, partes: {} };
@@ -157,6 +167,12 @@ describe('saldo neto y estados', () => {
     const movs = [mv('1', 'cargo', 10000, '2026-10-01'), mv('2', 'deuda', 4000, '2026-10-02')];
     expect(saldo(movs)).toBe(6000);
     expect(estadosCargos(movs).get('1')).toEqual({ estado: 'parcial', pendiente: 6000 });
+  });
+  it('estado de lo que yo debo (FIFO) y compensación', () => {
+    const movs = [mv('1', 'deuda', 8000, '2026-10-01'), mv('2', 'deuda', 5000, '2026-10-05'), mv('3', 'abono', 10000, '2026-10-06')];
+    expect(saldo(movs)).toBe(-3000);
+    expect(estadosDeudas(movs).get('1')).toEqual({ estado: 'pagado', pendiente: 0 });
+    expect(estadosDeudas(movs).get('2')).toEqual({ estado: 'parcial', pendiente: 3000 });
   });
   it('si le abono, vuelve a quedar pendiente', () => {
     const movs = [mv('1', 'cargo', 10000, '2026-10-01'), mv('2', 'deuda', 4000, '2026-10-02'), mv('3', 'abono', 4000, '2026-10-03')];
