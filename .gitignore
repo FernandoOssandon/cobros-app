@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Pruebas de punta a punta
+test-results
+playwright-report

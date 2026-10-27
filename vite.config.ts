@@ -43,5 +43,7 @@ export default defineConfig({
   ],
   test: {
     environment: 'node',
+    // Las pruebas de punta a punta (e2e/) las corre Playwright, no Vitest.
+    include: ['src/**/*.test.ts'],
   },
 })

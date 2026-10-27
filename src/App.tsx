@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from 'react';
 import { HashRouter, Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { db } from './db';
 import { useAjustes, useThemeSync } from './hooks';
 import { esPestana, useNav } from './nav';
 import { generarRecurrentes } from './recurrentes';
@@ -93,7 +94,16 @@ function PrimerUso() {
   const nav = useNavigate();
   const { pathname } = useLocation();
   useEffect(() => {
-    if (aj.cargado && !aj.onboardingHecho && esPestana(pathname)) nav('/bienvenida', { replace: true });
+    if (!aj.cargado || aj.onboardingHecho || !esPestana(pathname)) return;
+    // La consulta en vivo puede venir un instante atrasada (justo después de "Listo, a anotar"):
+    // se confirma contra la base antes de mandar a la bienvenida.
+    let vigente = true;
+    db.ajustes.get('main').then((a) => {
+      if (vigente && !a?.onboardingHecho) nav('/bienvenida', { replace: true });
+    });
+    return () => {
+      vigente = false;
+    };
   }, [aj.cargado, aj.onboardingHecho, pathname, nav]);
   return null;
 }

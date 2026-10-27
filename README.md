@@ -1,5 +1,7 @@
 # Me Debes
 
+**Versión 2.1**: editar las cuotas de los cobros recurrentes, foto de la boleta desde el detalle, grupos que se editan, terminan y borran, y pruebas de punta a punta. Detalle en [CHANGELOG.md](CHANGELOG.md).
+
 **Versión 2.0**: la app pasó de "quién me debe" a "a dónde se va mi plata". Implementa el handoff de diseño v2 (`design_handoff_me_debes/`): barra inferior con Resumen, Gastos, Personas y Recurrentes; gastos solo míos, compartidos o pagados por otra persona; deudas en ambos sentidos; medios de pago con nombre y barra apilada (tuyo / recuperado / pendiente); recurrentes fijos, variables ("por confirmar") y atrasados ("Anotar los N"); grupos y eventos; categorías con color; foto de la boleta; búsqueda y filtros; onboarding "Agrega tus tarjetas".
 
 PWA móvil para llevar la cuenta de quién te debe plata. Está construida a partir del handoff de diseño "Lúdica" (`design_handoff_me_debes`). Funciona sin conexión y guarda los datos solo en el teléfono, en IndexedDB.
@@ -12,16 +14,25 @@ PWA móvil para llevar la cuenta de quién te debe plata. Está construida a par
 npm install
 npm run dev        # desarrollo en http://localhost:5173
 npm test           # pruebas de la lógica (reparto, saldos, respaldo, CSV)
+npm run e2e        # compila y prueba la app completa en un Chrome de celular
 npm run build      # genera la versión de producción en dist/
 npm run preview    # sirve dist/ para probar la PWA (service worker incluido)
 ```
+
+### Pruebas de punta a punta
+
+Viven en `e2e/` y usan Playwright. Abren la app compilada, cargan `e2e/fixtures/respaldo-ejemplo.json` (datos inventados, con la fecha congelada en el 25 de noviembre de 2026) y recorren los flujos importantes: primer uso, gastos compartidos, pagos, recurrentes, cobro por WhatsApp, respaldo, fotos y grupos. Si la app tira un error en la consola, la prueba falla.
+
+- La primera vez: `npx playwright install chromium`.
+- `npm run e2e` corre todo. `npx playwright test grupos` corre solo las que mencionan "grupos".
+- Si algo falla, `npx playwright show-report` muestra qué pasó paso a paso.
 
 ## Publicar versiones nuevas
 
 El sitio de Netlify está conectado a este repo y `netlify.toml` define cómo compilar, así que **cada `git push` a `main` publica una versión nueva**.
 
-1. Sube el número en `package.json` (`"version"`); se muestra en Ajustes.
-2. `npm test` y `git push`.
+1. Sube el número en `package.json` (`"version"`); se muestra en Ajustes. Anota los cambios en `CHANGELOG.md`.
+2. `npm test`, `npm run e2e` y `git push`.
 3. En el teléfono aparece el aviso **"Hay una versión nueva · Actualizar"**: la app revisa cada hora y cada vez que vuelves a abrirla.
 
 **Los datos no se pierden al actualizar.** Viven en el teléfono (IndexedDB) asociados a la dirección del sitio, y cada cambio de estructura incluye una migración probada (`src/tests/migration.test.ts`). Solo se pierden si cambia la dirección del sitio, si se desinstala la app o si se borran los datos del navegador. Por eso existe el recordatorio de respaldo.
@@ -81,6 +92,7 @@ src/
   ui/                Kit (botones, chips, hojas), íconos, filas (gasto, tarjeta de medio, barra inferior),
                      hojas compartidas (por confirmar, nueva persona, categoría), toast y aviso de versión nueva
   tests/             Pruebas con Vitest
+e2e/                 Pruebas de punta a punta con Playwright (y sus datos de ejemplo en fixtures/)
 ```
 
 ## Rutas

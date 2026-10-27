@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { borrarCobro, borrarMovimiento, restaurar, type Cobro, type Movimiento } from '../db';
+import { actualizarCargo, borrarCobro, borrarMovimiento, restaurar, type Cobro, type Movimiento } from '../db';
 import { useDatos } from '../hooks';
-import { fmt, shortDate, todayISO } from '../lib/format';
+import { dg, fmt, show, shortDate, todayISO } from '../lib/format';
 import { useNav } from '../nav';
 import { Icon } from '../ui/icons';
-import { BackButton, Sheet } from '../ui/kit';
+import { BackButton, DateInputPill, Sheet } from '../ui/kit';
 import { useToast } from '../ui/toast';
 
 type Item = { kind: 'mov'; key: string; m: Movimiento } | { kind: 'cobro'; key: string; c: Cobro };
@@ -91,14 +91,15 @@ export default function Person() {
           const m = it.m;
           const g = m.gastoId ? d.gasto.get(m.gastoId) : undefined;
           const deTotal = g && g.total !== m.monto ? `de ${fmt(g.total)} · ` : '';
-          const abrirGasto = () => (m.gastoId ? push(`/gasto/${m.gastoId}`) : undefined);
+          // Los cargos sin gasto (cuotas de un cobro recurrente) se editan en una hoja.
+          const abrirGasto = () => (m.gastoId ? push(`/gasto/${m.gastoId}`) : setSheet(it));
           switch (m.tipo) {
             case 'cargo':
               return (
                 <button key={m.id} className="bub cargo" onClick={abrirGasto}>
                   <div className="b1">{m.detalle}</div>
                   <div className="b2">+{fmt(m.monto)}</div>
-                  <div className="b3">{deTotal + shortDate(m.fecha)}</div>
+                  <div className="b3">{(m.recurrenteId && !m.gastoId ? 'se repite · ' : deTotal) + shortDate(m.fecha)}</div>
                 </button>
               );
             case 'deuda':
@@ -145,7 +146,20 @@ export default function Person() {
         </button>
       </div>
 
-      {sheet?.kind === 'mov' && (
+      {sheet?.kind === 'mov' && sheet.m.tipo === 'cargo' && (
+        <CargoSheet
+          m={sheet.m}
+          recurrente={sheet.m.recurrenteId ? d.recurrentes.find((r) => r.id === sheet.m.recurrenteId) : undefined}
+          onClose={() => setSheet(null)}
+          onVerRecurrente={(rid) => push(`/recurrente/${rid}`)}
+          onGuardado={() => {
+            setSheet(null);
+            toast('Cargo actualizado');
+          }}
+          onBorrar={() => undoable(borrarMovimiento(sheet.m.id), 'Cargo borrado')}
+        />
+      )}
+      {sheet?.kind === 'mov' && (sheet.m.tipo === 'pago' || sheet.m.tipo === 'abono') && (
         <Sheet onClose={() => setSheet(null)} label="Pago" style={{ gap: 10 }}>
           <div className="sheet-title">{sheet.m.tipo === 'abono' ? 'Le pagaste' : 'Te pagó'} {fmt(sheet.m.monto)}</div>
           <div className="sheet-body" style={{ paddingBottom: 6 }}>
@@ -172,5 +186,58 @@ export default function Person() {
         </Sheet>
       )}
     </div>
+  );
+}
+
+/** Hoja para editar un cargo suelto: la cuota de un cobro recurrente. */
+function CargoSheet(props: {
+  m: Movimiento;
+  recurrente?: { id: string; nombre: string };
+  onClose: () => void;
+  onVerRecurrente: (id: string) => void;
+  onGuardado: () => void;
+  onBorrar: () => void;
+}) {
+  const { m, recurrente } = props;
+  const [monto, setMonto] = useState(String(m.monto));
+  const [detalle, setDetalle] = useState(m.detalle);
+  const [fecha, setFecha] = useState(m.fecha);
+  const valor = dg(monto);
+  const guardar = async () => {
+    if (!valor) return;
+    await actualizarCargo(m.id, { monto: valor, fecha, detalle });
+    props.onGuardado();
+  };
+  return (
+    <Sheet onClose={props.onClose} label="Cargo" style={{ gap: 10 }}>
+      <div className="sheet-title">Te debe {fmt(valor)}</div>
+      <div className="sheet-body" style={{ paddingBottom: 4 }}>
+        {recurrente ? `Viene de “${recurrente.nombre}”. Cambiarla aquí no toca las próximas.` : 'Cargo sin gasto asociado.'}
+      </div>
+      <input className="input-big" value={detalle} onChange={(e) => setDetalle(e.target.value)} maxLength={60} aria-label="Detalle" />
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <input
+          className="input-big"
+          style={{ flex: 1, fontSize: 22, fontWeight: 800 }}
+          inputMode="numeric"
+          value={monto ? `$${show(monto)}` : ''}
+          placeholder="$0"
+          onChange={(e) => setMonto(String(dg(e.target.value)).slice(0, 9))}
+          aria-label="Monto"
+        />
+        <DateInputPill value={fecha} label={shortDate(fecha)} onChange={setFecha} />
+      </div>
+      <button className="btn-ink" style={{ opacity: valor ? 1 : 0.4 }} onClick={guardar}>
+        Guardar cambios
+      </button>
+      {recurrente && (
+        <button className="btn-line" onClick={() => props.onVerRecurrente(recurrente.id)}>
+          Ver el cobro recurrente
+        </button>
+      )}
+      <button className="btn-text" style={{ color: 'var(--danger)' }} onClick={props.onBorrar}>
+        Borrar este cargo
+      </button>
+    </Sheet>
   );
 }

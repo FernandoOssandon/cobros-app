@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { borrarGasto, db, restaurar } from '../db';
+import { borrarFoto, borrarGasto, db, reemplazarFoto, restaurar } from '../db';
 import { useDatos } from '../hooks';
 import { fmt, juntarY, shortDate } from '../lib/format';
+import { achicarImagen } from '../lib/imagen';
 import { describirFrecuencia } from '../lib/recurrence';
 import { useNav } from '../nav';
 import { Icon } from '../ui/icons';
@@ -19,6 +20,8 @@ export default function GastoDetalle() {
   const foto = useLiveQuery(() => db.fotos.where('gastoId').equals(id).first(), [id]);
   const [fotoUrl, setFotoUrl] = useState<string | null>(null);
   const [fotoGrande, setFotoGrande] = useState(false);
+  const [subiendo, setSubiendo] = useState(false);
+  const file = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (!foto) return setFotoUrl(null);
     const u = URL.createObjectURL(foto.blob);
@@ -74,6 +77,27 @@ export default function GastoDetalle() {
     }
   }
 
+  const elegirFoto = async (f?: File) => {
+    if (file.current) file.current.value = '';
+    if (!f) return;
+    setSubiendo(true);
+    try {
+      await reemplazarFoto(g.id, await achicarImagen(f));
+      toast(foto ? 'Foto cambiada' : 'Foto guardada');
+    } catch {
+      toast('No se pudo leer esa imagen');
+    } finally {
+      setSubiendo(false);
+    }
+  };
+  const quitarFoto = async () => {
+    if (!foto) return;
+    const copia = foto;
+    await borrarFoto(copia.id);
+    setFotoGrande(false);
+    toast('Foto quitada', { label: 'Deshacer', run: () => db.fotos.put(copia) });
+  };
+
   const eliminar = async () => {
     const snap = await borrarGasto(g.id);
     setBorrar(false);
@@ -121,15 +145,31 @@ export default function GastoDetalle() {
           </div>
         )}
 
-        {fotoUrl && (
-          <button
-            onClick={() => setFotoGrande((x) => !x)}
-            aria-label="Foto de la boleta"
-            style={{ display: 'block', width: '100%', marginTop: 18, height: fotoGrande ? 'auto' : 150, borderRadius: 22, border: '2px solid var(--ink)', overflow: 'hidden', padding: 0, background: 'var(--soft)' }}
-          >
-            <img src={fotoUrl} alt="Boleta" style={{ display: 'block', width: '100%', height: fotoGrande ? 'auto' : '100%', objectFit: 'cover' }} />
+        {fotoUrl ? (
+          <>
+            <button
+              onClick={() => setFotoGrande((x) => !x)}
+              aria-label="Foto de la boleta"
+              style={{ display: 'block', width: '100%', marginTop: 18, height: fotoGrande ? 'auto' : 150, borderRadius: 22, border: '2px solid var(--ink)', overflow: 'hidden', padding: 0, background: 'var(--soft)' }}
+            >
+              <img src={fotoUrl} alt="Boleta" style={{ display: 'block', width: '100%', height: fotoGrande ? 'auto' : '100%', objectFit: 'cover' }} />
+            </button>
+            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              <button className="pill h36" onClick={() => file.current?.click()} disabled={subiendo}>
+                Cambiar foto
+              </button>
+              <button className="pill h36" style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }} onClick={quitarFoto}>
+                Quitar
+              </button>
+            </div>
+          </>
+        ) : (
+          <button className="btn-dashed" style={{ width: '100%', marginTop: 18, height: 56, fontSize: 16 }} onClick={() => file.current?.click()} disabled={subiendo}>
+            <Icon name="camera" size={20} w={2.4} />
+            {subiendo ? 'Guardando foto…' : 'Agregar foto de la boleta'}
           </button>
         )}
+        <input ref={file} type="file" accept="image/*" hidden onChange={(e) => elegirFoto(e.target.files?.[0])} aria-label="Elegir foto de la boleta" />
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, marginTop: 20, padding: '14px 0', borderTop: '2px solid var(--ink)' }}>
           <span style={{ fontSize: 17, fontWeight: 700 }}>{other ? `Tu parte, la pagó ${payer?.first ?? ''}` : 'Tu parte'}</span>
@@ -164,9 +204,16 @@ export default function GastoDetalle() {
           </button>
         )}
         {rec && (
-          <div style={{ padding: '14px 0', borderTop: '2px solid var(--ink)', fontSize: 15, fontWeight: 600, color: 'var(--muted)' }}>
-            Se repite: {describirFrecuencia(rec.frecuencia, rec.inicio).toLowerCase()}
-          </div>
+          <button
+            onClick={() => push(`/recurrente/${rec.id}`)}
+            style={{ width: '100%', padding: '14px 0', border: 'none', borderTop: '2px solid var(--ink)', background: 'transparent', display: 'flex', justifyContent: 'space-between', alignItems: 'center', textAlign: 'left' }}
+          >
+            <span style={{ display: 'flex', flexDirection: 'column' }}>
+              <span className="t-meta">Se repite · {describirFrecuencia(rec.frecuencia, rec.inicio).toLowerCase()}</span>
+              <span style={{ fontSize: 17, fontWeight: 700 }}>Editar el recurrente</span>
+            </span>
+            <Icon name="next" size={20} />
+          </button>
         )}
       </div>
       <div className="foot" style={{ paddingTop: 10 }}>

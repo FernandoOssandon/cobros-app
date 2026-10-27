@@ -542,12 +542,53 @@ export async function guardarGrupo(nombre: string, id?: string) {
   return gid;
 }
 
+export const archivarGrupo = (id: string, archivado: boolean) => db.grupos.update(id, { archivado });
+
+export interface GrupoBorrado {
+  grupo: Grupo;
+  gastoIds: string[];
+}
+
+/** Borra el grupo. Sus gastos se quedan, solo pierden el vínculo. */
+export async function borrarGrupo(id: string): Promise<GrupoBorrado | undefined> {
+  return db.transaction('rw', [db.grupos, db.gastos], async () => {
+    const grupo = await db.grupos.get(id);
+    if (!grupo) return undefined;
+    const gastoIds = (await db.gastos.where('grupoId').equals(id).primaryKeys()) as string[];
+    for (const gid of gastoIds) await db.gastos.update(gid, { grupoId: undefined });
+    await db.grupos.delete(id);
+    return { grupo, gastoIds };
+  });
+}
+
+export async function restaurarGrupo(s: GrupoBorrado) {
+  await db.transaction('rw', [db.grupos, db.gastos], async () => {
+    await db.grupos.put(s.grupo);
+    for (const gid of s.gastoIds) await db.gastos.update(gid, { grupoId: s.grupo.id });
+  });
+}
+
+// ---------- Cargos sueltos (cuotas recurrentes) ----------
+
+/** Edita un cargo que no viene de un gasto (ej. la cuota mensual de un cobro recurrente). */
+export async function actualizarCargo(id: string, cambios: { monto: number; fecha: string; detalle: string }) {
+  await db.movimientos.update(id, { monto: cambios.monto, fecha: cambios.fecha, detalle: cambios.detalle.trim() || 'Cargo' });
+}
+
 // ---------- Fotos ----------
 
 export async function agregarFoto(gastoId: string, blob: Blob) {
   const id = uid();
   await db.fotos.add({ id, gastoId, blob, creado: now() });
   return id;
+}
+
+/** Deja una sola foto por gasto: borra la anterior y guarda la nueva. */
+export async function reemplazarFoto(gastoId: string, blob: Blob) {
+  return db.transaction('rw', db.fotos, async () => {
+    await db.fotos.where('gastoId').equals(gastoId).delete();
+    return agregarFoto(gastoId, blob);
+  });
 }
 
 export const borrarFoto = (id: string) => db.fotos.delete(id);

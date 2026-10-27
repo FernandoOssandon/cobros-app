@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   db, crearPersona, guardarGasto, borrarGasto, restaurar, guardarPago, borrarPersona, borrarTodo,
   registrarCobro, agregarFoto, guardarMedio, CATEGORIAS_DEFAULT, type GastoDraft,
+  guardarGrupo, archivarGrupo, borrarGrupo, restaurarGrupo, reemplazarFoto, actualizarCargo,
 } from '../db';
 import { construirRespaldo, importarRespaldo, validarRespaldo, diasSinRespaldo } from '../backup';
 import { computeSplit } from '../lib/split';
@@ -144,5 +145,41 @@ describe('base de datos', () => {
     expect(diasSinRespaldo(base, undefined, hoy)).toBeNull();
     expect(diasSinRespaldo(base, '2026-10-15T12:00:00', hoy)).toBe(10);
     expect(diasSinRespaldo({ ...base, ultimoRespaldo: '2026-10-22T12:00:00' }, '2026-10-01', hoy)).toBe(3);
+  });
+
+  it('borrar un grupo deja los gastos sin grupo y deshacer los devuelve', async () => {
+    const gid = await guardarGrupo('Viaje a Pucón');
+    const a = await guardarGasto({ ...draft, grupoId: gid }, iguales(10000, []));
+    const b = await guardarGasto({ ...draft, grupoId: gid }, iguales(20000, []));
+    await archivarGrupo(gid, true);
+    expect((await db.grupos.get(gid))?.archivado).toBe(true);
+    await guardarGrupo('Pucón 2026', gid);
+    expect(await db.grupos.get(gid)).toMatchObject({ nombre: 'Pucón 2026', archivado: true });
+
+    const snap = await borrarGrupo(gid);
+    expect(await db.grupos.get(gid)).toBeUndefined();
+    expect((await db.gastos.bulkGet([a, b])).map((g) => g?.grupoId)).toEqual([undefined, undefined]);
+    expect(await db.gastos.count()).toBe(2);
+
+    await restaurarGrupo(snap!);
+    expect((await db.gastos.bulkGet([a, b])).map((g) => g?.grupoId)).toEqual([gid, gid]);
+  });
+
+  it('reemplazar la foto deja una sola por gasto', async () => {
+    const id = await guardarGasto(draft, iguales(5000, []));
+    await agregarFoto(id, new Blob(['a']));
+    await reemplazarFoto(id, new Blob(['bb']));
+    const fotos = await db.fotos.where('gastoId').equals(id).toArray();
+    expect(fotos).toHaveLength(1);
+    expect(fotos[0].blob.size).toBe(2);
+  });
+
+  it('editar una cuota suelta cambia el saldo', async () => {
+    const p = await crearPersona('Seba');
+    await db.movimientos.put({ id: 'r1@2026-10-01', personaId: p, tipo: 'cargo', detalle: 'Cuota', monto: 20000, fecha: '2026-10-01', recurrenteId: 'r1', creado: '' });
+    await actualizarCargo('r1@2026-10-01', { monto: 15000, fecha: '2026-10-05', detalle: '  ' });
+    const m = await db.movimientos.get('r1@2026-10-01');
+    expect(m).toMatchObject({ monto: 15000, fecha: '2026-10-05', detalle: 'Cargo', recurrenteId: 'r1' });
+    expect(saldo(await db.movimientos.where('personaId').equals(p).toArray())).toBe(15000);
   });
 });
