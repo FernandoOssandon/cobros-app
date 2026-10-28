@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { guardarPago } from '../db';
+import { useParams, useSearchParams } from 'react-router-dom';
+import { db, guardarPago } from '../db';
 import { useDatos } from '../hooks';
 import { dg, fmt, pressKey, shortDate, show, todayISO } from '../lib/format';
 import { useNav } from '../nav';
@@ -11,6 +11,8 @@ const VIAS = ['Transferencia', 'Efectivo'];
 
 export default function Pay() {
   const { id = '', movId } = useParams();
+  // Desde "Detectados en tu correo": monto y fecha de la transferencia; al guardar, el detectado queda anotado.
+  const detId = useSearchParams()[0].get('det');
   const { back } = useNav();
   const toast = useToast();
   const d = useDatos();
@@ -28,6 +30,14 @@ export default function Pay() {
     setVia(editing.detalle);
     setFecha(editing.fecha);
   }, [editing]);
+  const det = detId ? d?.detectados.find((x) => x.id === detId) : undefined;
+  useEffect(() => {
+    if (!det || loaded.current) return;
+    loaded.current = true;
+    setPay(String(det.monto));
+    setVia('Transferencia');
+    setFecha(det.fecha);
+  }, [det]);
 
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
@@ -41,7 +51,11 @@ export default function Pay() {
   if (!v) return <div className="screen" />;
 
   // Sentido: si la persona te debe (o están a mano) registras lo que te pagó; si tú le debes, lo que le pagaste.
-  const dir: 'pago' | 'abono' = editing ? (editing.tipo === 'abono' ? 'abono' : 'pago') : v.saldo < 0 ? 'abono' : 'pago';
+  const dir: 'pago' | 'abono' = editing
+    ? editing.tipo === 'abono' ? 'abono' : 'pago'
+    : det
+      ? det.tipo === 'recibido' ? 'pago' : 'abono'
+      : v.saldo < 0 ? 'abono' : 'pago';
   const signo = dir === 'pago' ? 1 : -1;
   // Al editar, el saldo "antes" no considera el pago que se está editando.
   const owe = Math.max(0, signo * v.saldo + (editing?.monto ?? 0));
@@ -52,7 +66,8 @@ export default function Pay() {
       toast('Ingresa el monto');
       return;
     }
-    await guardarPago(id, pa, via, fecha, movId, dir);
+    const mid = await guardarPago(id, pa, via, fecha, movId, dir);
+    if (det && !movId) await db.detectados.update(det.id, { estado: 'anotado', personaId: id, movimientoId: mid });
     toast(movId ? 'Pago actualizado' : `Pago de ${fmt(pa)} registrado`);
     cerrar();
   };

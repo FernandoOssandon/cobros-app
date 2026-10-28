@@ -23,6 +23,8 @@ export default function NuevoGasto() {
   const { id: editId } = useParams();
   const [search] = useSearchParams();
   const paraPersona = search.get('p');
+  // Desde "Detectados en tu correo": el gasto viene precargado y, al guardar, el detectado queda anotado.
+  const detId = search.get('det');
   const { back } = useNav();
   const toast = useToast();
   const d = useDatos();
@@ -74,6 +76,14 @@ export default function NuevoGasto() {
       setMyParts(editing.misPartes || 1);
       setGrupo(editing.grupoId ?? null);
       setTieneFoto(d.conFoto.has(editing.id));
+    } else if (detId && d.detectados.some((x) => x.id === detId)) {
+      const x = d.detectados.find((y) => y.id === detId)!;
+      setAmt(String(x.monto));
+      setDesc(x.comercio);
+      setFecha(x.fecha);
+      setCat(x.categoriaId ?? null);
+      setMedio(x.medioId ?? d.medios.find((m) => !m.archivado && m.tipo !== 'efectivo')?.id ?? null);
+      setKp(false);
     } else {
       const activos = d.medios.filter((m) => !m.archivado);
       const ultimo = d.gastos
@@ -81,7 +91,7 @@ export default function NuevoGasto() {
         .sort((a, b) => b.creado.localeCompare(a.creado))[0]?.medioId;
       setMedio(ultimo && activos.some((m) => m.id === ultimo) ? ultimo : activos.find((m) => m.tipo !== 'efectivo')?.id ?? activos[0]?.id ?? null);
     }
-  }, [d, editId, editing]);
+  }, [d, editId, editing, detId]);
 
   // Teclado físico (computador): dígitos y borrar, salvo cuando se escribe en un campo.
   useEffect(() => {
@@ -170,6 +180,7 @@ export default function NuevoGasto() {
       sp,
       editId,
     );
+    if (detId && !editId) await db.detectados.update(detId, { estado: 'anotado', gastoId: id });
     if (foto) {
       await db.fotos.where('gastoId').equals(id).delete();
       await agregarFoto(id, foto);

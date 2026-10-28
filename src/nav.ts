@@ -5,6 +5,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 export const PESTANAS = [
   { path: '/', label: 'Resumen', key: 'resumen' },
   { path: '/gastos', label: 'Gastos', key: 'gastos' },
+  { path: '/plata', label: 'Mi plata', key: 'plata' },
   { path: '/personas', label: 'Personas', key: 'personas' },
   { path: '/recurrentes', label: 'Recurrentes', key: 'recurrentes' },
 ] as const;
@@ -22,6 +23,8 @@ export function nombrePantalla(pathname: string): string {
   if (pathname === '/ajustes') return 'Ajustes';
   if (pathname === '/categorias') return 'Categorías';
   if (pathname === '/medios') return 'Medios';
+  if (pathname.startsWith('/cuenta/')) return 'Cuenta';
+  if (pathname === '/correo') return 'Detectados';
   return 'Volver';
 }
 

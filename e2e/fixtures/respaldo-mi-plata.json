@@ -1,0 +1,1078 @@
+{
+ "app": "me-debes",
+ "version": 4,
+ "exportado": "2026-11-01T10:00:00.000Z",
+ "personas": [
+  {
+   "id": "p1",
+   "nombre": "Camila Rojas",
+   "telefono": "+56 9 8123 4567",
+   "archivada": false,
+   "color": 0,
+   "creado": "2026-10-01T10:00:00.000Z"
+  },
+  {
+   "id": "p2",
+   "nombre": "Diego Fuentes",
+   "telefono": "+56 9 7654 3210",
+   "archivada": false,
+   "color": 1,
+   "creado": "2026-10-02T10:00:00.000Z"
+  },
+  {
+   "id": "p3",
+   "nombre": "Javiera Soto",
+   "telefono": "+56 9 6234 9988",
+   "archivada": false,
+   "color": 2,
+   "creado": "2026-10-03T10:00:00.000Z"
+  },
+  {
+   "id": "p4",
+   "nombre": "Matías Pérez",
+   "telefono": "+56 9 5512 3344",
+   "archivada": false,
+   "color": 3,
+   "creado": "2026-10-04T10:00:00.000Z"
+  },
+  {
+   "id": "p5",
+   "nombre": "Fernanda Muñoz",
+   "telefono": "+56 9 9001 2233",
+   "archivada": false,
+   "color": 4,
+   "creado": "2026-10-05T10:00:00.000Z"
+  }
+ ],
+ "gastos": [
+  {
+   "id": "e1",
+   "descripcion": "Sushi con Cami y Javi",
+   "total": 36000,
+   "fecha": "2026-11-25",
+   "pagador": "yo",
+   "medioId": "visa",
+   "categoriaId": "cat-salidas",
+   "grupoId": null,
+   "recurrenteId": null,
+   "modo": "equal",
+   "yoIncluido": true,
+   "miParte": 12000,
+   "misPartes": 1,
+   "participantes": [
+    "p1",
+    "p3"
+   ],
+   "exactos": {},
+   "partes": {},
+   "montos": {
+    "p1": 12000,
+    "p3": 12000
+   },
+   "creado": "2026-11-25T12:00:00.000Z"
+  },
+  {
+   "id": "e2",
+   "descripcion": "Uber a la casa",
+   "total": 16000,
+   "fecha": "2026-11-24",
+   "pagador": "p2",
+   "medioId": null,
+   "categoriaId": "cat-transporte",
+   "grupoId": null,
+   "recurrenteId": null,
+   "modo": "equal",
+   "yoIncluido": true,
+   "miParte": 8000,
+   "misPartes": 1,
+   "participantes": [
+    "p2"
+   ],
+   "exactos": {},
+   "partes": {},
+   "montos": {
+    "p2": 8000
+   },
+   "creado": "2026-11-24T12:00:00.000Z"
+  },
+  {
+   "id": "e3",
+   "descripcion": "Jumbo",
+   "total": 42380,
+   "fecha": "2026-11-23",
+   "pagador": "yo",
+   "medioId": "deb",
+   "categoriaId": "cat-comida",
+   "grupoId": null,
+   "recurrenteId": null,
+   "modo": "solo",
+   "yoIncluido": true,
+   "miParte": 42380,
+   "misPartes": 1,
+   "participantes": [],
+   "exactos": {},
+   "partes": {},
+   "montos": {},
+   "creado": "2026-11-23T12:00:00.000Z"
+  },
+  {
+   "id": "e4",
+   "descripcion": "Farmacia Cruz Verde",
+   "total": 12990,
+   "fecha": "2026-11-22",
+   "pagador": "yo",
+   "medioId": "deb",
+   "categoriaId": "cat-salud",
+   "grupoId": null,
+   "recurrenteId": null,
+   "modo": "solo",
+   "yoIncluido": true,
+   "miParte": 12990,
+   "misPartes": 1,
+   "participantes": [],
+   "exactos": {},
+   "partes": {},
+   "montos": {},
+   "creado": "2026-11-22T12:00:00.000Z"
+  },
+  {
+   "id": "e5",
+   "descripcion": "Kayak en el lago",
+   "total": 100000,
+   "fecha": "2026-11-19",
+   "pagador": "p4",
+   "medioId": null,
+   "categoriaId": "cat-salidas",
+   "grupoId": "g1",
+   "recurrenteId": null,
+   "modo": "equal",
+   "yoIncluido": true,
+   "miParte": 25000,
+   "misPartes": 1,
+   "participantes": [
+    "p1",
+    "p2",
+    "p4"
+   ],
+   "exactos": {},
+   "partes": {},
+   "montos": {
+    "p1": 25000,
+    "p2": 25000,
+    "p4": 25000
+   },
+   "creado": "2026-11-19T15:00:00.000Z"
+  },
+  {
+   "id": "e6",
+   "descripcion": "Asado en la cabaña",
+   "total": 80000,
+   "fecha": "2026-11-19",
+   "pagador": "p1",
+   "medioId": null,
+   "categoriaId": "cat-comida",
+   "grupoId": "g1",
+   "recurrenteId": null,
+   "modo": "equal",
+   "yoIncluido": true,
+   "miParte": 20000,
+   "misPartes": 1,
+   "participantes": [
+    "p1",
+    "p2",
+    "p4"
+   ],
+   "exactos": {},
+   "partes": {},
+   "montos": {
+    "p1": 20000,
+    "p2": 20000,
+    "p4": 20000
+   },
+   "creado": "2026-11-19T13:00:00.000Z"
+  },
+  {
+   "id": "e7",
+   "descripcion": "Cabaña en Pucón",
+   "total": 240000,
+   "fecha": "2026-11-18",
+   "pagador": "yo",
+   "medioId": "visa",
+   "categoriaId": "cat-casa",
+   "grupoId": "g1",
+   "recurrenteId": null,
+   "modo": "equal",
+   "yoIncluido": true,
+   "miParte": 60000,
+   "misPartes": 1,
+   "participantes": [
+    "p1",
+    "p2",
+    "p4"
+   ],
+   "exactos": {},
+   "partes": {},
+   "montos": {
+    "p1": 60000,
+    "p2": 60000,
+    "p4": 60000
+   },
+   "creado": "2026-11-18T13:00:00.000Z"
+  },
+  {
+   "id": "e8",
+   "descripcion": "Bencina a Pucón",
+   "total": 60000,
+   "fecha": "2026-11-18",
+   "pagador": "yo",
+   "medioId": "visa",
+   "categoriaId": "cat-transporte",
+   "grupoId": "g1",
+   "recurrenteId": null,
+   "modo": "equal",
+   "yoIncluido": true,
+   "miParte": 15000,
+   "misPartes": 1,
+   "participantes": [
+    "p1",
+    "p2",
+    "p4"
+   ],
+   "exactos": {},
+   "partes": {},
+   "montos": {
+    "p1": 15000,
+    "p2": 15000,
+    "p4": 15000
+   },
+   "creado": "2026-11-18T12:00:00.000Z"
+  },
+  {
+   "id": "e9",
+   "descripcion": "Café de la esquina",
+   "total": 4200,
+   "fecha": "2026-11-15",
+   "pagador": "yo",
+   "medioId": "medio-efectivo",
+   "categoriaId": null,
+   "grupoId": null,
+   "recurrenteId": null,
+   "modo": "solo",
+   "yoIncluido": true,
+   "miParte": 4200,
+   "misPartes": 1,
+   "participantes": [],
+   "exactos": {},
+   "partes": {},
+   "montos": {},
+   "creado": "2026-11-15T12:00:00.000Z"
+  },
+  {
+   "id": "e10",
+   "descripcion": "Netflix",
+   "total": 13900,
+   "fecha": "2026-11-12",
+   "pagador": "yo",
+   "medioId": "visa",
+   "categoriaId": "cat-suscripciones",
+   "grupoId": null,
+   "recurrenteId": "r4",
+   "modo": "equal",
+   "yoIncluido": true,
+   "miParte": 3475,
+   "misPartes": 1,
+   "participantes": [
+    "p1",
+    "p3",
+    "p5"
+   ],
+   "exactos": {},
+   "partes": {},
+   "montos": {
+    "p1": 3475,
+    "p3": 3475,
+    "p5": 3475
+   },
+   "creado": "2026-11-12T12:00:00.000Z"
+  },
+  {
+   "id": "e11",
+   "descripcion": "Gimnasio",
+   "total": 24990,
+   "fecha": "2026-11-08",
+   "pagador": "yo",
+   "medioId": "visa",
+   "categoriaId": "cat-salud",
+   "grupoId": null,
+   "recurrenteId": "r3",
+   "modo": "solo",
+   "yoIncluido": true,
+   "miParte": 24990,
+   "misPartes": 1,
+   "participantes": [],
+   "exactos": {},
+   "partes": {},
+   "montos": {},
+   "creado": "2026-11-08T12:00:00.000Z"
+  },
+  {
+   "id": "e12",
+   "descripcion": "Arriendo",
+   "total": 350000,
+   "fecha": "2026-11-05",
+   "pagador": "yo",
+   "medioId": "deb",
+   "categoriaId": "cat-casa",
+   "grupoId": null,
+   "recurrenteId": "r1",
+   "modo": "solo",
+   "yoIncluido": true,
+   "miParte": 350000,
+   "misPartes": 1,
+   "participantes": [],
+   "exactos": {},
+   "partes": {},
+   "montos": {},
+   "creado": "2026-11-05T12:00:00.000Z"
+  },
+  {
+   "id": "e13",
+   "descripcion": "Regalo para la Vale",
+   "total": 19500,
+   "fecha": "2026-11-03",
+   "pagador": "yo",
+   "medioId": "visa",
+   "categoriaId": "cat-salidas",
+   "grupoId": "g2",
+   "recurrenteId": null,
+   "modo": "equal",
+   "yoIncluido": true,
+   "miParte": 9750,
+   "misPartes": 1,
+   "participantes": [
+    "p5"
+   ],
+   "exactos": {},
+   "partes": {},
+   "montos": {
+    "p5": 9750
+   },
+   "creado": "2026-11-03T12:00:00.000Z"
+  }
+ ],
+ "movimientos": [
+  {
+   "id": "e1:0",
+   "personaId": "p1",
+   "tipo": "cargo",
+   "detalle": "Sushi con Cami y Javi",
+   "monto": 12000,
+   "fecha": "2026-11-25",
+   "gastoId": "e1",
+   "creado": "2026-11-25T12:00:00.000Z"
+  },
+  {
+   "id": "e1:1",
+   "personaId": "p3",
+   "tipo": "cargo",
+   "detalle": "Sushi con Cami y Javi",
+   "monto": 12000,
+   "fecha": "2026-11-25",
+   "gastoId": "e1",
+   "creado": "2026-11-25T12:00:00.000Z"
+  },
+  {
+   "id": "e2:deuda",
+   "personaId": "p2",
+   "tipo": "deuda",
+   "detalle": "Uber a la casa",
+   "monto": 8000,
+   "fecha": "2026-11-24",
+   "gastoId": "e2",
+   "creado": "2026-11-24T12:00:00.000Z"
+  },
+  {
+   "id": "e5:deuda",
+   "personaId": "p4",
+   "tipo": "deuda",
+   "detalle": "Kayak en el lago",
+   "monto": 25000,
+   "fecha": "2026-11-19",
+   "gastoId": "e5",
+   "creado": "2026-11-19T15:00:00.000Z"
+  },
+  {
+   "id": "e6:deuda",
+   "personaId": "p1",
+   "tipo": "deuda",
+   "detalle": "Asado en la cabaña",
+   "monto": 20000,
+   "fecha": "2026-11-19",
+   "gastoId": "e6",
+   "creado": "2026-11-19T13:00:00.000Z"
+  },
+  {
+   "id": "e7:0",
+   "personaId": "p1",
+   "tipo": "cargo",
+   "detalle": "Cabaña en Pucón",
+   "monto": 60000,
+   "fecha": "2026-11-18",
+   "gastoId": "e7",
+   "creado": "2026-11-18T13:00:00.000Z"
+  },
+  {
+   "id": "e7:1",
+   "personaId": "p2",
+   "tipo": "cargo",
+   "detalle": "Cabaña en Pucón",
+   "monto": 60000,
+   "fecha": "2026-11-18",
+   "gastoId": "e7",
+   "creado": "2026-11-18T13:00:00.000Z"
+  },
+  {
+   "id": "e7:2",
+   "personaId": "p4",
+   "tipo": "cargo",
+   "detalle": "Cabaña en Pucón",
+   "monto": 60000,
+   "fecha": "2026-11-18",
+   "gastoId": "e7",
+   "creado": "2026-11-18T13:00:00.000Z"
+  },
+  {
+   "id": "e8:0",
+   "personaId": "p1",
+   "tipo": "cargo",
+   "detalle": "Bencina a Pucón",
+   "monto": 15000,
+   "fecha": "2026-11-18",
+   "gastoId": "e8",
+   "creado": "2026-11-18T12:00:00.000Z"
+  },
+  {
+   "id": "e8:1",
+   "personaId": "p2",
+   "tipo": "cargo",
+   "detalle": "Bencina a Pucón",
+   "monto": 15000,
+   "fecha": "2026-11-18",
+   "gastoId": "e8",
+   "creado": "2026-11-18T12:00:00.000Z"
+  },
+  {
+   "id": "e8:2",
+   "personaId": "p4",
+   "tipo": "cargo",
+   "detalle": "Bencina a Pucón",
+   "monto": 15000,
+   "fecha": "2026-11-18",
+   "gastoId": "e8",
+   "creado": "2026-11-18T12:00:00.000Z"
+  },
+  {
+   "id": "e10:0",
+   "personaId": "p1",
+   "tipo": "cargo",
+   "detalle": "Netflix",
+   "monto": 3475,
+   "fecha": "2026-11-12",
+   "gastoId": "e10",
+   "creado": "2026-11-12T12:00:00.000Z"
+  },
+  {
+   "id": "e10:1",
+   "personaId": "p3",
+   "tipo": "cargo",
+   "detalle": "Netflix",
+   "monto": 3475,
+   "fecha": "2026-11-12",
+   "gastoId": "e10",
+   "creado": "2026-11-12T12:00:00.000Z"
+  },
+  {
+   "id": "e10:2",
+   "personaId": "p5",
+   "tipo": "cargo",
+   "detalle": "Netflix",
+   "monto": 3475,
+   "fecha": "2026-11-12",
+   "gastoId": "e10",
+   "creado": "2026-11-12T12:00:00.000Z"
+  },
+  {
+   "id": "e13:0",
+   "personaId": "p5",
+   "tipo": "cargo",
+   "detalle": "Regalo para la Vale",
+   "monto": 9750,
+   "fecha": "2026-11-03",
+   "gastoId": "e13",
+   "creado": "2026-11-03T12:00:00.000Z"
+  },
+  {
+   "id": "r5@2026-11-01",
+   "personaId": "p2",
+   "tipo": "cargo",
+   "detalle": "Cuota mensual",
+   "monto": 20000,
+   "fecha": "2026-11-01",
+   "recurrenteId": "r5",
+   "creado": "2026-11-01T09:00:00.000Z"
+  },
+  {
+   "id": "y1",
+   "personaId": "p2",
+   "tipo": "pago",
+   "detalle": "Transferencia",
+   "monto": 20000,
+   "fecha": "2026-11-02",
+   "creado": "2026-11-02T18:00:00.000Z"
+  },
+  {
+   "id": "y2",
+   "personaId": "p5",
+   "tipo": "pago",
+   "detalle": "Transferencia",
+   "monto": 13225,
+   "fecha": "2026-11-20",
+   "creado": "2026-11-20T18:00:00.000Z"
+  },
+  {
+   "id": "y3",
+   "personaId": "p2",
+   "tipo": "pago",
+   "detalle": "Transferencia",
+   "monto": 75000,
+   "fecha": "2026-11-21",
+   "creado": "2026-11-21T18:00:00.000Z"
+  },
+  {
+   "id": "y4",
+   "personaId": "p4",
+   "tipo": "pago",
+   "detalle": "Efectivo",
+   "monto": 50000,
+   "fecha": "2026-11-21",
+   "creado": "2026-11-21T18:00:00.000Z"
+  },
+  {
+   "id": "y5",
+   "personaId": "p1",
+   "tipo": "pago",
+   "detalle": "Transferencia",
+   "monto": 50000,
+   "fecha": "2026-11-22",
+   "creado": "2026-11-22T18:00:00.000Z"
+  }
+ ],
+ "cobros": [
+  {
+   "id": "k1",
+   "personaId": "p1",
+   "fecha": "2026-11-23T15:00:00.000Z",
+   "medio": "WhatsApp",
+   "tono": "Amable",
+   "monto": 20000,
+   "mensaje": "Hola Camila!"
+  },
+  {
+   "id": "k2",
+   "personaId": "p3",
+   "fecha": "2026-11-24T15:00:00.000Z",
+   "medio": "WhatsApp",
+   "tono": "Directo",
+   "monto": 15475,
+   "mensaje": "Hola Javiera"
+  }
+ ],
+ "medios": [
+  {
+   "id": "visa",
+   "nombre": "Visa BCI",
+   "tipo": "credito",
+   "color": "#9EC9FF",
+   "diaFacturacion": 25,
+   "archivado": false,
+   "orden": 1,
+   "creado": "2026-11-01T10:00:00.000Z",
+   "ultimos4": "4821"
+  },
+  {
+   "id": "deb",
+   "nombre": "Débito Banco Estado",
+   "tipo": "debito",
+   "color": "#FFD36E",
+   "archivado": false,
+   "orden": 2,
+   "creado": "2026-11-01T10:00:00.000Z",
+   "ultimos4": "1122"
+  },
+  {
+   "id": "medio-efectivo",
+   "nombre": "Efectivo",
+   "tipo": "efectivo",
+   "color": "#7FD9A8",
+   "archivado": false,
+   "orden": 3,
+   "creado": "2026-11-01T10:00:00.000Z"
+  }
+ ],
+ "categorias": [
+  {
+   "id": "cat-comida",
+   "nombre": "Comida",
+   "icono": "comida",
+   "color": "#FFD36E",
+   "orden": 1,
+   "archivada": false
+  },
+  {
+   "id": "cat-transporte",
+   "nombre": "Transporte",
+   "icono": "transporte",
+   "color": "#9EC9FF",
+   "orden": 2,
+   "archivada": false
+  },
+  {
+   "id": "cat-casa",
+   "nombre": "Casa",
+   "icono": "casa",
+   "color": "#7FD9A8",
+   "orden": 3,
+   "archivada": false
+  },
+  {
+   "id": "cat-suscripciones",
+   "nombre": "Suscripciones",
+   "icono": "subs",
+   "color": "#D9B8FF",
+   "orden": 4,
+   "archivada": false
+  },
+  {
+   "id": "cat-salidas",
+   "nombre": "Salidas",
+   "icono": "salidas",
+   "color": "#FF9E8A",
+   "orden": 5,
+   "archivada": false
+  },
+  {
+   "id": "cat-salud",
+   "nombre": "Salud",
+   "icono": "salud",
+   "color": "#BDE7E0",
+   "orden": 6,
+   "archivada": false
+  }
+ ],
+ "grupos": [
+  {
+   "id": "g1",
+   "nombre": "Viaje a Pucón",
+   "archivado": false,
+   "creado": "2026-11-01T10:00:00.000Z"
+  },
+  {
+   "id": "g2",
+   "nombre": "Cumpleaños de la Vale",
+   "archivado": false,
+   "creado": "2026-11-01T10:00:00.000Z"
+  }
+ ],
+ "recurrentes": [
+  {
+   "id": "r1",
+   "nombre": "Arriendo",
+   "tipo": "mio",
+   "montoTipo": "fijo",
+   "monto": 350000,
+   "frecuencia": {
+    "unidad": "mes",
+    "cada": 1,
+    "dia": 5
+   },
+   "inicio": "2026-10-05",
+   "generadoHasta": "2026-11-05",
+   "medioId": "deb",
+   "categoriaId": "cat-casa",
+   "reparto": null,
+   "personaId": null,
+   "ultimoConfirmado": null,
+   "activo": true,
+   "creado": "2026-11-01T10:00:00.000Z"
+  },
+  {
+   "id": "r2",
+   "nombre": "Luz",
+   "tipo": "mio",
+   "montoTipo": "variable",
+   "monto": 28450,
+   "frecuencia": {
+    "unidad": "mes",
+    "cada": 1,
+    "dia": 10
+   },
+   "inicio": "2026-10-10",
+   "generadoHasta": "2026-11-10",
+   "medioId": "deb",
+   "categoriaId": "cat-casa",
+   "reparto": null,
+   "personaId": null,
+   "ultimoConfirmado": "2026-10-10",
+   "activo": true,
+   "creado": "2026-11-01T10:00:00.000Z"
+  },
+  {
+   "id": "r3",
+   "nombre": "Gimnasio",
+   "tipo": "mio",
+   "montoTipo": "fijo",
+   "monto": 24990,
+   "frecuencia": {
+    "unidad": "mes",
+    "cada": 1,
+    "dia": 8
+   },
+   "inicio": "2026-10-08",
+   "generadoHasta": "2026-11-08",
+   "medioId": "visa",
+   "categoriaId": "cat-salud",
+   "reparto": null,
+   "personaId": null,
+   "ultimoConfirmado": null,
+   "activo": true,
+   "creado": "2026-11-01T10:00:00.000Z"
+  },
+  {
+   "id": "r4",
+   "nombre": "Netflix",
+   "tipo": "compartido",
+   "montoTipo": "fijo",
+   "monto": 13900,
+   "frecuencia": {
+    "unidad": "mes",
+    "cada": 1,
+    "dia": 12
+   },
+   "inicio": "2026-10-12",
+   "generadoHasta": "2026-11-12",
+   "medioId": "visa",
+   "categoriaId": "cat-suscripciones",
+   "reparto": {
+    "modo": "equal",
+    "yoIncluido": true,
+    "misPartes": 1,
+    "participantes": [
+     "p1",
+     "p3",
+     "p5"
+    ],
+    "exactos": {},
+    "partes": {},
+    "baseTotal": 13900
+   },
+   "personaId": null,
+   "ultimoConfirmado": null,
+   "activo": true,
+   "creado": "2026-11-01T10:00:00.000Z"
+  },
+  {
+   "id": "r5",
+   "nombre": "Cuota de Diego",
+   "tipo": "cobro",
+   "montoTipo": "fijo",
+   "monto": 20000,
+   "frecuencia": {
+    "unidad": "mes",
+    "cada": 1,
+    "dia": 1
+   },
+   "inicio": "2026-10-01",
+   "generadoHasta": "2026-11-01",
+   "medioId": null,
+   "categoriaId": null,
+   "reparto": null,
+   "personaId": "p2",
+   "ultimoConfirmado": null,
+   "activo": true,
+   "creado": "2026-11-01T10:00:00.000Z"
+  }
+ ],
+ "pendientes": [
+  {
+   "id": "r2@2026-11-10",
+   "recurrenteId": "r2",
+   "fecha": "2026-11-10",
+   "tipo": "confirmar",
+   "creado": "2026-11-01T10:00:00.000Z"
+  }
+ ],
+ "fotos": [],
+ "ajustes": {
+  "id": "main",
+  "miNombre": "Sebastián",
+  "datosBancarios": "Banco Estado · Cuenta RUT 17.234.567-8",
+  "incluirDatos": true,
+  "tema": "sistema",
+  "ultimoRespaldo": "2026-11-16T12:00:00.000Z",
+  "recordarRespaldo": true,
+  "onboardingHecho": true
+ },
+ "cuentas": [
+  {
+   "id": "mach",
+   "nombre": "Mach",
+   "tipo": "remunerada",
+   "color": "#D9B8FF",
+   "tasa": 4.8,
+   "tasaUnidad": "anual",
+   "archivada": false,
+   "orden": 1,
+   "creado": "2026-11-01T10:00:00.000Z"
+  },
+  {
+   "id": "tenpo",
+   "nombre": "Tenpo",
+   "tipo": "remunerada",
+   "color": "#7FD9A8",
+   "tasa": 5.2,
+   "tasaUnidad": "anual",
+   "archivada": false,
+   "orden": 2,
+   "creado": "2026-11-01T10:00:00.000Z"
+  },
+  {
+   "id": "mp",
+   "nombre": "Mercado Pago",
+   "tipo": "remunerada",
+   "color": "#9EC9FF",
+   "tasa": 4.2,
+   "tasaUnidad": "anual",
+   "archivada": false,
+   "orden": 3,
+   "creado": "2026-11-01T10:00:00.000Z"
+  },
+  {
+   "id": "rut",
+   "nombre": "Cuenta RUT",
+   "tipo": "vista",
+   "color": "#FFD36E",
+   "archivada": false,
+   "orden": 4,
+   "creado": "2026-11-01T10:00:00.000Z"
+  },
+  {
+   "id": "cuenta-efectivo",
+   "nombre": "Efectivo",
+   "tipo": "efectivo",
+   "color": "#9EC9FF",
+   "archivada": false,
+   "orden": 0,
+   "creado": "2026-11-01T10:00:00.000Z"
+  },
+  {
+   "id": "dap1",
+   "nombre": "Banco Estado",
+   "tipo": "dap",
+   "institucion": "Banco Estado",
+   "color": "#FFD36E",
+   "archivada": false,
+   "orden": 6,
+   "creado": "2026-11-01T10:00:00.000Z",
+   "dap": {
+    "monto": 2000000,
+    "tasa30": 0.45,
+    "inicio": "2026-10-03",
+    "vencimiento": "2027-01-01",
+    "estado": "vigente",
+    "renovar": false
+   }
+  }
+ ],
+ "movAhorro": [
+  {
+   "id": "a1",
+   "cuentaId": "mach",
+   "tipo": "cuadre",
+   "monto": 820000,
+   "fecha": "2026-06-30",
+   "creado": "2026-01-01T00:00:01.000Z"
+  },
+  {
+   "id": "a2",
+   "cuentaId": "mach",
+   "tipo": "cuadre",
+   "monto": 905000,
+   "fecha": "2026-07-31",
+   "creado": "2026-01-01T00:00:02.000Z"
+  },
+  {
+   "id": "a3",
+   "cuentaId": "mach",
+   "tipo": "cuadre",
+   "monto": 1010000,
+   "fecha": "2026-08-31",
+   "creado": "2026-01-01T00:00:03.000Z"
+  },
+  {
+   "id": "a4",
+   "cuentaId": "mach",
+   "tipo": "cuadre",
+   "monto": 1080000,
+   "fecha": "2026-09-30",
+   "creado": "2026-01-01T00:00:04.000Z"
+  },
+  {
+   "id": "a5",
+   "cuentaId": "mach",
+   "tipo": "cuadre",
+   "monto": 1130000,
+   "fecha": "2026-10-31",
+   "creado": "2026-01-01T00:00:05.000Z"
+  },
+  {
+   "id": "a6",
+   "cuentaId": "mach",
+   "tipo": "cuadre",
+   "monto": 1132560,
+   "fecha": "2026-11-13",
+   "creado": "2026-01-01T00:00:06.000Z"
+  },
+  {
+   "id": "a7",
+   "cuentaId": "mach",
+   "tipo": "deposito",
+   "monto": 150000,
+   "fecha": "2026-11-15",
+   "creado": "2026-01-01T00:00:07.000Z",
+   "nota": "Depósito desde Cuenta RUT"
+  },
+  {
+   "id": "a8",
+   "cuentaId": "tenpo",
+   "tipo": "cuadre",
+   "monto": 400000,
+   "fecha": "2026-06-30",
+   "creado": "2026-01-01T00:00:08.000Z"
+  },
+  {
+   "id": "a9",
+   "cuentaId": "tenpo",
+   "tipo": "cuadre",
+   "monto": 450000,
+   "fecha": "2026-07-31",
+   "creado": "2026-01-01T00:00:09.000Z"
+  },
+  {
+   "id": "a10",
+   "cuentaId": "tenpo",
+   "tipo": "cuadre",
+   "monto": 520000,
+   "fecha": "2026-08-31",
+   "creado": "2026-01-01T00:00:10.000Z"
+  },
+  {
+   "id": "a11",
+   "cuentaId": "tenpo",
+   "tipo": "cuadre",
+   "monto": 560000,
+   "fecha": "2026-09-30",
+   "creado": "2026-01-01T00:00:11.000Z"
+  },
+  {
+   "id": "a12",
+   "cuentaId": "tenpo",
+   "tipo": "cuadre",
+   "monto": 610000,
+   "fecha": "2026-10-31",
+   "creado": "2026-01-01T00:00:12.000Z"
+  },
+  {
+   "id": "a13",
+   "cuentaId": "tenpo",
+   "tipo": "deposito",
+   "monto": 30000,
+   "fecha": "2026-11-20",
+   "creado": "2026-01-01T00:00:13.000Z",
+   "nota": "Depósito desde Cuenta RUT"
+  },
+  {
+   "id": "a14",
+   "cuentaId": "tenpo",
+   "tipo": "cuadre",
+   "monto": 639933,
+   "fecha": "2026-11-22",
+   "creado": "2026-01-01T00:00:14.000Z"
+  },
+  {
+   "id": "a15",
+   "cuentaId": "mp",
+   "tipo": "cuadre",
+   "monto": 350000,
+   "fecha": "2026-06-30",
+   "creado": "2026-01-01T00:00:15.000Z"
+  },
+  {
+   "id": "a16",
+   "cuentaId": "mp",
+   "tipo": "cuadre",
+   "monto": 342000,
+   "fecha": "2026-07-31",
+   "creado": "2026-01-01T00:00:16.000Z"
+  },
+  {
+   "id": "a17",
+   "cuentaId": "mp",
+   "tipo": "cuadre",
+   "monto": 331000,
+   "fecha": "2026-08-31",
+   "creado": "2026-01-01T00:00:17.000Z"
+  },
+  {
+   "id": "a18",
+   "cuentaId": "mp",
+   "tipo": "cuadre",
+   "monto": 300000,
+   "fecha": "2026-09-30",
+   "creado": "2026-01-01T00:00:18.000Z"
+  },
+  {
+   "id": "a19",
+   "cuentaId": "mp",
+   "tipo": "cuadre",
+   "monto": 331713,
+   "fecha": "2026-10-26",
+   "creado": "2026-01-01T00:00:19.000Z"
+  },
+  {
+   "id": "a20",
+   "cuentaId": "mp",
+   "tipo": "retiro",
+   "monto": 20000,
+   "fecha": "2026-11-09",
+   "creado": "2026-01-01T00:00:20.000Z",
+   "nota": "Retiro a Cuenta RUT"
+  },
+  {
+   "id": "a21",
+   "cuentaId": "rut",
+   "tipo": "cuadre",
+   "monto": 486300,
+   "fecha": "2026-11-20",
+   "creado": "2026-01-01T00:00:21.000Z"
+  },
+  {
+   "id": "a22",
+   "cuentaId": "cuenta-efectivo",
+   "tipo": "cuadre",
+   "monto": 38000,
+   "fecha": "2026-11-24",
+   "creado": "2026-01-01T00:00:22.000Z"
+  }
+ ],
+ "detectados": []
+}

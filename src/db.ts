@@ -40,6 +40,8 @@ export interface Medio {
   color: string;
   /** Día de facturación de una tarjeta de crédito (1–31), para agrupar por período. */
   diaFacturacion?: number;
+  /** Últimos 4 dígitos de la tarjeta: sirven para reconocerla en los correos del banco. */
+  ultimos4?: string;
   archivado: boolean;
   orden: number;
   creado: string;
@@ -184,6 +186,105 @@ export interface Foto {
   creado: string;
 }
 
+// ---------- Mi plata: ahorros y cuentas ----------
+
+/**
+ * - remunerada: cuenta que paga interés a diario (Mach, Tenpo, Mercado Pago…).
+ * - vista: cuenta corriente, vista o RUT (sin interés; el saldo se cuadra a mano).
+ * - efectivo: la plata de la billetera (una sola, se crea al cuadrarla por primera vez).
+ * - dap: depósito a plazo (monto, tasa y vencimiento fijos).
+ * - inversion: fondos, acciones, etc. (saldo a mano, con rentabilidad opcional).
+ */
+export type TipoCuenta = 'remunerada' | 'vista' | 'efectivo' | 'dap' | 'inversion';
+
+export interface DatosDap {
+  /** Monto invertido. */
+  monto: number;
+  /** Tasa del período base de 30 días, en % (como la publican los bancos: "0,45% a 30 días"). */
+  tasa30: number;
+  inicio: string; // YYYY-MM-DD
+  vencimiento: string; // YYYY-MM-DD
+  /** Si el banco informa el monto final exacto, manda sobre el cálculo. */
+  montoFinal?: number;
+  /** 'vigente' hasta que se cobra o se renueva. */
+  estado: 'vigente' | 'cobrado';
+  /** Al vencer se renueva solo por el mismo plazo, con capital + intereses. */
+  renovar?: boolean;
+}
+
+export interface Cuenta {
+  id: string;
+  nombre: string;
+  tipo: TipoCuenta;
+  /** Banco o app (ej. "Mercado Pago"). */
+  institucion?: string;
+  color: string;
+  /** Rentabilidad en % (remunerada o inversión). */
+  tasa?: number;
+  tasaUnidad?: 'anual' | 'mensual';
+  dap?: DatosDap;
+  archivada: boolean;
+  orden: number;
+  creado: string;
+}
+
+/**
+ * Movimiento de una cuenta de ahorro:
+ * - cuadre: el saldo real en esa fecha (monto = saldo total). Corrige la estimación.
+ * - deposito / retiro: plata que entra o sale (monto positivo).
+ */
+export interface MovAhorro {
+  id: string;
+  cuentaId: string;
+  tipo: 'cuadre' | 'deposito' | 'retiro';
+  monto: number;
+  fecha: string; // YYYY-MM-DD
+  nota?: string;
+  creado: string;
+}
+
+// ---------- Detectados en el correo ----------
+
+export type TipoDetectado = 'compra' | 'transferencia' | 'recibido' | 'otro';
+
+/** Un cobro (o abono) leído de un correo del banco que espera confirmación. */
+export interface Detectado {
+  /** Id del mensaje en Gmail (evita leer dos veces el mismo correo). */
+  id: string;
+  tipo: TipoDetectado;
+  monto: number;
+  comercio: string;
+  fecha: string; // YYYY-MM-DD
+  hora?: string; // HH:MM
+  banco?: string;
+  ultimos4?: string;
+  /** Medio reconocido por los últimos 4 dígitos (o por el banco, si hay uno solo). */
+  medioId?: string;
+  /** Gasto parecido ya anotado (mismo monto y medio, ±1 día): probable duplicado. */
+  parecidoA?: string;
+  /** Categoría sugerida (por el último gasto en ese comercio o por palabras clave). */
+  categoriaId?: string;
+  /** Transferencias: la persona reconocida por el nombre. */
+  personaId?: string;
+  /** Pago registrado al anotar una transferencia. */
+  movimientoId?: string;
+  remitente: string;
+  asunto: string;
+  estado: 'pendiente' | 'anotado' | 'descartado';
+  gastoId?: string;
+  creado: string;
+}
+
+/** Conexión con el script de Google Apps Script que lee los correos del banco. */
+export interface ConfigCorreo {
+  url: string;
+  clave: string;
+  /** Cuenta de Gmail que informa el script. */
+  email?: string;
+  /** Marca de tiempo ISO de la última lectura correcta. */
+  ultimaLectura?: string;
+}
+
 export type Tema = 'claro' | 'oscuro' | 'sistema';
 
 export interface Ajustes {
@@ -197,6 +298,8 @@ export interface Ajustes {
   recordarRespaldo: boolean;
   /** Ya pasó (o saltó) la pantalla "Agrega tus tarjetas". */
   onboardingHecho: boolean;
+  /** Lectura de correos del banco (opcional). */
+  correo?: ConfigCorreo;
 }
 
 export const AJUSTES_DEFAULT: Ajustes = {
@@ -235,6 +338,9 @@ type DB = Dexie & {
   recurrentes: EntityTable<Recurrente, 'id'>;
   pendientes: EntityTable<Pendiente, 'id'>;
   fotos: EntityTable<Foto, 'id'>;
+  cuentas: EntityTable<Cuenta, 'id'>;
+  movAhorro: EntityTable<MovAhorro, 'id'>;
+  detectados: EntityTable<Detectado, 'id'>;
 };
 
 export const db = new Dexie('me-debes') as DB;
@@ -272,6 +378,14 @@ db.version(3).stores({
 db.version(4)
   .stores({ pendientes: 'id, recurrenteId, fecha, tipo' })
   .upgrade(migrarV3aV4);
+
+// v5 (app 2.2): Mi plata (cuentas de ahorro, depósitos a plazo) y cobros detectados en el correo.
+// Solo agrega tablas: los datos existentes no cambian.
+db.version(5).stores({
+  cuentas: 'id',
+  movAhorro: 'id, cuentaId, fecha',
+  detectados: 'id, estado, fecha',
+});
 
 /** Migración v3 → v4. Exportada para poder probarla. */
 export async function migrarV3aV4(tx: Transaction) {
@@ -603,10 +717,10 @@ export const guardarAjustes = async (patch: Partial<Omit<Ajustes, 'id'>>) => {
 export async function borrarTodo() {
   await db.transaction(
     'rw',
-    [db.personas, db.gastos, db.movimientos, db.cobros, db.medios, db.grupos, db.recurrentes, db.pendientes, db.fotos],
+    [db.personas, db.gastos, db.movimientos, db.cobros, db.medios, db.grupos, db.recurrentes, db.pendientes, db.fotos, db.cuentas, db.movAhorro, db.detectados],
     async () => {
       await Promise.all(
-        [db.personas, db.gastos, db.movimientos, db.cobros, db.medios, db.grupos, db.recurrentes, db.pendientes, db.fotos].map((t) => t.clear()),
+        [db.personas, db.gastos, db.movimientos, db.cobros, db.medios, db.grupos, db.recurrentes, db.pendientes, db.fotos, db.cuentas, db.movAhorro, db.detectados].map((t) => t.clear()),
       );
       await db.medios.put({ ...MEDIO_EFECTIVO, creado: now() });
     },

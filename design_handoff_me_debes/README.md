@@ -5,7 +5,7 @@ Me Debes pasa de ser una app para saber "quién me debe" a una app para saber "a
 
 ## Archivos
 - `Me Debes v2.dc.html`: el prototipo navegable. La lógica completa (saldos netos, asignación de pagos, reparto, recurrentes y mensajes) está en el `<script data-dc-script>` al final del archivo. La prop `screen` define la pantalla de inicio y la prop `dark` activa el modo oscuro.
-- `Me Debes v2 Pantallas.dc.html`: un tablero con las 31 pantallas y estados lado a lado. La prop `dark` cambia todo el tablero entre claro y oscuro.
+- `Me Debes v2 Pantallas.dc.html`: un tablero con las 39 pantallas y estados lado a lado. La prop `dark` cambia todo el tablero entre claro y oscuro.
 - `Me Debes C.dc.html`: la versión 1, que queda como referencia de la dirección visual.
 - `support.js`: el runtime para abrir los prototipos en el navegador. No forma parte del producto.
 
@@ -63,7 +63,7 @@ Usa una sola familia, **Bricolage Grotesque** (`opsz 12..96`, pesos 400–800). 
 
 ## Navegación
 ```
-Barra inferior: Resumen | Gastos | Personas | Recurrentes      (+ "Nuevo gasto" flotante en las 4)
+Barra inferior: Resumen | Gastos | Mi plata | Personas | Recurrentes      (+ "Nuevo gasto" flotante en las 5)
 
 Resumen ─┬─ Ajustes ─┬─ Medios de pago ── Nuevo/editar medio
          │           └─ Categorías
@@ -80,6 +80,15 @@ Personas ┬─ + Persona → hoja Nueva persona (Elegir de contactos)
          └─ tarjeta → Detalle de persona ─┬─ [+] → Nuevo gasto (persona preseleccionada)
                                           ├─ Pagó / Le pagué → Registrar pago
                                           └─ Cobrar por WhatsApp → Cobro
+Mi plata ┬─ fila Cuentas vista / Efectivo → hoja Cuadrar
+         ├─ fila Te deben / Debes → Personas · fila Tarjetas → Medios de pago
+         ├─ banner "N cobros detectados" → Detectados ─┬─ Anotar / Descartar / Es el mismo
+         │                                             ├─ Editar → Nuevo gasto o Registrar pago (precargado)
+         │                                             └─ Desconectar → vuelve a Mi plata
+         ├─ banner "Conectar Gmail" (si no está conectado) → Conectar Gmail → Detectados
+         ├─ cuenta de ahorro → Detalle de cuenta ─┬─ Depositar / Retirar → hoja de movimiento
+         │                                        └─ Cuadrar con el saldo real → hoja Cuadrar
+         └─ + Nuevo depósito a plazo → Depósito a plazo
 Recurrentes ┬─ + Nuevo → Nuevo recurrente
             └─ fila variable pendiente → hoja Por confirmar
 Primer uso: Agrega tus tarjetas → Nuevo medio → Resumen
@@ -93,10 +102,10 @@ Primer uso: Agrega tus tarjetas → Nuevo medio → Resumen
 ## Componentes nuevos
 
 ### Barra inferior
-- Grilla de 4 columnas, `padding 8 8 26`, `border-top 2px ink` y fondo `bg`.
+- Grilla de 5 columnas, `padding 8 4 26`, `border-top 2px ink` y fondo `bg`.
 - Cada pestaña tiene un indicador de 56×32 con radio 16 y el ícono de 22px (trazo 2.2), seguido de la etiqueta en 12px.
 - **Activa:** indicador relleno en `ink`, ícono en `bg` y etiqueta en 800. **Inactiva:** indicador transparente y etiqueta en 600.
-- Íconos: Resumen (mosaico), Gastos (boleta), Personas (dos personas) y Recurrentes (flechas en ciclo). Equivalentes en Lucide: `layout-dashboard`, `receipt`, `users` y `repeat`.
+- Íconos: Resumen (mosaico), Gastos (boleta), Personas (dos personas) y Mi plata (billetera), Recurrentes (flechas en ciclo). Equivalentes en Lucide: `layout-dashboard`, `receipt`, `wallet`, `users` y `repeat`.
 
 ### Botón "Nuevo gasto"
 - Posición absoluta: `right 16`, `bottom 100` (sobre la barra).
@@ -253,6 +262,41 @@ Primer uso: Agrega tus tarjetas → Nuevo medio → Resumen
     - Respaldo: último respaldo, **Exportar** (abre el menú de compartir del sistema), Importar y el switch "Recordarme respaldar cada 7 días".
     - Borrar todo, que pide confirmación, y la versión: "Me Debes 2.0.3 · funciona sin conexión".
 
+### Mi plata
+15. **Mi plata** (pestaña)
+    - Encabezado `mi plata.` y "al 25 nov" en `muted`.
+    - **Patrimonio** en 60/800 (tracking −2.8) y la nota "Lo que tienes menos lo que debes, con los saldos que la app conoce."
+    - Dos barras de 14px: **tienes** (segmentos con `flex-grow` = monto: ahorros `#7FD9A8`, cuentas vista `#FFD36E`, efectivo `#9EC9FF`, te deben `pos`) y **debes** (una barra `owe` con ancho = pasivos / activos).
+    - Desglose en tarjeta `surface`: punto de 12px, nombre, detalle y monto. Ahorros, Cuentas vista, Efectivo y Te deben en `ink`; Debes y Tarjetas por pagar en negativo y `owe`.
+    - Banner "N cobros detectados en tu correo" (borde 2px `ink`, botón "Revisar"). Si Gmail no está conectado, en su lugar va una caja `soft`: "Que tu banco te avise y la app anote" + "Conectar Gmail".
+    - `cuentas de ahorro.`: tarjeta con cuadro de 40px y radio 14 con la inicial, nombre, "4,8% anual · cuadrado hace 12 días" y saldo en 22/800. Bajo una línea: "ganaste $X este mes" en `pos` y "saldo estimado".
+    - `depósitos a plazo.`: banco, "90 días · 0,45% cada 30 días", monto; barra de progreso de 10px (`ink` sobre `track`); "faltan N días" y "vence el 1 ene 2027"; bajo una línea, "al vencer recibes" con el monto en 26/800 `pos` y "+$intereses". Abajo, botón punteado "Nuevo depósito a plazo".
+16. **Detalle de cuenta**
+    - Cuadro de 44px con la inicial + nombre en minúscula con punto (`mach.`), "Cuenta remunerada · 4,8% anual".
+    - Saldo en 58/800, "Saldo estimado · cuadrado hace N días" y la píldora con borde `pos` "ganaste $X este mes".
+    - Gráfico en tarjeta `surface`: línea `pos` de 3px con área `pos` al 14%, punto final con relleno `surface`. Seis puntos: cierre de jun–oct y hoy. Encabezado "Saldo, últimos 6 meses" y "+$X desde junio".
+    - **Depositar** (lima) y **Retirar** (borde) en grilla de 2, de 56px.
+    - "Cuadrar con el saldo real" (borde 2px `ink`, radio 22) con "Mira cuánto tienes en Mach y anótalo. La estimación parte de ahí."
+    - `movimientos.`: depósitos, retiros, intereses y ajustes, con + en `pos`.
+    - **Hoja de movimiento** (una sola hoja con tres modos): título `depositar en mach.` / `retirar de mach.` / `cuadrar mach.`, pregunta, monto en 60/800, línea de ayuda y teclado numérico.
+      - Depositar/Retirar: chips "Sale de" / "Llega a" (Cuenta RUT, Efectivo) y "En Cuenta RUT quedan $X" (en `danger` si no alcanza).
+      - Cuadrar: "La app estima $X" y, al escribir, "Estimábamos $X · diferencia +$Y" (`pos` si sube, `owe` si baja).
+17. **Depósito a plazo** (tarea, se cierra con ×)
+    - Monto en 52/800 con línea inferior de 2px, chips de banco (Banco Estado, BCI, Santander, Itaú), tasa "% cada 30 días" con su equivalente anual, plazo (30 d, 60 d, 90 d, 180 d, 1 año).
+    - Tarjeta `ink`: "Vence el Jueves 1 ene 2027", "al vencer recibes" en 34/800 y "ganas +$X".
+    - Switch "Renovar al vencer". CTA lima "Guardar depósito".
+18. **Detectados en tu correo**
+    - Título `detectados.` y "Cobros leídos de los correos de tu banco. Nada se anota hasta que lo confirmes."
+    - Tarjeta por cobro: píldora del banco (borde 1.5px), hora, comercio en 19/800, monto en 22/800, "medio · categoría (sugerida)".
+    - Acciones: **Anotar** (lima), **Editar** (borde) y "Descartar" (texto `muted`, a la derecha).
+    - **Posible duplicado:** caja `soft` en `owe`: "Ya anotaste Jumbo por $42.380 el 23 nov. ¿Es el mismo?". Acciones: **Es el mismo** (descarta) y **Anotar igual**.
+    - **Transferencia recibida:** monto en `pos` con +, "Se anota como pago de Camila · te debe $X" y la acción **Anotar pago**.
+    - Pie con la cuenta conectada, "Revisado hace 5 min · solo correos de bancos" y "Desconectar". Vacío: "Al día."
+19. **Conectar Gmail**
+    - "Conecta tu correo." en 54/800 y la explicación.
+    - Tres puntos numerados: Solo correos de bancos · Solo lectura · Todo queda en tu teléfono.
+    - CTA lima "Conectar Gmail" y "Ahora no".
+
 ## Estados
 | Estado | Dónde | Texto |
 |---|---|---|
@@ -266,6 +310,10 @@ Primer uso: Agrega tus tarjetas → Nuevo medio → Resumen
 | Confirmar borrado | Hoja | "¿Borramos este gasto?" + "Se ajustan los saldos con Camila y Javiera." |
 | Deshacer | Toast | "Gasto borrado" + **Deshacer**, que restaura el gasto en su posición |
 | Actualización | Toast superior y Ajustes | "Hay una versión nueva · Actualizar" |
+| Sin correo conectado | Mi plata | "Que tu banco te avise y la app anote" + Conectar Gmail |
+| Posible duplicado | Detectados | "Ya anotaste Jumbo por $42.380 el 23 nov. ¿Es el mismo?" |
+| Sin cobros nuevos | Detectados | "Al día." |
+| Cuadrar | Hoja | "Estimábamos $X · diferencia +$Y" → toast "Cuadrado · diferencia de +$Y" |
 
 ---
 
@@ -304,6 +352,22 @@ Primer uso: Agrega tus tarjetas → Nuevo medio → Resumen
   - Después de exportar, la fecha del último respaldo se actualiza.
   - El banner aparece cuando pasan **> 7 días** y el recordatorio está encendido.
 - **Actualización (PWA):** cuando el service worker detecta una versión nueva (`onNeedRefresh` en vite-plugin-pwa), se muestra el toast. "Actualizar" llama a `updateSW(true)`.
+- **Mi plata:**
+  - **Patrimonio** = ahorros + cuentas vista + efectivo + te deben − debes − tarjetas por pagar.
+  - **Ahorros** = Σ saldos estimados de las cuentas de ahorro + Σ capital de los depósitos a plazo.
+  - **Tarjetas por pagar** = Σ de los totales de los gastos que pagué con medios de crédito en el período actual.
+  - **Saldo estimado** de una cuenta de ahorro = último saldo cuadrado + depósitos − retiros + intereses devengados desde entonces.
+  - **Ganaste este mes** = `round(saldo × tasaAnual / 365 × díaDelMes)`. Es una estimación; el dato real llega al cuadrar.
+  - **Cuadrar** fija el saldo al valor real, crea un movimiento "Ajuste al cuadrar" por la diferencia (si es positiva, "· intereses") y deja "cuadrado hoy".
+  - **Depositar/Retirar** mueve plata entre la cuenta de ahorro y la Cuenta RUT o el efectivo. No es gasto ni aparece en Gastos. No se permite mover más que el saldo de origen.
+  - **Depósito a plazo:** intereses = `round(capital × tasa30 / 100 × días / 30)`. Vence en inicio + días. Equivalente anual = tasa30 × 365 / 30. Al vencer: si se renueva, se reinicia con capital + intereses; si no, se avisa y pasa a cuenta vista cuando el usuario lo confirme.
+- **Detectados en tu correo:**
+  - Se leen solo correos de remitentes de bancos conocidos (lista blanca), con permiso de solo lectura (`gmail.readonly` con una consulta `from:` acotada). El parseo se hace en el teléfono.
+  - Cada correo produce un `Detectado` con comercio, monto, fecha, banco y medio sugerido (según los 4 últimos dígitos de la tarjeta, cuando vienen). La categoría se sugiere por el comercio (último uso o reglas simples).
+  - **Duplicado:** existe un gasto mío con el mismo monto y medio en ±1 día. Se marca y la acción principal pasa a ser "Es el mismo".
+  - **Transferencia recibida** de alguien que está en Personas: se propone como `Pago` recibido.
+  - Anotar crea un gasto "Solo yo" (o un pago). Editar abre Nuevo gasto o Registrar pago precargado. Descartar lo guarda como descartado para no volver a proponerlo.
+  - Desconectar revoca el token y deja de leer. Los detectados pendientes se borran.
 
 ## Modelo de datos
 ```ts
@@ -330,7 +394,15 @@ type Recurrente  = {
   pendientes: string[] /* fechas por confirmar o anotar */;
 };
 type Ajustes = { miNombre: string; datosBancarios: string; tema: 'claro' | 'oscuro' | 'sistema'; ultimoRespaldo?: string; recordarRespaldo: boolean };
-type Respaldo = { version: 2; exportado: string; gastos: Gasto[]; pagos: Pago[]; avisos: AvisoCobro[]; personas: Persona[]; medios: Medio[]; categorias: Categoria[]; grupos: Grupo[]; recurrentes: Recurrente[]; ajustes: Ajustes };
+type CuentaAhorro = { id: string; nombre: string; tipo: string; color: string; tasaAnual: number /* % */; saldoCuadrado: number; cuadradoEl: string; movimientos: MovAhorro[] };
+type MovAhorro    = { id: string; fecha: string; tipo: 'deposito' | 'retiro' | 'interes' | 'ajuste'; monto: number /* + entra, − sale */; desdeHacia?: 'vista' | 'efectivo' };
+type DepositoPlazo = { id: string; banco: string; capital: number; tasa30: number /* % cada 30 días */; dias: number; inicio: string; renovar: boolean; estado: 'vigente' | 'vencido' | 'cobrado' };
+type Saldos       = { cuentaVista: number; efectivo: number; cuadradoEl?: string };
+type Detectado    = { id: string; correoId: string; banco: string; fecha: string; comercio: string; monto: number; tipo: 'gasto' | 'pago';
+                      medioId?: string; categoriaId?: string; personaId?: string; duplicadoDe?: string; estado: 'pendiente' | 'anotado' | 'descartado' };
+type ConexionCorreo = { proveedor: 'gmail'; email: string; ultimaRevision: string; remitentes: string[] };
+type Respaldo = { version: 3; exportado: string; gastos: Gasto[]; pagos: Pago[]; avisos: AvisoCobro[]; personas: Persona[]; medios: Medio[]; categorias: Categoria[]; grupos: Grupo[]; recurrentes: Recurrente[]; ajustes: Ajustes;
+                  ahorros: CuentaAhorro[]; depositos: DepositoPlazo[]; saldos: Saldos; detectados: Detectado[] /* el token de Gmail NO va en el respaldo */ };
 ```
 **Migración desde la v1:**
 - Cada `cargo` de la v1 pasa a ser un `Gasto` con `pagador: 'yo'`, `partes: { [persona]: monto }` y sin parte mía, porque en la v1 mi parte no se guardaba.
@@ -350,3 +422,13 @@ type Respaldo = { version: 2; exportado: string; gastos: Gasto[]; pagos: Pago[];
   - Javiera te debe $15.475.
   - Le debes $8.000 a Diego.
   - Matías y Fernanda están al día.
+- **Mi plata:**
+  - Mach $1.284.500 (4,8% anual, cuadrado hace 12 días), Tenpo $640.200 (5,2%, hace 3 días), Mercado Pago $312.800 (4,2%, hace 30 días).
+  - Depósito a plazo Banco Estado: $2.000.000 a 90 días al 0,45% cada 30 días, desde el 3 oct. Faltan 37 días, vence el 1 ene 2027 y al vencer recibes $2.027.000.
+  - Cuenta RUT $486.300 y efectivo $38.000.
+- **Detectados:** Líder Express $18.450 (débito, hoy), Copec $35.000 (Visa, ayer), Jumbo Bilbao $42.380 (posible duplicado del Jumbo del 23), transferencia de Camila $12.000 y Spotify $6.500.
+
+## Pendiente en Mi plata
+- La conexión con Google está simulada. En producción: OAuth con `gmail.readonly`, consulta `from:(remitentes bancarios) newer_than:30d` y parseo por plantilla de cada banco.
+- No hay pantalla para agregar o editar una cuenta de ahorro (solo las tres de ejemplo), ni detalle del depósito a plazo.
+- Las tasas son de ejemplo; no se consultan en línea.

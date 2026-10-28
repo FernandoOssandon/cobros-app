@@ -185,7 +185,7 @@ h1, h2, p { margin: 0; }
 .set-title { font-size: 20px; font-weight: 700; }
 
 /* ---------- Barra inferior y botón flotante ---------- */
-.tabbar { flex: none; display: grid; grid-template-columns: repeat(4, 1fr); padding: 8px 8px var(--tab-bottom); border-top: 2px solid var(--ink); background: var(--bg); }
+.tabbar { flex: none; display: grid; grid-template-columns: repeat(5, 1fr); padding: 8px 4px var(--tab-bottom); border-top: 2px solid var(--ink); background: var(--bg); }
 .tabbar button { border: none; background: transparent; display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--ink); font-size: 12px; font-weight: 600; }
 .tabbar .ind { width: 56px; height: 32px; border-radius: 16px; display: grid; place-items: center; }
 .tabbar button[aria-current='page'] { font-weight: 800; }
@@ -257,7 +257,31 @@ h1, h2, p { margin: 0; }
 .legend .dot { width: 8px; height: 8px; border-radius: 4px; }
 .legend .v { font-size: 15px; font-weight: 800; }
 
+/* ---------- Mi plata ---------- */
+.t-pat { font-size: 60px; font-weight: 800; letter-spacing: -2.8px; line-height: 0.95; margin-top: 6px; white-space: nowrap; overflow: hidden; }
+.t-hero-60 { font-size: 60px; font-weight: 800; letter-spacing: -3px; line-height: 1.05; white-space: nowrap; overflow: hidden; }
+.t-hero-58 { font-size: 58px; font-weight: 800; letter-spacing: -2.6px; line-height: 0.95; white-space: nowrap; overflow: hidden; }
+.ellipsis { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chips-row { display: flex; align-items: center; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+.chips-row::-webkit-scrollbar { display: none; }
+.pat-row { width: 100%; border: none; border-top: 1px solid var(--line); background: transparent; padding: 12px 0; display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: 12px; align-items: center; text-align: left; color: var(--ink); }
+.banner-det { width: 100%; margin-top: 14px; border: 2px solid var(--ink); border-radius: 22px; background: transparent; padding: 14px 14px 14px 16px; display: flex; align-items: center; gap: 12px; text-align: left; color: var(--ink); }
+.chip-ink { flex: none; height: 40px; padding: 0 16px; border-radius: 20px; background: var(--ink); color: var(--bg); display: flex; align-items: center; font-weight: 800; font-size: 14px; }
+.box-line { width: 100%; border: 2px solid var(--ink); border-radius: 22px; background: transparent; padding: 14px 14px 14px 16px; display: grid; grid-template-columns: minmax(0, 1fr) 20px; gap: 12px; align-items: center; text-align: left; color: var(--ink); }
+.mov-row { width: 100%; border: none; border-top: 1px solid var(--line); background: transparent; padding: 12px 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; text-align: left; color: var(--ink); }
+.pill-pos { height: 36px; padding: 0 14px; border-radius: 18px; border: 2px solid var(--pos); color: var(--pos); font-weight: 800; font-size: 14px; display: inline-flex; align-items: center; }
+.det-card { border-radius: 24px; background: var(--surface); padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.det-bank { height: 24px; padding: 0 10px; border-radius: 12px; border: 1.5px solid var(--ink); font-size: 12px; font-weight: 700; display: flex; align-items: center; }
+.det-prim { height: 42px; padding: 0 18px; border-radius: 21px; border: 2px solid var(--ink); background: var(--accent); color: var(--accent-ink); font-weight: 800; font-size: 15px; }
+.det-sec { height: 42px; padding: 0 16px; border-radius: 21px; border: 2px solid var(--ink); background: transparent; font-weight: 700; font-size: 15px; color: var(--ink); }
+.amt-line { display: flex; align-items: baseline; gap: 2px; padding: 0 4px 6px; border-bottom: 2px solid var(--ink); }
+.amt-line span, .amt-line input { font-size: 52px; font-weight: 800; letter-spacing: -2px; }
+.amt-line input { flex: 1; min-width: 0; border: none; background: transparent; padding: 0; color: inherit; outline: none; }
+.rate-pill { display: flex; align-items: center; gap: 6px; height: 52px; padding: 0 18px; border-radius: 26px; border: 2px solid var(--ink); }
+.rate-pill input { width: 64px; border: none; background: transparent; font-size: 20px; font-weight: 800; padding: 0; color: var(--ink); outline: none; }
+
 @media (max-width: 370px) {
+  .t-pat, .t-hero-60 { font-size: 50px; }
   .t-hero { font-size: 56px; }
   .actions .btn-ink { font-size: 14px; }
 }

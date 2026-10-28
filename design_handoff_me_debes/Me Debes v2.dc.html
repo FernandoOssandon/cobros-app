@@ -673,6 +673,203 @@
     </div>
   </sc-if>
 
+  <sc-if value="{{ isPlata }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;min-height:0;overflow:auto;padding:0 16px 96px">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 4px 12px">
+        <span style="font-size:30px;font-weight:800;letter-spacing:-1px">mi plata.</span>
+        <span style="font-size:14px;font-weight:700;color:{{ t.muted }}">al 25 nov</span>
+      </div>
+      <div style="padding:8px 4px 0">
+        <div style="font-size:16px;font-weight:600;color:{{ t.muted }}">Patrimonio</div>
+        <div style="font-size:60px;font-weight:800;letter-spacing:-2.8px;line-height:0.95;margin-top:6px">{{ patFmt }}</div>
+        <div style="font-size:15px;font-weight:500;color:{{ t.muted }};margin-top:10px;line-height:1.35;text-wrap:pretty">Lo que tienes menos lo que debes, con los saldos que la app conoce.</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;padding:18px 4px 0">
+        <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700"><span>tienes</span><span>{{ assetsFmt }}</span></div>
+        <div style="display:flex;gap:3px;height:14px"><sc-for list="{{ assetSegs }}" as="sg" hint-placeholder-count="4"><span style="flex-grow:{{ sg.g }};flex-basis:0;height:14px;border-radius:7px;background:{{ sg.c }}"></span></sc-for></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:{{ t.owe }};margin-top:6px"><span>debes</span><span>{{ liabFmt }}</span></div>
+        <div style="height:14px"><div style="width:{{ liabW }};height:14px;border-radius:7px;background:{{ t.owe }}"></div></div>
+      </div>
+      <div style="margin-top:18px;border-radius:24px;background:{{ t.surface }};overflow:hidden;padding:0 16px"><div style="margin-top:-1px">
+        <sc-for list="{{ patRows }}" as="pr" hint-placeholder-count="6">
+          <button onClick="{{ pr.open }}" style="width:100%;border:none;border-top:1px solid {{ t.line }};background:transparent;padding:12px 0;display:grid;grid-template-columns:12px minmax(0,1fr) auto;gap:12px;align-items:center;text-align:left">
+            <span style="width:12px;height:12px;border-radius:6px;background:{{ pr.dot }}"></span>
+            <span style="display:flex;flex-direction:column;min-width:0"><span style="font-size:16px;font-weight:700">{{ pr.label }}</span><span style="font-size:13px;font-weight:600;color:{{ t.muted }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ pr.sub }}</span></span>
+            <span style="font-size:17px;font-weight:800;color:{{ pr.color }}">{{ pr.vFmt }}</span>
+          </button>
+        </sc-for>
+      </div></div>
+      <sc-if value="{{ showDetBanner }}" hint-placeholder-val="{{ true }}">
+        <button onClick="{{ goCorreo }}" style="width:100%;margin-top:14px;border:2px solid {{ t.ink }};border-radius:22px;background:transparent;padding:14px 14px 14px 16px;display:flex;align-items:center;gap:12px;text-align:left">
+          <span style="flex:1;display:flex;flex-direction:column;gap:2px"><span style="font-size:18px;font-weight:800;letter-spacing:-0.3px;line-height:1.15">{{ detTitle }}</span><span style="font-size:13px;font-weight:600;color:{{ t.muted }}">{{ detSub }}</span></span>
+          <span style="flex:none;height:40px;padding:0 16px;border-radius:20px;background:{{ t.ink }};color:{{ t.bg }};display:flex;align-items:center;font-weight:800;font-size:14px">Revisar</span>
+        </button>
+      </sc-if>
+      <sc-if value="{{ gmailOff }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:14px;border-radius:22px;background:{{ t.soft }};padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+          <span style="font-size:18px;font-weight:800;letter-spacing:-0.3px;line-height:1.15">Que tu banco te avise y la app anote</span>
+          <span style="font-size:14px;font-weight:500;color:{{ t.muted }};line-height:1.35">Leemos los correos de compra de tu banco y te proponemos cada cobro.</span>
+          <span style="display:flex"><button onClick="{{ goGmail }}" style="height:40px;padding:0 16px;border-radius:20px;border:none;background:{{ t.ink }};color:{{ t.bg }};font-weight:800;font-size:14px">Conectar Gmail</button></span>
+        </div>
+      </sc-if>
+      <div style="font-size:22px;font-weight:800;letter-spacing:-0.6px;padding:28px 4px 10px">cuentas de ahorro.</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <sc-for list="{{ savCards }}" as="sv" hint-placeholder-count="3">
+          <button onClick="{{ sv.open }}" style="width:100%;border:none;border-radius:24px;background:{{ t.surface }};padding:16px;display:flex;flex-direction:column;gap:10px;text-align:left">
+            <span style="display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:12px;align-items:center;width:100%">
+              <span style="width:40px;height:40px;border-radius:14px;background:{{ sv.color }};border:2px solid #0E1A12;box-sizing:border-box;color:#0E1A12;display:grid;place-items:center;font-weight:800;font-size:17px">{{ sv.ini }}</span>
+              <span style="display:flex;flex-direction:column;min-width:0"><span style="font-size:18px;font-weight:700;letter-spacing:-0.3px">{{ sv.name }}</span><span style="font-size:12px;font-weight:600;color:{{ t.muted }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ sv.sub }}</span></span>
+              <span style="font-size:22px;font-weight:800;letter-spacing:-0.6px">{{ sv.balFmt }}</span>
+            </span>
+            <span style="display:flex;justify-content:space-between;align-items:center;width:100%;padding-top:10px;border-top:1px solid {{ t.line }}"><span style="font-size:15px;font-weight:800;color:{{ t.pos }}">ganaste {{ sv.earnFmt }} este mes</span><span style="font-size:12px;font-weight:600;color:{{ t.muted }}">saldo estimado</span></span>
+          </button>
+        </sc-for>
+      </div>
+      <div style="font-size:22px;font-weight:800;letter-spacing:-0.6px;padding:28px 4px 10px">depósitos a plazo.</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <sc-for list="{{ dapCards }}" as="dp" hint-placeholder-count="1">
+          <div style="border-radius:24px;background:{{ t.surface }};padding:16px;display:flex;flex-direction:column;gap:12px">
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center">
+              <span style="display:flex;flex-direction:column;min-width:0"><span style="font-size:18px;font-weight:700;letter-spacing:-0.3px">{{ dp.bank }}</span><span style="font-size:12px;font-weight:600;color:{{ t.muted }}">{{ dp.sub }}</span></span>
+              <span style="font-size:22px;font-weight:800;letter-spacing:-0.6px">{{ dp.aFmt }}</span>
+            </div>
+            <div style="height:10px;border-radius:5px;background:{{ t.track }};overflow:hidden"><div style="width:{{ dp.w }};height:10px;border-radius:5px;background:{{ t.ink }}"></div></div>
+            <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:16px;font-weight:800">{{ dp.leftLbl }}</span><span style="font-size:13px;font-weight:600;color:{{ t.muted }}">{{ dp.matLbl }}</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:baseline;padding-top:12px;border-top:1px solid {{ t.line }}"><span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:13px;font-weight:600;color:{{ t.muted }}">al vencer recibes</span><span style="font-size:26px;font-weight:800;letter-spacing:-0.8px;color:{{ t.pos }}">{{ dp.recFmt }}</span></span><span style="font-size:13px;font-weight:700;color:{{ t.pos }}">{{ dp.gainFmt }}</span></div>
+          </div>
+        </sc-for>
+        <button onClick="{{ goDapForm }}" style="height:60px;border-radius:22px;border:2px dashed {{ t.muted }};background:transparent;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:8px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>Nuevo depósito a plazo</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isCuenta }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;min-height:0;overflow:auto;padding:4px 20px 30px">
+      <button onClick="{{ goBack }}" style="height:40px;padding:0 14px 0 8px;border-radius:20px;border:2px solid {{ t.ink }};background:transparent;font-weight:700;font-size:14px;display:flex;align-items:center;gap:2px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg>{{ backLbl }}</button>
+      <div style="display:flex;align-items:center;gap:12px;margin-top:18px"><span style="width:44px;height:44px;border-radius:15px;background:{{ cs.color }};border:2px solid #0E1A12;box-sizing:border-box;color:#0E1A12;display:grid;place-items:center;font-weight:800;font-size:19px">{{ cs.ini }}</span><span style="font-size:40px;font-weight:800;letter-spacing:-1.5px">{{ cs.title }}</span></div>
+      <div style="font-size:15px;font-weight:600;color:{{ t.muted }};margin-top:8px">{{ cs.kind }} · {{ cs.rateLbl }}</div>
+      <div style="font-size:58px;font-weight:800;letter-spacing:-2.6px;line-height:0.95;margin-top:20px">{{ cs.balFmt }}</div>
+      <div style="font-size:14px;font-weight:600;color:{{ t.muted }};margin-top:8px">{{ cs.syncLbl }}</div>
+      <div style="display:flex;margin-top:12px"><span style="height:36px;padding:0 14px;border-radius:18px;border:2px solid {{ t.pos }};color:{{ t.pos }};font-weight:800;font-size:14px;display:flex;align-items:center"><span>ganaste {{ cs.earnFmt }} este mes</span></span></div>
+      <div style="margin-top:18px;border-radius:24px;background:{{ t.surface }};padding:16px 16px 12px">
+        <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:{{ t.muted }};padding-bottom:8px"><span>Saldo, últimos 6 meses</span><span>{{ cs.growFmt }}</span></div>
+        <svg width="318" height="120" viewBox="0 0 318 120" style="display:block;max-width:100%"><path d="{{ cs.area }}" fill="{{ t.pos }}" fill-opacity="0.14"></path><path d="{{ cs.line }}" fill="none" stroke="{{ t.pos }}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"></path><circle cx="{{ cs.dotX }}" cy="{{ cs.dotY }}" r="6" fill="{{ t.surface }}" stroke="{{ t.pos }}" stroke-width="3"></circle></svg>
+        <div style="display:flex;justify-content:space-between;padding-top:6px;font-size:12px;font-weight:700;color:{{ t.muted }}"><sc-for list="{{ cs.months }}" as="mo" hint-placeholder-count="6"><span>{{ mo.l }}</span></sc-for></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px">
+        <button onClick="{{ cs.dep }}" style="height:56px;border-radius:28px;border:none;background:{{ t.accent }};color:{{ t.accentInk }};font-weight:800;font-size:17px">Depositar</button>
+        <button onClick="{{ cs.ret }}" style="height:56px;border-radius:28px;border:2px solid {{ t.ink }};background:transparent;font-weight:800;font-size:17px">Retirar</button>
+      </div>
+      <button onClick="{{ cs.cuadrar }}" style="width:100%;margin-top:10px;border:2px solid {{ t.ink }};border-radius:22px;background:transparent;padding:14px 14px 14px 16px;display:grid;grid-template-columns:minmax(0,1fr) 20px;gap:12px;align-items:center;text-align:left">
+        <span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:17px;font-weight:800">Cuadrar con el saldo real</span><span style="font-size:13px;font-weight:600;color:{{ t.muted }};line-height:1.3">{{ cs.cuadrarSub }}</span></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg>
+      </button>
+      <div style="font-size:22px;font-weight:800;letter-spacing:-0.6px;padding:28px 4px 10px">movimientos.</div>
+      <div style="border-radius:24px;background:{{ t.surface }};overflow:hidden;padding:0 16px"><div style="margin-top:-1px">
+        <sc-for list="{{ cs.movs }}" as="mv" hint-placeholder-count="3">
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 0;border-top:1px solid {{ t.line }}">
+            <span style="display:flex;flex-direction:column;min-width:0"><span style="font-size:16px;font-weight:700">{{ mv.d }}</span><span style="font-size:13px;font-weight:600;color:{{ t.muted }}">{{ mv.day }}</span></span>
+            <span style="font-size:16px;font-weight:800;color:{{ mv.color }}">{{ mv.aFmt }}</span>
+          </div>
+        </sc-for>
+      </div></div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isDapForm }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;min-height:0;display:flex;flex-direction:column">
+      <div style="flex:none;display:flex;align-items:center;justify-content:space-between;padding:2px 16px">
+        <button onClick="{{ goBack }}" style="width:44px;height:44px;border-radius:22px;border:2px solid {{ t.ink }};background:transparent;display:grid;place-items:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+        <span style="font-size:20px;font-weight:800;letter-spacing:-0.5px">depósito a plazo.</span>
+        <span style="width:44px"></span>
+      </div>
+      <div style="flex:1;min-height:0;overflow:auto;padding:14px 16px 16px;display:flex;flex-direction:column;gap:18px">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:{{ t.muted }};padding:0 4px 8px">Monto</div>
+          <label style="display:flex;align-items:baseline;gap:2px;padding:0 4px 6px;border-bottom:2px solid {{ t.ink }};color:{{ dfAmtColor }}"><span style="font-size:52px;font-weight:800;letter-spacing:-2px">$</span><input value="{{ dfAmtShow }}" onChange="{{ setDfAmt }}" inputMode="numeric" placeholder="0" style="flex:1;min-width:0;border:none;background:transparent;font-size:52px;font-weight:800;letter-spacing:-2px;padding:0"></input></label>
+        </div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:{{ t.muted }};padding:0 4px 8px">Banco</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><sc-for list="{{ dfBanks }}" as="o" hint-placeholder-count="4"><button onClick="{{ o.set }}" style="height:40px;padding:0 16px;border-radius:20px;border:2px solid {{ t.ink }};background:{{ o.tabBg }};color:{{ o.tabFg }};font-weight:700;font-size:14px">{{ o.label }}</button></sc-for></div>
+        </div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:{{ t.muted }};padding:0 4px 8px">Tasa</div>
+          <label style="display:flex;align-items:center;gap:6px;height:52px;padding:0 18px;border-radius:26px;border:2px solid {{ t.ink }};box-sizing:border-box"><input value="{{ dfRate }}" onChange="{{ setDfRate }}" inputMode="decimal" style="width:56px;border:none;background:transparent;font-size:20px;font-weight:800;padding:0"></input><span style="font-size:15px;font-weight:700">% cada 30 días</span><span style="margin-left:auto;font-size:13px;font-weight:700;color:{{ t.muted }}">{{ dfAnnual }}</span></label>
+        </div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:{{ t.muted }};padding:0 4px 8px">Plazo</div>
+          <div style="display:flex;gap:6px"><sc-for list="{{ dfTerms }}" as="o" hint-placeholder-count="5"><button onClick="{{ o.set }}" style="flex:1;height:40px;border-radius:20px;border:2px solid {{ t.ink }};background:{{ o.tabBg }};color:{{ o.tabFg }};font-weight:700;font-size:14px;padding:0">{{ o.label }}</button></sc-for></div>
+        </div>
+        <div style="border-radius:24px;background:{{ t.ink }};color:{{ t.bg }};padding:18px;display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:13px;font-weight:600;opacity:0.7">Vence el</span><span style="font-size:22px;font-weight:800;letter-spacing:-0.5px">{{ dfMatLbl }}</span></div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-end;padding-top:14px;border-top:1px solid {{ t.line }}">
+            <span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:13px;font-weight:600;opacity:0.7">al vencer recibes</span><span style="font-size:34px;font-weight:800;letter-spacing:-1.2px;line-height:1">{{ dfRecFmt }}</span></span>
+            <span style="display:flex;flex-direction:column;align-items:flex-end;gap:2px"><span style="font-size:13px;font-weight:600;opacity:0.7">ganas</span><span style="font-size:18px;font-weight:800">{{ dfGainFmt }}</span></span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+          <span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:16px;font-weight:700">Renovar al vencer</span><span style="font-size:13px;font-weight:600;color:{{ t.muted }}">{{ dfRenewLbl }}</span></span>
+          <button onClick="{{ toggleDfRenew }}" style="flex:none;width:52px;height:30px;border-radius:15px;border:2px solid {{ t.ink }};background:{{ dfRenewSw.track }};padding:2px;display:flex;box-sizing:border-box"><span style="width:22px;height:22px;border-radius:11px;background:{{ t.ink }};transform:{{ dfRenewSw.x }};transition:transform .2s"></span></button>
+        </div>
+      </div>
+      <div style="flex:none;padding:10px 16px 30px"><button onClick="{{ saveDap }}" style="width:100%;height:60px;border-radius:30px;border:none;background:{{ t.accent }};color:{{ t.accentInk }};font-weight:800;font-size:18px;opacity:{{ dfOp }}">Guardar depósito</button></div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isCorreo }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;min-height:0;overflow:auto;padding:4px 16px 30px">
+      <div style="padding:0 4px"><button onClick="{{ goBack }}" style="height:40px;padding:0 14px 0 8px;border-radius:20px;border:2px solid {{ t.ink }};background:transparent;font-weight:700;font-size:14px;display:flex;align-items:center;gap:2px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg>{{ backLbl }}</button></div>
+      <div style="font-size:40px;font-weight:800;letter-spacing:-1.5px;margin:18px 4px 6px">detectados.</div>
+      <div style="font-size:16px;font-weight:500;color:{{ t.muted }};line-height:1.4;padding:0 4px;text-wrap:pretty">Cobros leídos de los correos de tu banco. Nada se anota hasta que lo confirmes.</div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:18px">
+        <sc-for list="{{ detItems }}" as="dt" hint-placeholder-count="3">
+          <div style="border-radius:24px;background:{{ t.surface }};padding:16px;display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;align-items:center;gap:8px"><span style="height:24px;padding:0 10px;border-radius:12px;border:1.5px solid {{ t.ink }};font-size:12px;font-weight:700;display:flex;align-items:center">{{ dt.bank }}</span><span style="font-size:13px;font-weight:600;color:{{ t.muted }}">{{ dt.when }}</span></div>
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:baseline"><span style="font-size:19px;font-weight:800;letter-spacing:-0.3px;line-height:1.15">{{ dt.merch }}</span><span style="font-size:22px;font-weight:800;letter-spacing:-0.6px;color:{{ dt.amtColor }}">{{ dt.amtFmt }}</span></div>
+            <div style="font-size:13px;font-weight:600;color:{{ t.muted }};margin-top:-4px">{{ dt.meta }}</div>
+            <sc-if value="{{ dt.isDup }}" hint-placeholder-val="{{ false }}"><div style="border-radius:14px;background:{{ t.soft }};padding:10px 12px;font-size:14px;font-weight:700;color:{{ t.owe }};line-height:1.3">{{ dt.dupMsg }}</div></sc-if>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button onClick="{{ dt.prim }}" style="height:42px;padding:0 18px;border-radius:21px;border:2px solid {{ t.ink }};background:{{ t.accent }};color:{{ t.accentInk }};font-weight:800;font-size:15px">{{ dt.primLbl }}</button>
+              <button onClick="{{ dt.sec }}" style="height:42px;padding:0 16px;border-radius:21px;border:2px solid {{ t.ink }};background:transparent;font-weight:700;font-size:15px">{{ dt.secLbl }}</button>
+              <sc-if value="{{ dt.showDiscard }}" hint-placeholder-val="{{ true }}"><button onClick="{{ dt.discard }}" style="margin-left:auto;height:42px;padding:0 6px;border:none;background:transparent;font-weight:700;font-size:15px;color:{{ t.muted }}">Descartar</button></sc-if>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+      <sc-if value="{{ detEmpty }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:30px 4px 10px">
+          <div style="font-size:52px;font-weight:800;letter-spacing:-2px;line-height:0.95">Al día.</div>
+          <div style="font-size:18px;font-weight:500;color:{{ t.muted }};margin-top:12px;line-height:1.35">No hay cobros nuevos en tu correo. Te avisamos cuando llegue el próximo.</div>
+        </div>
+      </sc-if>
+      <div style="margin-top:24px;padding:16px 4px 0;border-top:2px solid {{ t.ink }};display:flex;align-items:center;gap:12px">
+        <span style="flex:1;display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">sebastian.mora@gmail.com</span><span style="font-size:13px;font-weight:600;color:{{ t.muted }}">Revisado hace 5 min · solo correos de bancos</span></span>
+        <button onClick="{{ disconnectGmail }}" style="flex:none;height:38px;padding:0 14px;border-radius:19px;border:2px solid {{ t.ink }};background:transparent;font-weight:700;font-size:13px">Desconectar</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isGmail }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;min-height:0;display:flex;flex-direction:column">
+      <div style="flex:1;min-height:0;overflow:auto;padding:4px 20px 20px">
+        <button onClick="{{ goBack }}" style="height:40px;padding:0 14px 0 8px;border-radius:20px;border:2px solid {{ t.ink }};background:transparent;font-weight:700;font-size:14px;display:flex;align-items:center;gap:2px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg>{{ backLbl }}</button>
+        <div style="font-size:54px;font-weight:800;letter-spacing:-2.4px;line-height:0.95;margin-top:28px">Conecta<br>tu correo.</div>
+        <div style="font-size:18px;font-weight:500;color:{{ t.muted }};margin-top:14px;line-height:1.35;text-wrap:pretty">Tu banco te manda un correo por cada compra. Lo leemos y te proponemos el gasto; tú decides si se anota.</div>
+        <div style="display:flex;flex-direction:column;margin-top:24px">
+          <sc-for list="{{ gmailPoints }}" as="gp" hint-placeholder-count="3">
+            <div style="display:grid;grid-template-columns:36px minmax(0,1fr);gap:14px;padding:14px 0;border-top:2px solid {{ t.ink }}">
+              <span style="width:36px;height:36px;border-radius:18px;background:{{ t.ink }};color:{{ t.bg }};display:grid;place-items:center;font-weight:800;font-size:15px">{{ gp.n }}</span>
+              <span style="display:flex;flex-direction:column;gap:3px"><span style="font-size:17px;font-weight:800">{{ gp.title }}</span><span style="font-size:14px;font-weight:500;color:{{ t.muted }};line-height:1.35;text-wrap:pretty">{{ gp.body }}</span></span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="flex:none;padding:10px 16px 30px;display:flex;flex-direction:column;gap:4px">
+        <button onClick="{{ connectGmail }}" style="width:100%;height:60px;border-radius:30px;border:none;background:{{ t.accent }};color:{{ t.accentInk }};font-weight:800;font-size:18px">Conectar Gmail</button>
+        <button onClick="{{ goBack }}" style="height:44px;border:none;background:transparent;font-weight:700;font-size:15px;color:{{ t.muted }}">Ahora no</button>
+      </div>
+    </div>
+  </sc-if>
+
   <sc-if value="{{ isAjustes }}" hint-placeholder-val="{{ false }}">
     <div style="flex:1;min-height:0;overflow:auto;padding:4px 20px 30px">
       <button onClick="{{ goBack }}" style="height:40px;padding:0 14px 0 8px;border-radius:20px;border:2px solid {{ t.ink }};background:transparent;font-weight:700;font-size:14px;display:flex;align-items:center;gap:2px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg>{{ backLbl }}</button>
@@ -701,7 +898,7 @@
 
   <sc-if value="{{ isTab }}" hint-placeholder-val="{{ true }}">
     <button onClick="{{ goNuevo }}" style="position:absolute;right:16px;bottom:100px;z-index:5;height:56px;padding:0 22px 0 18px;border-radius:28px;border:2px solid {{ t.ink }};background:{{ t.accent }};color:{{ t.accentInk }};font-weight:800;font-size:17px;display:flex;align-items:center;gap:8px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>Nuevo gasto</button>
-    <div style="flex:none;display:grid;grid-template-columns:repeat(4,1fr);padding:8px 8px 26px;border-top:2px solid {{ t.ink }};background:{{ t.bg }}">
+    <div style="flex:none;display:grid;grid-template-columns:repeat(5,1fr);padding:8px 4px 26px;border-top:2px solid {{ t.ink }};background:{{ t.bg }}">
       <sc-for list="{{ navTabs }}" as="n" hint-placeholder-count="4"><button onClick="{{ n.set }}" style="border:none;background:transparent;display:flex;flex-direction:column;align-items:center;gap:4px;padding:0;color:{{ t.ink }}"><span style="width:56px;height:32px;border-radius:16px;background:{{ n.pill }};color:{{ n.fg }};display:grid;place-items:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="{{ n.icon }}"></path></svg></span><span style="font-size:12px;font-weight:{{ n.fw }}">{{ n.label }}</span></button></sc-for>
     </div>
   </sc-if>
@@ -805,13 +1002,34 @@
     </div>
   </sc-if>
 
+  <sc-if value="{{ sheetMov }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;justify-content:flex-end">
+      <div onClick="{{ closeSheet }}" style="position:absolute;inset:0;background:{{ t.scrim }}"></div>
+      <div style="position:relative;background:{{ t.bg }};border-radius:32px 32px 0 0;border-top:2px solid {{ t.ink }};padding:10px 16px 30px">
+        <div style="width:40px;height:5px;border-radius:3px;background:{{ t.track }};margin:0 auto"></div>
+        <div style="font-size:30px;font-weight:800;letter-spacing:-1px;line-height:1.05;padding:16px 4px 0">{{ mvTitle }}</div>
+        <div style="font-size:15px;font-weight:600;color:{{ t.muted }};padding:4px 4px 0">{{ mvSub }}</div>
+        <div style="font-size:60px;font-weight:800;letter-spacing:-3px;line-height:1.05;padding:8px 4px 0;white-space:nowrap;overflow:hidden;color:{{ mvColor }}"><span>$</span>{{ mvDisp }}</div>
+        <div style="font-size:15px;font-weight:700;color:{{ mvInfoColor }};padding:2px 4px 10px">{{ mvInfo }}</div>
+        <sc-if value="{{ mvShowFrom }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;align-items:center;gap:8px;padding:0 4px 10px"><span style="font-size:13px;font-weight:700;color:{{ t.muted }};margin-right:4px">{{ mvFromLbl }}</span><sc-for list="{{ mvFromOpts }}" as="o" hint-placeholder-count="2"><button onClick="{{ o.set }}" style="height:36px;padding:0 14px;border-radius:18px;border:2px solid {{ t.ink }};background:{{ o.tabBg }};color:{{ o.tabFg }};font-weight:700;font-size:14px">{{ o.label }}</button></sc-for></div>
+        </sc-if>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px"><sc-for list="{{ keysMv }}" as="k" hint-placeholder-count="12"><button onClick="{{ k.press }}" style="height:46px;border-radius:14px;border:none;background:transparent;font-size:24px;font-weight:700" style-active="background:rgba(127,127,127,0.15)">{{ k.k }}</button></sc-for></div>
+        <div style="display:grid;grid-template-columns:1fr 1.3fr;gap:8px;margin-top:8px">
+          <button onClick="{{ closeSheet }}" style="height:56px;border-radius:28px;border:2px solid {{ t.ink }};background:transparent;font-weight:800;font-size:15px">Cancelar</button>
+          <button onClick="{{ doMv }}" style="height:56px;border-radius:28px;border:none;background:{{ t.accent }};color:{{ t.accentInk }};font-weight:800;font-size:17px;opacity:{{ mvOp }}">{{ mvCta }}</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
   <sc-if value="{{ sending }}" hint-placeholder-val="{{ false }}">
-    <div style="position:absolute;inset:0;z-index:40;background:{{ t.accent }};display:grid;place-items:center"><div style="font-size:34px;font-weight:800;letter-spacing:-1px;color:{{ t.accentInk }}">Abriendo WhatsApp…</div></div>
+    <div style="position:absolute;inset:0;z-index:40;background:{{ t.accent }};display:grid;place-items:center"><div style="font-size:34px;font-weight:800;letter-spacing:-1px;color:{{ t.accentInk }}">{{ sendingTxt }}</div></div>
   </sc-if>
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:410,&quot;height&quot;:864},&quot;screen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;onboarding&quot;,&quot;resumen&quot;,&quot;resumen-vacio&quot;,&quot;atrasado&quot;,&quot;actualizacion&quot;,&quot;por-confirmar&quot;,&quot;gastos&quot;,&quot;gastos-vacio&quot;,&quot;deshacer&quot;,&quot;nuevo-solo&quot;,&quot;nuevo-compartido&quot;,&quot;nuevo-otro&quot;,&quot;gasto&quot;,&quot;gasto-sin-categoria&quot;,&quot;borrar&quot;,&quot;personas&quot;,&quot;personas-vacio&quot;,&quot;nueva-persona&quot;,&quot;persona&quot;,&quot;persona-debo&quot;,&quot;pago&quot;,&quot;whatsapp&quot;,&quot;recurrentes&quot;,&quot;recurrentes-vacio&quot;,&quot;nuevo-recurrente&quot;,&quot;grupos&quot;,&quot;grupo&quot;,&quot;categorias&quot;,&quot;medios&quot;,&quot;medio-form&quot;,&quot;ajustes&quot;],&quot;default&quot;:&quot;resumen&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;dark&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:410,&quot;height&quot;:864},&quot;screen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;onboarding&quot;,&quot;resumen&quot;,&quot;resumen-vacio&quot;,&quot;atrasado&quot;,&quot;actualizacion&quot;,&quot;por-confirmar&quot;,&quot;gastos&quot;,&quot;gastos-vacio&quot;,&quot;deshacer&quot;,&quot;nuevo-solo&quot;,&quot;nuevo-compartido&quot;,&quot;nuevo-otro&quot;,&quot;gasto&quot;,&quot;gasto-sin-categoria&quot;,&quot;borrar&quot;,&quot;personas&quot;,&quot;personas-vacio&quot;,&quot;nueva-persona&quot;,&quot;persona&quot;,&quot;persona-debo&quot;,&quot;pago&quot;,&quot;whatsapp&quot;,&quot;recurrentes&quot;,&quot;recurrentes-vacio&quot;,&quot;nuevo-recurrente&quot;,&quot;grupos&quot;,&quot;grupo&quot;,&quot;categorias&quot;,&quot;medios&quot;,&quot;medio-form&quot;,&quot;ajustes&quot;,&quot;plata&quot;,&quot;plata-sin-correo&quot;,&quot;cuenta&quot;,&quot;depositar&quot;,&quot;cuadrar&quot;,&quot;deposito-plazo&quot;,&quot;correo&quot;,&quot;conectar-gmail&quot;],&quot;default&quot;:&quot;resumen&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;dark&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;}}">
 const THEME = {
   light: { bg:'#F3F0E6', surface:'#FFFFFF', ink:'#0E1A12', muted:'#585F57', line:'rgba(14,26,18,0.10)', track:'#DCD7C8', accent:'#C4F25E', accentInk:'#0E1A12', soft:'#E8E4D6', pos:'#13874F', owe:'#A34A06', danger:'#B23A26', scrim:'rgba(14,26,18,0.45)' },
   dark:  { bg:'#0B110D', surface:'#161F19', ink:'#F1F5EE', muted:'#9AA59B', line:'rgba(241,245,238,0.10)', track:'#2A352D', accent:'#C4F25E', accentInk:'#0E1A12', soft:'#1E2921', pos:'#7EE2A8', owe:'#FFB36B', danger:'#FF8E7A', scrim:'rgba(0,0,0,0.6)' }
@@ -834,6 +1052,7 @@ const NAV = {
   resumen:'M4 4h7v9H4zM13 4h7v5h-7zM13 11h7v9h-7zM4 15h7v5H4z',
   gastos:'M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6M9 16h3',
   personas:'M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 6.5M18 14a6 6 0 0 1 3.5 6',
+  plata:'M3 7.5h16a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 7.5V6.5a2 2 0 0 1 2-2h11.5v3M16.5 14h.01',
   recurrentes:'M17 2l3 3-3 3M4 11V9a4 4 0 0 1 4-4h12M7 22l-3-3 3-3M20 13v2a4 4 0 0 1-4 4H4'
 };
 const MON = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
@@ -897,8 +1116,23 @@ const seedGroups = () => [{ id:'g1', n:'Viaje a Pucón', when:'18–20 nov' }, {
 const blankDraft = () => ({ amt:'', desc:'', date:'hoy', cat:null, m:'visa', payer:'me', mode:'solo', sel:[], me:true, exact:{}, parts:{}, myParts:1, g:null, rc:false, rep:false, kp:true, adding:false, newName:'', editId:null });
 const blankRec = () => ({ name:'', type:'mine', var:false, amt:'', freq:'monthly', day:5, wd:0, n:2, unit:'semanas', start:0, end:false, m:'deb', cat:'casa', sel:[], mode:'equal', me:true, exact:{}, parts:{}, myParts:1, p:null });
 const blankMethod = () => ({ id:null, name:'', type:'Crédito', color:'#9EC9FF', billOn:true, bill:25 });
+const MS = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const seedSavs = () => [
+  { id:'mach', name:'Mach', kind:'Cuenta remunerada', color:'#D9B8FF', rate:4.8, bal:1284500, synced:12, hist:[820000,905000,1010000,1080000,1130000], movs:[{ d:'Depósito desde Cuenta RUT', a:150000, day:15 }, { d:'Intereses de octubre', a:4410, day:1 }] },
+  { id:'tenpo', name:'Tenpo', kind:'Cuenta remunerada', color:'#7FD9A8', rate:5.2, bal:640200, synced:3, hist:[400000,450000,520000,560000,610000], movs:[{ d:'Depósito desde Cuenta RUT', a:30000, day:20 }, { d:'Intereses de octubre', a:2640, day:1 }] },
+  { id:'mp', name:'Mercado Pago', kind:'Dinero en cuenta', color:'#9EC9FF', rate:4.2, bal:312800, synced:30, hist:[350000,342000,331000,300000,310000], movs:[{ d:'Retiro a Cuenta RUT', a:-20000, day:9 }, { d:'Intereses de octubre', a:1080, day:1 }] }
+];
+const seedDaps = () => [{ id:'d1', bank:'Banco Estado', a:2000000, rate:0.45, days:90, startOff:-53, renew:false }];
+const seedDet = () => [
+  { id:'c1', kind:'gasto', bank:'Banco Estado', when:'Hoy 10:42', day:25, merch:'Líder Express', a:18450, m:'deb', cat:'comida' },
+  { id:'c2', kind:'gasto', bank:'BCI', when:'Ayer 19:08', day:24, merch:'Copec Av. Grecia', a:35000, m:'visa', cat:'transporte' },
+  { id:'c3', kind:'gasto', bank:'Banco Estado', when:'23 nov 18:30', day:23, merch:'Jumbo Bilbao', a:42380, m:'deb', cat:'comida', dup:'e3' },
+  { id:'c4', kind:'pago', bank:'Banco Estado', when:'23 nov 09:15', day:23, merch:'Transferencia de Camila Rojas', a:12000, p:'p1' },
+  { id:'c5', kind:'gasto', bank:'BCI', when:'22 nov 00:01', day:22, merch:'Spotify', a:6500, m:'visa', cat:'subs' }
+];
+const blankDap = () => ({ bank:'Banco Estado', amt:'', rate:'0,45', days:30, renew:false });
 const TONES = ['Amable', 'Directo', 'Con humor'];
-const LBL = { resumen:'Resumen', gastos:'Gastos', personas:'Personas', recurrentes:'Recurrentes', persona:'Volver', grupo:'Grupo', grupos:'Grupos', ajustes:'Ajustes', categorias:'Categorías', medios:'Medios', onboarding:'Volver', gasto:'Gasto' };
+const LBL = { resumen:'Resumen', gastos:'Gastos', personas:'Personas', recurrentes:'Recurrentes', persona:'Volver', grupo:'Grupo', grupos:'Grupos', ajustes:'Ajustes', categorias:'Categorías', medios:'Medios', onboarding:'Volver', gasto:'Gasto', plata:'Mi plata', cuenta:'Cuenta', correo:'Detectados' };
 
 class Component extends DCLogic {
   state = this.init();
@@ -910,7 +1144,8 @@ class Component extends DCLogic {
       lastBackupDays: empty ? 0 : 9, backupRemind:true, eid:'e1', pid:'p1', gid:'g1', pTab:'in', q:'', f:{ cat:null, m:null, p:null, g:null }, picker:null,
       dr: blankDraft(), rd: blankRec(), pay:'', payDir:'in', payVia:'Transferencia', tone:0, waText:null, incBank:true, sending:false,
       np:{ name:'', phone:'' }, mf: blankMethod(), cf:{ id:null, name:'', icon:'regalo', color:CAT_COLORS[0] }, confId:'r2', confirmAmt:'',
-      myName:'Sebastián', bank:'Banco Estado · Cuenta RUT 17.234.567-8' };
+      myName:'Sebastián', bank:'Banco Estado · Cuenta RUT 17.234.567-8',
+      savs: seedSavs(), daps: seedDaps(), det: seedDet(), vista:486300, cash:38000, gmail: s !== 'plata-sin-correo' && s !== 'conectar-gmail', sid:'mach', mv:{ target:'mach', mode:'dep', amt:'', from:'vista' }, df: blankDap(), sendingTxt:'Abriendo WhatsApp…' };
     const map = {
       'onboarding':{ screen:'onboarding' }, 'gastos':{ screen:'gastos' }, 'gastos-vacio':{ screen:'gastos' },
       'nuevo-solo':{ screen:'nuevo', stack:['gastos'], dr:{ ...blankDraft(), amt:'42380', desc:'Jumbo', cat:'comida', m:'deb', kp:true } },
@@ -925,13 +1160,30 @@ class Component extends DCLogic {
       'por-confirmar':{ sheet:'confirmar' }, 'grupos':{ screen:'grupos', stack:['gastos'] }, 'grupo':{ screen:'grupo', stack:['gastos','grupos'] },
       'categorias':{ screen:'categorias', stack:['resumen'] }, 'medios':{ screen:'medios', stack:['resumen'] },
       'medio-form':{ screen:'medioForm', stack:['ajustes','medios'], mf:{ id:null, name:'Mastercard Santander', type:'Crédito', color:'#FF9E8A', billOn:true, bill:15 } },
-      'ajustes':{ screen:'ajustes', stack:['resumen'] }, 'deshacer':{ screen:'gastos', toast:'Gasto borrado', undo:{ none:true } }
+      'ajustes':{ screen:'ajustes', stack:['resumen'] },
+      'plata':{ screen:'plata' }, 'plata-sin-correo':{ screen:'plata' }, 'cuenta':{ screen:'cuenta', stack:['plata'] },
+      'depositar':{ screen:'cuenta', stack:['plata'], sheet:'mov', mv:{ target:'mach', mode:'dep', amt:'100000', from:'vista' } },
+      'cuadrar':{ screen:'cuenta', stack:['plata'], sheet:'mov', mv:{ target:'mach', mode:'cuadrar', amt:'1291200', from:'vista' } },
+      'deposito-plazo':{ screen:'dapForm', stack:['plata'], df:{ ...blankDap(), amt:'1500000', days:180 } },
+      'correo':{ screen:'correo', stack:['plata'] }, 'conectar-gmail':{ screen:'gmail', stack:['plata'] }, 'deshacer':{ screen:'gastos', toast:'Gasto borrado', undo:{ none:true } }
     };
     return { ...base, ...(map[s] || {}) };
   }
   componentDidUpdate(pp) {
     if (pp.screen !== this.props.screen) this.setState(this.init());
     else if (pp.dark !== this.props.dark) this.setState({ dark: !!this.props.dark });
+  }
+  openMv(target, mode) { this.setState({ sheet: 'mov', mv: { target, mode, amt: '', from: 'vista' } }); }
+  dropDet(id, msg) { this.setState(s => ({ det: s.det.filter(x => x.id !== id) })); this.flash(msg); }
+  anotarDet(x) {
+    if (x.kind === 'pago') this.setState(s => ({ det: s.det.filter(y => y.id !== x.id), pays: [...s.pays, { id: 'y' + Date.now(), p: x.p, dir: 'in', a: x.a, day: x.day, via: 'Transferencia' }] }));
+    else this.setState(s => ({ det: s.det.filter(y => y.id !== x.id), exps: [E('n' + Date.now(), x.merch, x.a, x.day, x.cat, x.m, 'me', { me: x.a }), ...s.exps] }));
+    this.flash('Anotado · ' + x.merch + ' ' + fmt(x.a));
+  }
+  editDet(x) {
+    const det = this.state.det.filter(y => y.id !== x.id);
+    if (x.kind === 'pago') this.push('pago', { pid: x.p, pay: String(x.a), payDir: 'in', payVia: 'Transferencia', det });
+    else this.push('nuevo', { det, dr: { ...blankDraft(), amt: String(x.a), desc: x.merch, cat: x.cat, m: x.m, kp: false, date: x.day === TODAY ? 'hoy' : x.day === TODAY - 1 ? 'ayer' : 'otro' } });
   }
   componentWillUnmount() { clearTimeout(this._t); clearTimeout(this._s); }
   flash(m, undo) { clearTimeout(this._t); this.setState({ toast: m, undo: undo || null }); this._t = setTimeout(() => this.setState({ toast: '', undo: null }), undo ? 4000 : 2400); }
@@ -1004,7 +1256,7 @@ class Component extends DCLogic {
     };
     const nextOf = r => r.day > TODAY ? { d: r.day, mo: 'nov', ord: r.day } : { d: r.day, mo: 'dic', ord: 31 + r.day };
     const recShare = r => r.type === 'shared' ? Math.round(r.a / ((r.sel || []).length + 1)) : r.a;
-    const TABS = [['resumen','Resumen'],['gastos','Gastos'],['personas','Personas'],['recurrentes','Recurrentes']];
+    const TABS = [['resumen','Resumen'],['gastos','Gastos'],['plata','Mi plata'],['personas','Personas'],['recurrentes','Recurrentes']];
     const isTab = TABS.some(([k]) => k === S.screen);
 
     // Resumen
@@ -1157,6 +1409,55 @@ class Component extends DCLogic {
     const confAmt = dg(S.confirmAmt);
     const hasToast = !!S.toast;
 
+    // Mi plata
+    const pct = v => String(v).replace('.', ',');
+    const earn = x => Math.round(x.bal * x.rate / 100 / 365 * TODAY);
+    const syncTxt = n => n === 0 ? 'cuadrado hoy' : 'cuadrado hace ' + n + (n === 1 ? ' día' : ' días');
+    const fdate = dt => dt.getDate() + ' ' + MS[dt.getMonth()] + ' ' + dt.getFullYear();
+    const dapInfo = x => { const el = -x.startOff, left = x.days - el; return { el, left, mat: new Date(YEAR, CUR_M, TODAY + left), gain: Math.round(x.a * x.rate / 100 * x.days / 30) }; };
+    const ahorros = S.savs.reduce((s, x) => s + x.bal, 0) + S.daps.reduce((s, x) => s + x.a, 0);
+    const credit = S.methods.filter(m => m.type === 'Crédito');
+    const tarjetas = S.exps.filter(e => e.kind === 'gasto' && e.payer === 'me' && credit.some(m => m.id === e.m)).reduce((s, e) => s + e.a, 0);
+    const assets = ahorros + S.vista + S.cash + teDeben, liab = debes + tarjetas;
+    const nIn = people.filter(p => p.bal > 0).length, nOut = people.filter(p => p.bal < 0).length;
+    const plural = (n, a, b) => n + ' ' + (n === 1 ? a : b);
+    const patRows = [
+      { label: 'Ahorros', sub: plural(S.savs.length, 'cuenta', 'cuentas') + (S.daps.length ? ' y ' + plural(S.daps.length, 'depósito a plazo', 'depósitos a plazo') : ''), v: ahorros, dot: '#7FD9A8', open: () => {} },
+      { label: 'Cuentas vista', sub: 'Cuenta RUT Banco Estado', v: S.vista, dot: '#FFD36E', open: () => this.openMv('vista', 'cuadrar') },
+      { label: 'Efectivo', sub: 'En la billetera', v: S.cash, dot: '#9EC9FF', open: () => this.openMv('cash', 'cuadrar') },
+      { label: 'Te deben', sub: plural(nIn, 'persona', 'personas'), v: teDeben, dot: t.pos, open: () => this.go('personas', { pTab: 'in' }) },
+      { label: 'Debes', sub: plural(nOut, 'persona', 'personas'), v: -debes, dot: t.owe, open: () => this.go('personas', { pTab: 'out' }) },
+      { label: 'Tarjetas por pagar', sub: credit.map(m => m.name).join(', ') + ' · período actual', v: -tarjetas, dot: t.owe, open: () => this.push('medios') }
+    ].map(x => ({ ...x, vFmt: fmt(x.v), color: x.v < 0 ? t.owe : t.ink }));
+    const assetSegs = [[ahorros, '#7FD9A8'], [S.vista, '#FFD36E'], [S.cash, '#9EC9FF'], [teDeben, t.pos]].filter(([v]) => v > 0).map(([g, c]) => ({ g, c }));
+    const savCards = S.savs.map(x => ({ name: x.name, ini: x.name[0], color: x.color, sub: pct(x.rate) + '% anual · ' + syncTxt(x.synced), balFmt: fmt(x.bal), earnFmt: fmt(earn(x)), open: () => this.push('cuenta', { sid: x.id }) }));
+    const dapCards = S.daps.map(x => { const i = dapInfo(x); return { bank: x.bank, sub: x.days + ' días · ' + pct(x.rate) + '% cada 30 días' + (x.renew ? ' · se renueva' : ''), aFmt: fmt(x.a), w: (i.el / x.days * 100).toFixed(1) + '%',
+      leftLbl: i.left <= 0 ? 'vence hoy' : 'faltan ' + plural(i.left, 'día', 'días'), matLbl: 'vence el ' + fdate(i.mat), recFmt: fmt(x.a + i.gain), gainFmt: '+' + fmt(i.gain) }; });
+    const sv = S.savs.find(x => x.id === S.sid) || S.savs[0];
+    let cs = {};
+    if (sv) {
+      const vals = [...sv.hist, sv.bal], lo = Math.min(...vals) * 0.9, hi = Math.max(...vals) * 1.03, W = 318, Hh = 120;
+      const pts = vals.map((v, i) => [6 + i * (W - 12) / (vals.length - 1), Hh - 10 - (v - lo) / (hi - lo) * (Hh - 22)]);
+      const line = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' '), last = pts[pts.length - 1], grow = sv.bal - sv.hist[0];
+      cs = { title: sv.name.toLowerCase() + '.', ini: sv.name[0], color: sv.color, kind: sv.kind, rateLbl: pct(sv.rate) + '% anual', balFmt: fmt(sv.bal), syncLbl: 'Saldo estimado · ' + syncTxt(sv.synced), earnFmt: fmt(earn(sv)),
+        line, area: line + ' L' + last[0].toFixed(1) + ' ' + Hh + ' L6 ' + Hh + ' Z', dotX: last[0].toFixed(1), dotY: last[1].toFixed(1), growFmt: (grow >= 0 ? '+' : '') + fmt(grow) + ' desde junio',
+        months: ['jun','jul','ago','sep','oct','hoy'].map(l => ({ l })),
+        movs: sv.movs.slice().sort((a, b) => b.day - a.day).map(m => ({ d: m.d, day: dayLabel(m.day), aFmt: (m.a > 0 ? '+' : '') + fmt(m.a), color: m.a > 0 ? t.pos : t.ink })),
+        cuadrarSub: 'Mira cuánto tienes en ' + sv.name + ' y anótalo. La estimación parte de ahí.',
+        dep: () => this.openMv(sv.id, 'dep'), ret: () => this.openMv(sv.id, 'ret'), cuadrar: () => this.openMv(sv.id, 'cuadrar') };
+    }
+    const mv = S.mv, tName = k => k === 'vista' ? 'Cuenta RUT' : k === 'cash' ? 'Efectivo' : ((S.savs.find(x => x.id === k) || {}).name || '');
+    const tBal = k => k === 'vista' ? S.vista : k === 'cash' ? S.cash : ((S.savs.find(x => x.id === k) || { bal: 0 }).bal);
+    const mvA = dg(mv.amt), est = tBal(mv.target), diff = mvA - est;
+    let mvInfo = '', mvInfoColor = t.muted;
+    if (mv.mode === 'cuadrar') { if (mv.amt === '') mvInfo = 'La app estima ' + fmt(est); else if (!diff) mvInfo = 'Coincide con lo que estimábamos'; else { mvInfo = 'Estimábamos ' + fmt(est) + ' · diferencia ' + (diff > 0 ? '+' : '') + fmt(diff); mvInfoColor = diff > 0 ? t.pos : t.owe; } }
+    else if (mv.mode === 'dep') { const src = tBal(mv.from); mvInfo = 'En ' + tName(mv.from) + ' quedan ' + fmt(src - mvA); if (mvA > src) mvInfoColor = t.danger; }
+    else { mvInfo = 'En ' + tName(mv.target) + ' quedan ' + fmt(est - mvA); if (mvA > est) mvInfoColor = t.danger; }
+    const mvOk = mv.mode === 'cuadrar' ? mv.amt !== '' : mvA > 0 && mvA <= (mv.mode === 'dep' ? tBal(mv.from) : est);
+    const df = S.df, dfA = dg(df.amt), dfR = parseFloat(String(df.rate).replace(',', '.')) || 0, dfGain = Math.round(dfA * dfR / 100 * df.days / 30), dfMat = new Date(YEAR, CUR_M, TODAY + df.days);
+    const setDf = x => this.setState(s => ({ df: { ...s.df, ...x } }));
+    const banks = [...new Set(S.det.map(x => x.bank))];
+
     return {
       t, isTab, isOnb: S.screen === 'onboarding', isRes: S.screen === 'resumen', isGas: S.screen === 'gastos', isPer: S.screen === 'personas', isRec: S.screen === 'recurrentes',
       isNuevo: S.screen === 'nuevo', isGasto: S.screen === 'gasto' && !!ge, isPersona: S.screen === 'persona', isPago: S.screen === 'pago', isWa: S.screen === 'wa', isNuevoRec: S.screen === 'nuevoRec',
@@ -1251,7 +1552,7 @@ class Component extends DCLogic {
       // wa
       tones: TONES.map((label, i) => ({ label, ...seg(S.tone === i), ring: S.tone === i ? t.ink : t.track, sample: msgs[i].slice(0, 60) + '…', set: () => this.setState({ tone: i, waText: null }) })),
       waText, setWaText: e => this.setState({ waText: e.target.value }), bankSw: sw(S.incBank), toggleBank: () => this.setState(s => ({ incBank: !s.incBank, waText: null })), sending: S.sending,
-      sendWa: () => { this.setState(s => ({ sending: true, avisos: [...s.avisos, { p: cur.id, day: TODAY }] })); clearTimeout(this._s); this._s = setTimeout(() => { this.setState({ sending: false }); this.pop(); this.flash('Cobro enviado a ' + cur.first); }, 1300); },
+      sendWa: () => { this.setState(s => ({ sending: true, sendingTxt: 'Abriendo WhatsApp…', avisos: [...s.avisos, { p: cur.id, day: TODAY }] })); clearTimeout(this._s); this._s = setTimeout(() => { this.setState({ sending: false }); this.pop(); this.flash('Cobro enviado a ' + cur.first); }, 1300); },
       // recurrentes
       hasRecs: S.recs.length > 0, recEmpty: S.recs.length === 0, recTotalFmt: fmt(fixedOut),
       recTotalSub: [vars.length ? 'más ' + joinY(vars) + ', que es variable' : '', cobros ? 'te entran ' + fmt(cobros) + ' en cobros' : ''].filter(Boolean).join(' · '),
@@ -1340,6 +1641,50 @@ class Component extends DCLogic {
         this.setState(s => { const st = s.stack.slice(); const prev = st.pop() || 'gastos'; return { exps: s.exps.filter(x => x.id !== e.id), sheet: null, stack: st, screen: prev }; });
         this.flash('Gasto borrado', { exp: e, idx });
       },
+      // mi plata
+      isPlata: S.screen === 'plata', isCuenta: S.screen === 'cuenta' && !!sv, isDapForm: S.screen === 'dapForm', isCorreo: S.screen === 'correo', isGmail: S.screen === 'gmail',
+      patFmt: fmt(assets - liab), assetsFmt: fmt(assets), liabFmt: fmt(liab), liabW: Math.min(100, liab / Math.max(assets, 1) * 100).toFixed(1) + '%', assetSegs, patRows, savCards, dapCards, cs,
+      showDetBanner: S.gmail && S.det.length > 0, gmailOff: !S.gmail, detTitle: plural(S.det.length, 'cobro detectado', 'cobros detectados') + ' en tu correo', detSub: 'De ' + joinY(banks) + ' · por confirmar',
+      goCorreo: () => this.push('correo'), goGmail: () => this.push('gmail'), goDapForm: () => this.push('dapForm', { df: blankDap() }),
+      detItems: S.det.map(x => { const dupE = x.dup && S.exps.find(e => e.id === x.dup), isPago = x.kind === 'pago', p = P[x.p];
+        return { bank: x.bank, when: x.when, merch: x.merch, amtFmt: (isPago ? '+' : '') + fmt(x.a), amtColor: isPago ? t.pos : t.ink,
+          meta: isPago ? 'Se anota como pago de ' + (p ? p.first + (p.bal > 0 ? ' · te debe ' + fmt(p.bal) : '') : '') : (M[x.m] ? M[x.m].name : '') + ' · ' + (C[x.cat] ? C[x.cat].name : 'Sin categoría') + ' (sugerida)',
+          isDup: !!dupE, dupMsg: dupE ? 'Ya anotaste ' + dupE.d + ' por ' + fmt(dupE.a) + ' el ' + dayShort(dupE.day) + '. ¿Es el mismo?' : '',
+          primLbl: dupE ? 'Es el mismo' : isPago ? 'Anotar pago' : 'Anotar', prim: dupE ? () => this.dropDet(x.id, 'Listo, no se duplica') : () => this.anotarDet(x),
+          secLbl: dupE ? 'Anotar igual' : 'Editar', sec: dupE ? () => this.anotarDet(x) : () => this.editDet(x), showDiscard: !dupE, discard: () => this.dropDet(x.id, 'Descartado · ' + x.merch) }; }),
+      detEmpty: S.det.length === 0,
+      disconnectGmail: () => { this.setState({ gmail: false }); this.pop(); this.flash('Gmail desconectado'); },
+      gmailPoints: [['Solo correos de bancos', 'BCI, Banco Estado, Santander, Mach, Tenpo y Mercado Pago. El resto ni lo abrimos.'], ['Solo lectura', 'No enviamos, borramos ni movemos correos.'], ['Todo queda en tu teléfono', 'Los cobros se guardan acá, como todo lo demás. Desconectas cuando quieras.']].map(([title, body], i) => ({ n: i + 1, title, body })),
+      connectGmail: () => { this.setState({ sending: true, sendingTxt: 'Conectando con Google…' }); clearTimeout(this._s); this._s = setTimeout(() => { this.setState({ sending: false, gmail: true, screen: 'correo' }); this.flash('Gmail conectado · ' + plural(this.state.det.length, 'cobro', 'cobros') + ' por revisar'); }, 1300); },
+      sendingTxt: S.sendingTxt,
+      // mov sheet
+      sheetMov: S.sheet === 'mov', mvTitle: (mv.mode === 'cuadrar' ? 'cuadrar ' : mv.mode === 'dep' ? 'depositar en ' : 'retirar de ') + tName(mv.target).toLowerCase() + '.',
+      mvSub: mv.mode === 'cuadrar' ? (mv.target === 'vista' ? '¿Cuánto dice tu cartola hoy?' : mv.target === 'cash' ? '¿Cuánto tienes en la billetera?' : '¿Cuánto dice la app de ' + tName(mv.target) + ' hoy?') : mv.mode === 'dep' ? '¿Cuánto depositas?' : '¿Cuánto retiras?',
+      mvDisp: show(mv.amt) || '0', mvColor: mv.amt ? t.ink : t.muted, mvInfo, mvInfoColor, mvShowFrom: mv.mode !== 'cuadrar', mvFromLbl: mv.mode === 'dep' ? 'Sale de' : 'Llega a',
+      mvFromOpts: [['vista','Cuenta RUT'],['cash','Efectivo']].map(([k, l]) => ({ label: l, ...seg(mv.from === k), set: () => this.setState(s => ({ mv: { ...s.mv, from: k } })) })),
+      keysMv: this.keys(() => this.state.mv.amt, v => this.setState(s => ({ mv: { ...s.mv, amt: v } }))), mvOp: mvOk ? 1 : 0.4, mvCta: mv.mode === 'cuadrar' ? 'Cuadrar' : mv.mode === 'dep' ? 'Depositar' : 'Retirar',
+      doMv: () => {
+        if (!mvOk) { this.flash(mv.amt === '' || !mvA ? 'Ingresa el monto' : 'No alcanza el saldo'); return; }
+        this.setState(s => {
+          const n = { sheet: null, mv: { ...s.mv, amt: '' } };
+          const bump = (k, delta, d, sync) => { if (k === 'vista') n.vista = (n.vista ?? s.vista) + delta; else if (k === 'cash') n.cash = (n.cash ?? s.cash) + delta;
+            else n.savs = (n.savs || s.savs).map(x => x.id !== k ? x : { ...x, bal: x.bal + delta, synced: sync ? 0 : x.synced, movs: d && delta ? [{ d, a: delta, day: TODAY }, ...x.movs] : x.movs }); };
+          if (mv.mode === 'cuadrar') bump(mv.target, diff, diff > 0 ? 'Ajuste al cuadrar · intereses' : 'Ajuste al cuadrar', true);
+          else if (mv.mode === 'dep') { bump(mv.target, mvA, 'Depósito desde ' + tName(mv.from)); bump(mv.from, -mvA); }
+          else { bump(mv.target, -mvA, 'Retiro a ' + tName(mv.from)); bump(mv.from, mvA); }
+          return n;
+        });
+        this.flash(mv.mode === 'cuadrar' ? (diff ? 'Cuadrado · diferencia de ' + (diff > 0 ? '+' : '') + fmt(diff) : 'Cuadrado · estaba perfecto') : (mv.mode === 'dep' ? 'Depositaste ' : 'Retiraste ') + fmt(mvA) + (mv.mode === 'dep' ? ' en ' : ' de ') + tName(mv.target));
+      },
+      // depósito a plazo
+      dfAmtShow: show(df.amt), dfAmtColor: df.amt ? t.ink : t.muted, setDfAmt: e => setDf({ amt: e.target.value.replace(/\D/g, '').slice(0, 10) }),
+      dfRate: df.rate, setDfRate: e => setDf({ rate: e.target.value.replace(/[^0-9,]/g, '').slice(0, 5) }), dfAnnual: dfR ? '≈ ' + pct((dfR * 365 / 30).toFixed(1)) + '% anual' : '',
+      dfBanks: ['Banco Estado','BCI','Santander','Itaú'].map(b => ({ label: b, ...seg(df.bank === b), set: () => setDf({ bank: b }) })),
+      dfTerms: [[30,'30 d'],[60,'60 d'],[90,'90 d'],[180,'180 d'],[365,'1 año']].map(([k, l]) => ({ label: l, ...seg(df.days === k), set: () => setDf({ days: k }) })),
+      dfMatLbl: cap(WD[dfMat.getDay()]) + ' ' + fdate(dfMat), dfRecFmt: fmt(dfA + dfGain), dfGainFmt: '+' + fmt(dfGain), dfOp: dfA > 0 && dfR > 0 ? 1 : 0.4,
+      dfRenewSw: sw(df.renew), toggleDfRenew: () => setDf({ renew: !df.renew }), dfRenewLbl: df.renew ? 'Se renueva por otros ' + df.days + ' días con capital e intereses' : 'Te avisamos el día que vence',
+      saveDap: () => { if (!dfA) { this.flash('Falta el monto'); return; } if (!dfR) { this.flash('Falta la tasa'); return; }
+        this.setState(s => ({ daps: [...s.daps, { id: 'd' + Date.now(), bank: df.bank, a: dfA, rate: dfR, days: df.days, startOff: 0, renew: df.renew }] })); this.pop(); this.flash('Depósito guardado · vence el ' + fdate(dfMat)); },
       // toast
       hasToast, toast: S.toast, hasUndo: !!S.undo, toastBottom: isTab ? '166px' : '104px',
       doUndo: () => { const u = S.undo; clearTimeout(this._t); this.setState(s => { const ex = s.exps.slice(); if (u && u.exp) ex.splice(u.idx, 0, u.exp); return { exps: ex, toast: '', undo: null }; }); }

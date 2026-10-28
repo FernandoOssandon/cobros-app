@@ -48,12 +48,22 @@ test('cobrar por WhatsApp deja el registro en el historial', async ({ page }) =>
   await expect(page.locator('.aviso')).toHaveCount(2);
 });
 
-test('exportar respaldo v3', async ({ page }) => {
+test('exportar respaldo v4', async ({ page }) => {
   await page.goto('#/ajustes');
   const descarga = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Exportar' }).click();
   const r = JSON.parse(fs.readFileSync((await (await descarga).path())!, 'utf8'));
-  expect(r.version).toBe(3);
+  expect(r.version).toBe(4);
+  expect(r.cuentas).toEqual([]);
   expect(r.gastos).toHaveLength(13);
   expect(r.recurrentes).toHaveLength(5);
+});
+
+test('anotar los últimos 4 dígitos de una tarjeta', async ({ page }) => {
+  await page.goto('#/medios');
+  await page.locator('.card').filter({ hasText: 'Crédito' }).first().click();
+  await page.getByLabel('Últimos 4 dígitos').fill('48a21');
+  await expect(page.getByLabel('Últimos 4 dígitos')).toHaveValue('4821');
+  await page.getByRole('button', { name: 'Guardar medio' }).click();
+  await expect(page.getByText('•••• 4821')).toBeVisible();
 });

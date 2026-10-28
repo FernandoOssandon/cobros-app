@@ -1,5 +1,7 @@
 # Me Debes
 
+**Versión 2.2 "Mi plata"**: patrimonio, cuentas de ahorro con interés estimado, depósitos a plazo y cobros detectados en los correos del banco (Gmail, vía un script propio: ver `integraciones/gmail/README.md`).
+
 **Versión 2.1**: editar las cuotas de los cobros recurrentes, foto de la boleta desde el detalle, grupos que se editan, terminan y borran, y pruebas de punta a punta. Detalle en [CHANGELOG.md](CHANGELOG.md).
 
 **Versión 2.0**: la app pasó de "quién me debe" a "a dónde se va mi plata". Implementa el handoff de diseño v2 (`design_handoff_me_debes/`): barra inferior con Resumen, Gastos, Personas y Recurrentes; gastos solo míos, compartidos o pagados por otra persona; deudas en ambos sentidos; medios de pago con nombre y barra apilada (tuyo / recuperado / pendiente); recurrentes fijos, variables ("por confirmar") y atrasados ("Anotar los N"); grupos y eventos; categorías con color; foto de la boleta; búsqueda y filtros; onboarding "Agrega tus tarjetas".
@@ -74,6 +76,8 @@ También sirven GitHub Pages o Cloudflare Pages. La app usa rutas con `#` y una 
 | `recurrentes` | Plantillas de 3 tipos: `mio` (arriendo, luz), `compartido` (Netflix con amigos) y `cobro` (cuota que alguien me paga). El monto puede ser `fijo` (se anota solo) o `variable` (queda en `pendientes` para confirmar). Se generan al abrir la app. |
 | `medios`, `categorias`, `grupos`, `fotos` | Tarjetas con nombre y color (el efectivo viene incluido), categorías con ícono y color (vienen 6), eventos y fotos de boletas (se achican antes de guardarse). |
 | `personas`, `cobros`, `ajustes` | Igual que en la 1.0, más el recordatorio de respaldo. |
+| `cuentas`, `movAhorro` | Mi plata (base v5): cuentas remuneradas, vista, depósitos a plazo e inversiones. `movAhorro` guarda cuadres (saldo real), depósitos y retiros. El saldo se estima con interés diario desde el último cuadre. |
+| `detectados` | Movimientos leídos de los correos del banco, por confirmar (ver `integraciones/gmail/README.md`). |
 
 La lógica pura vive en `src/lib/`: `resumen.ts` (gasto real del mes y desglose por tarjeta), `recurrence.ts` (fechas), `search.ts` (búsqueda) y `balance.ts` (saldos netos). Las pantallas del rediseño (Resumen, Gastos, Recurrentes) se conectan sobre esa base.
 
@@ -97,8 +101,8 @@ e2e/                 Pruebas de punta a punta con Playwright (y sus datos de eje
 
 ## Rutas
 
-Pestañas: `/` (Resumen) · `/gastos` · `/personas` · `/recurrentes`
-Pantallas: `/gasto/nuevo[?p=id]` · `/gasto/:id[/editar]` · `/persona/:id[/editar|/pago|/cobro]` · `/recurrente/nuevo` · `/recurrente/:id` · `/grupos` · `/grupo/:id` · `/categorias` · `/medios` · `/medio/nuevo` · `/medio/:id` · `/ajustes` · `/bienvenida` · `/archivadas`
+Pestañas: `/` (Resumen) · `/gastos` · `/plata` (Mi plata) · `/personas` · `/recurrentes`
+Pantallas: `/gasto/nuevo[?p=id]` · `/gasto/:id[/editar]` · `/persona/:id[/editar|/pago|/cobro]` · `/recurrente/nuevo` · `/recurrente/:id` · `/grupos` · `/grupo/:id` · `/categorias` · `/medios` · `/medio/nuevo` · `/medio/:id` · `/ajustes` · `/bienvenida` · `/archivadas` · `/cuenta/nueva` · `/cuenta/:id[/editar]` · `/deposito/nuevo` · `/deposito/:id` · `/correo` · `/correo/conectar`
 
 ## Datos y respaldo
 

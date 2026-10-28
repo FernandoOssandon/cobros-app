@@ -6,6 +6,8 @@ import {
   guardarGrupo, archivarGrupo, borrarGrupo, restaurarGrupo, reemplazarFoto, actualizarCargo,
 } from '../db';
 import { construirRespaldo, importarRespaldo, validarRespaldo, diasSinRespaldo } from '../backup';
+import { guardarCuenta } from '../ahorros';
+import { guardarAjustes } from '../db';
 import { computeSplit } from '../lib/split';
 import { saldo } from '../lib/balance';
 
@@ -181,5 +183,29 @@ describe('base de datos', () => {
     const m = await db.movimientos.get('r1@2026-10-01');
     expect(m).toMatchObject({ monto: 15000, fecha: '2026-10-05', detalle: 'Cargo', recurrenteId: 'r1' });
     expect(saldo(await db.movimientos.where('personaId').equals(p).toArray())).toBe(15000);
+  });
+
+  it('el respaldo v4 trae Mi plata y los detectados, pero no la clave del correo', async () => {
+    await guardarCuenta({ nombre: 'Tenpo', tipo: 'remunerada', tasa: 4, tasaUnidad: 'anual' }, 120_000, '2026-10-01');
+    await db.detectados.add({ id: 'gm1', tipo: 'compra', monto: 4990, comercio: 'Uber', fecha: '2026-10-02', remitente: 'x', asunto: 'y', estado: 'pendiente', creado: '' });
+    await guardarAjustes({ correo: { url: 'https://script.google.com/x', clave: 'secreta' } });
+    const r = JSON.parse(JSON.stringify(await construirRespaldo()));
+    expect(r.version).toBe(4);
+    expect(r.cuentas).toHaveLength(1);
+    expect(r.movAhorro).toHaveLength(1);
+    expect(r.detectados).toHaveLength(1);
+    expect(JSON.stringify(r)).not.toContain('secreta');
+
+    await borrarTodo();
+    await guardarAjustes({ correo: { url: 'https://script.google.com/otro', clave: 'de-este-telefono' } });
+    await importarRespaldo(validarRespaldo(r));
+    expect(await db.cuentas.count()).toBe(1);
+    expect((await db.detectados.get('gm1'))?.comercio).toBe('Uber');
+    expect((await db.ajustes.get('main'))?.correo?.clave).toBe('de-este-telefono');
+  });
+
+  it('un respaldo v3 (app 2.0) se importa sin Mi plata', async () => {
+    const r = validarRespaldo({ app: 'me-debes', version: 3, exportado: '', personas: [], gastos: [], movimientos: [], cobros: [] });
+    expect(r).toMatchObject({ version: 4, cuentas: [], movAhorro: [], detectados: [] });
   });
 });

@@ -1,0 +1,44 @@
+[
+ {
+  "id": "gm-c1",
+  "fecha": "2026-11-25T10:42:00-03:00",
+  "de": "notificaciones@bancoestado.cl",
+  "asunto": "Compra con tu tarjeta de débito",
+  "texto": "Se realizó una compra por $18.450 en Líder Express con tu tarjeta de débito terminada en 1122 el 25/11/2026 10:42 hrs."
+ },
+ {
+  "id": "gm-c2",
+  "fecha": "2026-11-24T19:08:00-03:00",
+  "de": "alertas@bci.cl",
+  "asunto": "Aviso de compra",
+  "texto": "Compra por $35.000 en Copec Av. Grecia con tu Tarjeta de Crédito terminada en 4821 el 24/11/2026 19:08."
+ },
+ {
+  "id": "gm-c3",
+  "fecha": "2026-11-23T18:30:00-03:00",
+  "de": "notificaciones@bancoestado.cl",
+  "asunto": "Compra con tu tarjeta de débito",
+  "texto": "Se realizó una compra por $42.380 en Jumbo Bilbao con tu tarjeta de débito terminada en 1122 el 23/11/2026 18:30 hrs."
+ },
+ {
+  "id": "gm-c4",
+  "fecha": "2026-11-23T09:15:00-03:00",
+  "de": "notificaciones@bancoestado.cl",
+  "asunto": "Te transfirieron",
+  "texto": "Recibiste una transferencia de $12.000 de Camila Rojas el 23/11/2026 09:15."
+ },
+ {
+  "id": "gm-c5",
+  "fecha": "2026-11-22T00:01:00-03:00",
+  "de": "alertas@bci.cl",
+  "asunto": "Aviso de compra",
+  "texto": "Compra por $6.500 en Spotify con tu Tarjeta de Crédito terminada en 4821 el 22/11/2026 00:01."
+ },
+ {
+  "id": "gm-c6",
+  "fecha": "2026-11-21T08:00:00-03:00",
+  "de": "alertas@bci.cl",
+  "asunto": "Tu estado de cuenta está disponible",
+  "texto": "Monto facturado $394.390"
+ }
+]

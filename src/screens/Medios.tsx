@@ -38,6 +38,7 @@ export function Medios() {
                 <span className="t-meta">
                   {tipoMedioLabel(m.tipo)}
                   {m.tipo === 'credito' && m.diaFacturacion ? ` · factura el ${m.diaFacturacion}` : ''}
+                  {m.ultimos4 ? ` · •••• ${m.ultimos4}` : ''}
                 </span>
               </span>
               <span className="r-right" style={{ gap: 0 }}>
@@ -64,6 +65,7 @@ export function MedioForm() {
   const [color, setColor] = useState(MEDIO_COLORS[0]);
   const [billOn, setBillOn] = useState(true);
   const [bill, setBill] = useState(25);
+  const [ultimos4, setUltimos4] = useState('');
   const [quitar, setQuitar] = useState(false);
   const loaded = useRef(false);
   const editing = id ? d?.medio.get(id) : undefined;
@@ -76,11 +78,20 @@ export function MedioForm() {
     setColor(editing.color);
     setBillOn(!!editing.diaFacturacion);
     setBill(editing.diaFacturacion ?? 25);
+    setUltimos4(editing.ultimos4 ?? '');
   }, [editing]);
 
   const guardar = async () => {
     if (!nombre.trim()) return toast('Ponle nombre');
-    await guardarMedio({ id, nombre: nombre.trim(), tipo, color, diaFacturacion: tipo === 'credito' && billOn ? bill : undefined });
+    const conTarjeta = tipo === 'credito' || tipo === 'debito';
+    await guardarMedio({
+      id,
+      nombre: nombre.trim(),
+      tipo,
+      color,
+      diaFacturacion: tipo === 'credito' && billOn ? bill : undefined,
+      ultimos4: conTarjeta && ultimos4.length === 4 ? ultimos4 : undefined,
+    });
     toast(id ? 'Medio actualizado' : `${nombre.trim()} agregada`);
     back('/medios');
   };
@@ -107,6 +118,21 @@ export function MedioForm() {
             ))}
           </div>
         </div>
+        {(tipo === 'credito' || tipo === 'debito') && (
+          <div>
+            <div className="t-label">Últimos 4 dígitos (opcional)</div>
+            <input
+              className="input-big"
+              style={{ fontSize: 18, letterSpacing: 2 }}
+              value={ultimos4}
+              onChange={(e) => setUltimos4(e.target.value.replace(/\D/g, '').slice(0, 4))}
+              placeholder="1234"
+              inputMode="numeric"
+              aria-label="Últimos 4 dígitos"
+            />
+            <div className="t-meta" style={{ padding: '6px 4px 0' }}>Para reconocer la tarjeta en los correos del banco.</div>
+          </div>
+        )}
         <div>
           <div className="t-label">Color</div>
           <ColorPicker colors={MEDIO_COLORS} value={color} onChange={setColor} />

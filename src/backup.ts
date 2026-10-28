@@ -1,9 +1,11 @@
 // Respaldo: exportar e importar todos los datos en un archivo JSON.
-// Formato v3 (actual). También acepta respaldos v2 (primera versión de la app) y los convierte.
+// Formato v4 (actual, app 2.2: agrega Mi plata y los cobros detectados en el correo).
+// También acepta respaldos v3 (app 2.0–2.1) y v2 (primera versión de la app) y los convierte.
+// La conexión con el correo (con su clave) no viaja en el respaldo: se vuelve a conectar en el teléfono.
 import {
   AJUSTES_DEFAULT, CAT_COLORS, CATEGORIAS_DEFAULT, ICONOS_CATEGORIA, MEDIO_COLORS, MEDIO_EFECTIVO, db, now, guardarAjustes,
   type Ajustes, type Categoria, type Cobro, type Gasto, type Grupo, type Medio,
-  type Movimiento, type Pendiente, type Persona, type Recurrente,
+  type Movimiento, type Pendiente, type Persona, type Recurrente, type Cuenta, type MovAhorro, type Detectado,
 } from './db';
 
 export interface FotoRespaldo {
@@ -16,7 +18,7 @@ export interface FotoRespaldo {
 
 export interface Respaldo {
   app: 'me-debes';
-  version: 3;
+  version: 4;
   exportado: string;
   personas: Persona[];
   gastos: Gasto[];
@@ -28,6 +30,9 @@ export interface Respaldo {
   recurrentes: Recurrente[];
   pendientes: Pendiente[];
   fotos: FotoRespaldo[];
+  cuentas: Cuenta[];
+  movAhorro: MovAhorro[];
+  detectados: Detectado[];
   ajustes: Ajustes;
 }
 
@@ -49,16 +54,18 @@ const dataUrlToBlob = (u: string) => {
 
 /** Arma el respaldo completo. No marca la fecha de respaldo (eso se hace cuando el archivo sale del teléfono). */
 export async function construirRespaldo(): Promise<Respaldo> {
-  const [personas, gastos, movimientos, cobros, medios, categorias, grupos, recurrentes, pendientes, fotos, ajustes] = await Promise.all([
+  const [personas, gastos, movimientos, cobros, medios, categorias, grupos, recurrentes, pendientes, fotos, cuentas, movAhorro, detectados, ajustes] = await Promise.all([
     db.personas.toArray(), db.gastos.toArray(), db.movimientos.toArray(), db.cobros.toArray(),
     db.medios.toArray(), db.categorias.toArray(), db.grupos.toArray(), db.recurrentes.toArray(),
-    db.pendientes.toArray(), db.fotos.toArray(), db.ajustes.get('main'),
+    db.pendientes.toArray(), db.fotos.toArray(), db.cuentas.toArray(), db.movAhorro.toArray(), db.detectados.toArray(), db.ajustes.get('main'),
   ]);
+  const { correo: _sinCorreo, ...aj } = { ...AJUSTES_DEFAULT, ...ajustes };
   return {
-    app: 'me-debes', version: 3, exportado: now(),
+    app: 'me-debes', version: 4, exportado: now(),
     personas, gastos, movimientos, cobros, medios, categorias, grupos, recurrentes, pendientes,
     fotos: await Promise.all(fotos.map(async (f) => ({ id: f.id, gastoId: f.gastoId, creado: f.creado, dataUrl: await blobToDataUrl(f.blob) }))),
-    ajustes: { ...AJUSTES_DEFAULT, ...ajustes },
+    cuentas, movAhorro, detectados,
+    ajustes: aj,
   };
 }
 
@@ -66,11 +73,12 @@ export const marcarRespaldo = (fecha = now()) => guardarAjustes({ ultimoRespaldo
 
 const TIPOS = new Set(['cargo', 'pago', 'deuda', 'abono']);
 
-/** Valida un respaldo leído desde un archivo (v2 o v3). Lanza un Error con un mensaje legible si no sirve. */
+/** Valida un respaldo leído desde un archivo (v2, v3 o v4). Lanza un Error con un mensaje legible si no sirve. */
 export function validarRespaldo(data: unknown): Respaldo {
   const r = data as Record<string, unknown> | null;
-  if (!r || r.app !== 'me-debes' || (r.version !== 2 && r.version !== 3)) throw new Error('El archivo no es un respaldo de Me Debes');
-  const v3 = r.version === 3 ? (r as unknown as Respaldo) : convertirV2(r);
+  if (!r || r.app !== 'me-debes' || ![2, 3, 4].includes(r.version as number)) throw new Error('El archivo no es un respaldo de Me Debes');
+  if (r.version === 4 && [r.cuentas, r.movAhorro, r.detectados].some((x) => x !== undefined && !Array.isArray(x))) throw new Error('El respaldo está incompleto');
+  const v3 = r.version === 2 ? convertirV2(r) : ({ ...r, version: 4 } as unknown as Respaldo);
   for (const k of ['personas', 'gastos', 'movimientos', 'cobros'] as const) {
     if (!Array.isArray(v3[k])) throw new Error('El respaldo está incompleto');
   }
@@ -81,6 +89,7 @@ export function validarRespaldo(data: unknown): Respaldo {
     ...v3,
     medios: v3.medios ?? [], categorias: v3.categorias ?? [], grupos: v3.grupos ?? [],
     recurrentes: v3.recurrentes ?? [], pendientes: v3.pendientes ?? [], fotos: v3.fotos ?? [],
+    cuentas: v3.cuentas ?? [], movAhorro: v3.movAhorro ?? [], detectados: v3.detectados ?? [],
   });
 }
 
@@ -109,21 +118,28 @@ function normalizar(r: Respaldo): Respaldo {
 function convertirV2(r: Record<string, unknown>): Respaldo {
   if (!Array.isArray(r.cargos) || !Array.isArray(r.movimientos)) throw new Error('El respaldo está incompleto');
   return {
-    app: 'me-debes', version: 3, exportado: String(r.exportado ?? now()),
+    app: 'me-debes', version: 4, exportado: String(r.exportado ?? now()),
     personas: r.personas as Persona[],
     gastos: (r.cargos as Gasto[]).map((c) => ({ ...c, pagador: 'yo' })),
     movimientos: (r.movimientos as (Movimiento & { cargoId?: string })[]).map(({ cargoId, ...m }) => ({ ...m, ...(cargoId ? { gastoId: cargoId } : {}) })),
     cobros: r.cobros as Cobro[],
     medios: [], categorias: [], grupos: [], recurrentes: [], pendientes: [], fotos: [],
+    cuentas: [], movAhorro: [], detectados: [],
     ajustes: { ...AJUSTES_DEFAULT, ...(r.ajustes as Partial<Ajustes>) },
   };
 }
 
-/** Reemplaza todos los datos por los del respaldo. Si el respaldo no trae categorías, conserva las actuales. */
+/**
+ * Reemplaza todos los datos por los del respaldo. Si el respaldo no trae categorías, conserva las actuales.
+ * La conexión con el correo de este teléfono se mantiene.
+ */
 export async function importarRespaldo(r: Respaldo) {
-  const tablas = [db.personas, db.gastos, db.movimientos, db.cobros, db.medios, db.categorias, db.grupos, db.recurrentes, db.pendientes, db.fotos, db.ajustes];
+  const tablas = [db.personas, db.gastos, db.movimientos, db.cobros, db.medios, db.categorias, db.grupos, db.recurrentes, db.pendientes, db.fotos, db.cuentas, db.movAhorro, db.detectados, db.ajustes];
   await db.transaction('rw', tablas, async () => {
-    await Promise.all([db.personas, db.gastos, db.movimientos, db.cobros, db.medios, db.grupos, db.recurrentes, db.pendientes, db.fotos].map((t) => t.clear()));
+    const correo = (await db.ajustes.get('main'))?.correo;
+    await Promise.all(
+      [db.personas, db.gastos, db.movimientos, db.cobros, db.medios, db.grupos, db.recurrentes, db.pendientes, db.fotos, db.cuentas, db.movAhorro, db.detectados].map((t) => t.clear()),
+    );
     await db.personas.bulkAdd(r.personas);
     await db.gastos.bulkAdd(r.gastos);
     await db.movimientos.bulkAdd(r.movimientos);
@@ -137,7 +153,10 @@ export async function importarRespaldo(r: Respaldo) {
     await db.recurrentes.bulkAdd(r.recurrentes);
     await db.pendientes.bulkAdd(r.pendientes);
     await db.fotos.bulkAdd(r.fotos.map((f) => ({ id: f.id, gastoId: f.gastoId, creado: f.creado, blob: dataUrlToBlob(f.dataUrl) })));
-    if (r.ajustes) await db.ajustes.put({ ...AJUSTES_DEFAULT, ...r.ajustes, id: 'main' });
+    await db.cuentas.bulkAdd(r.cuentas);
+    await db.movAhorro.bulkAdd(r.movAhorro);
+    await db.detectados.bulkAdd(r.detectados);
+    if (r.ajustes) await db.ajustes.put({ ...AJUSTES_DEFAULT, ...r.ajustes, correo: correo ?? undefined, id: 'main' });
   });
 }
 
