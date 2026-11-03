@@ -1,5 +1,5 @@
 /**
- * Me Debes · lector de correos del banco (Google Apps Script)
+ * a mano · lector de correos del banco (Google Apps Script)
  *
  * Corre en TU cuenta de Google y solo entrega a la app los correos de los remitentes de BUSQUEDA.
  * La app interpreta cada correo en el teléfono; este script no guarda nada.
@@ -38,7 +38,7 @@ function doPost(e) {
 
 /** Para revisar que la URL funciona desde el navegador (no entrega correos). */
 function doGet() {
-  return responder({ ok: true, app: 'me-debes', version: 1 });
+  return responder({ ok: true, app: 'a-mano', version: 1 });
 }
 
 function leer(desdeIso) {

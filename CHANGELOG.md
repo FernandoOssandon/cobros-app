@@ -1,5 +1,11 @@
 # Cambios
 
+## 2.3.0 · 3 nov 2026 · nueva marca: "a mano."
+
+- **Me Debes ahora se llama a mano.** Cambian el nombre de la app instalada, el título, el ícono (un signo igual en tinta y lima), el favicon y el logotipo en Resumen y en la bienvenida.
+- Los respaldos y planillas se descargan como `a-mano-…`.
+- **Sin cambios en los datos.** La base, el formato de respaldo y la dirección del sitio siguen iguales, así que nada se pierde al actualizar.
+
 ## 2.2.0 · 27 oct 2026 · "Mi plata"
 
 **Nuevo**

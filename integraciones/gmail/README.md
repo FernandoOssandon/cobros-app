@@ -1,4 +1,4 @@
-# Conectar Gmail con Me Debes
+# Conectar Gmail con a mano
 
 La app puede leer los correos que te manda el banco cuando pagas o transfieres ("Se realizó una compra por $12.990 en…") y dejarlos **por confirmar**. Nada se anota solo: tú decides si es un gasto, si ya lo tenías anotado o si lo descartas.
 
@@ -17,9 +17,9 @@ Gmail ──► script en tu cuenta de Google ──► app en tu teléfono
 ## Instalación (una vez, unos 5 minutos)
 
 1. Entra a [script.google.com](https://script.google.com) con la cuenta de Gmail donde te llegan los avisos del banco → **Nuevo proyecto**.
-2. Borra lo que trae y pega el contenido de [`Codigo.gs`](Codigo.gs). Ponle nombre al proyecto, por ejemplo "Me Debes correo".
+2. Borra lo que trae y pega el contenido de [`Codigo.gs`](Codigo.gs). Ponle nombre al proyecto, por ejemplo "a mano correo".
 3. Cambia `CLAVE` por una frase larga que solo tú sepas, como `mi-perro-come-sopaipillas-2026`. Si tu banco no está en `BUSQUEDA`, agrega su dominio.
-4. Elige la función `probar` y aprieta ▶ **Ejecutar**. Google te pide permiso para leer tu correo. Es tu propio script, así que aparece el aviso "Google no verificó esta app": entra a *Configuración avanzada* → *Ir a Me Debes correo*. En el registro vas a ver cuántos correos de bancos encontró.
+4. Elige la función `probar` y aprieta ▶ **Ejecutar**. Google te pide permiso para leer tu correo. Es tu propio script, así que aparece el aviso "Google no verificó esta app": entra a *Configuración avanzada* → *Ir a a mano correo*. En el registro vas a ver cuántos correos de bancos encontró.
 5. **Implementar → Nueva implementación** → tipo **Aplicación web**:
    - Ejecutar como: **Yo**
    - Quién tiene acceso: **Cualquier usuario** (la clave es la que protege el acceso)

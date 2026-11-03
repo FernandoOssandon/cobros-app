@@ -6,6 +6,7 @@ import { diaMes, fmt, mesLargo, shortDate, sumarMes, todayISO } from '../lib/for
 import { proxima } from '../lib/recurrence';
 import { mesDe, periodoFacturacion, resumenMes } from '../lib/resumen';
 import { useNav } from '../nav';
+import { Logo } from '../ui/Logo';
 import { anotarAtrasados, mesNombre, repartoRecurrente } from '../recurrentes';
 import { useRespaldar } from '../useRespaldo';
 import { Icon } from '../ui/icons';
@@ -66,7 +67,9 @@ export default function Resumen() {
   return (
     <div className="scroll pad-tab" style={{ padding: '0 16px 96px' }}>
       <div className="row-between" style={{ padding: '6px 4px 12px' }}>
-        <h1 className="t-tab">me debes.</h1>
+        <h1 className="t-tab">
+          <Logo size={26} />
+        </h1>
         <button className="btn-o" onClick={() => push('/ajustes')}>
           Ajustes
         </button>

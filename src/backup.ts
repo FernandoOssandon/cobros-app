@@ -17,6 +17,7 @@ export interface FotoRespaldo {
 }
 
 export interface Respaldo {
+  /** Identificador del formato (viene de cuando la app se llamaba Me Debes; no cambia para que los respaldos sigan sirviendo). */
   app: 'me-debes';
   version: 4;
   exportado: string;
@@ -76,7 +77,7 @@ const TIPOS = new Set(['cargo', 'pago', 'deuda', 'abono']);
 /** Valida un respaldo leído desde un archivo (v2, v3 o v4). Lanza un Error con un mensaje legible si no sirve. */
 export function validarRespaldo(data: unknown): Respaldo {
   const r = data as Record<string, unknown> | null;
-  if (!r || r.app !== 'me-debes' || ![2, 3, 4].includes(r.version as number)) throw new Error('El archivo no es un respaldo de Me Debes');
+  if (!r || r.app !== 'me-debes' || ![2, 3, 4].includes(r.version as number)) throw new Error('El archivo no es un respaldo de a mano');
   if (r.version === 4 && [r.cuentas, r.movAhorro, r.detectados].some((x) => x !== undefined && !Array.isArray(x))) throw new Error('El respaldo está incompleto');
   const v3 = r.version === 2 ? convertirV2(r) : ({ ...r, version: 4 } as unknown as Respaldo);
   for (const k of ['personas', 'gastos', 'movimientos', 'cobros'] as const) {

@@ -343,6 +343,7 @@ type DB = Dexie & {
   detectados: EntityTable<Detectado, 'id'>;
 };
 
+// El nombre de la base viene de cuando la app se llamaba Me Debes. NO cambiarlo: los datos guardados están ahí.
 export const db = new Dexie('me-debes') as DB;
 
 // v1: primera versión publicada (cargos compartidos).

@@ -1,4 +1,9 @@
-# Me Debes
+# a mano.
+
+> Antes se llamaba **Me Debes**. Cambió de nombre en la 2.3 porque ya no es solo "quién me debe": son tus gastos, lo que te deben y dónde está tu plata. Por dentro se mantienen algunos nombres antiguos a propósito: la base de datos (`me-debes`), el formato de respaldo (`app: 'me-debes'`) y la carpeta del proyecto. Cambiarlos haría perder los datos guardados o dejaría de leer los respaldos.
+
+**Versión 2.3**: nueva marca **a mano.** (nombre, símbolo de igual, íconos y textos). No hay cambios en los datos.
+
 
 **Versión 2.2 "Mi plata"**: patrimonio, cuentas de ahorro con interés estimado, depósitos a plazo y cobros detectados en los correos del banco (Gmail, vía un script propio: ver `integraciones/gmail/README.md`).
 

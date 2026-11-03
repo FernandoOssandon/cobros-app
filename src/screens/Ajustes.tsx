@@ -41,7 +41,7 @@ export default function Ajustes() {
   const exportCsv = async (cual: 'deudas' | 'gastos') => {
     const [ps, ms, gs, md, cs] = await Promise.all([db.personas.toArray(), db.movimientos.toArray(), db.gastos.toArray(), db.medios.toArray(), db.categorias.toArray()]);
     const contenido = cual === 'deudas' ? movimientosCsv(ps, ms, gs) : gastosCsv(gs, ps, md, cs);
-    if (await entregarArchivo(`me-debes-${cual}-${todayISO()}.csv`, contenido, 'text/csv;charset=utf-8')) toast('Planilla lista');
+    if (await entregarArchivo(`a-mano-${cual}-${todayISO()}.csv`, contenido, 'text/csv;charset=utf-8')) toast('Planilla lista');
   };
   const onFile = async (f?: File) => {
     if (!f) return;
@@ -121,7 +121,7 @@ export default function Ajustes() {
         <button className="set-row" style={{ color: 'var(--danger)', fontSize: 20, fontWeight: 700 }} onClick={() => setConfirmReset(true)}>
           Borrar todo
         </button>
-        <div className="t-meta" style={{ paddingTop: 8 }}>Me Debes {__APP_VERSION__} · funciona sin conexión</div>
+        <div className="t-meta" style={{ paddingTop: 8 }}>a mano {__APP_VERSION__} · funciona sin conexión</div>
       </div>
 
       {pendingImport && (

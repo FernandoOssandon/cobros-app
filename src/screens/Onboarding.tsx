@@ -2,6 +2,7 @@ import { guardarAjustes, quitarMedio } from '../db';
 import { useDatos } from '../hooks';
 import { useNav } from '../nav';
 import { Icon } from '../ui/icons';
+import { Logo } from '../ui/Logo';
 import { MedioThumb } from '../ui/kit';
 import { tipoMedioLabel } from '../ui/rows';
 import { useToast } from '../ui/toast';
@@ -19,7 +20,9 @@ export default function Onboarding() {
   return (
     <div className="screen">
       <div className="scroll" style={{ padding: '36px 20px 20px' }}>
-        <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: -0.5 }}>me debes.</div>
+        <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: -0.6 }}>
+          <Logo size={22} gap={8} />
+        </div>
         <h1 style={{ fontSize: 56, fontWeight: 800, letterSpacing: -2.4, lineHeight: 0.95, marginTop: 28 }}>
           Agrega tus
           <br />

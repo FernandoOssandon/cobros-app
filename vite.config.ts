@@ -18,9 +18,9 @@ export default defineConfig({
       registerType: 'prompt',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Me Debes',
-        short_name: 'Me Debes',
-        description: 'Lleva la cuenta de quién te debe plata.',
+        name: 'a mano',
+        short_name: 'a mano',
+        description: 'Tus gastos, lo que te deben y dónde está tu plata.',
         lang: 'es-CL',
         start_url: '.',
         scope: '.',
