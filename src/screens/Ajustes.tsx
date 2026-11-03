@@ -23,7 +23,11 @@ export default function Ajustes() {
     gastos: await db.gastos.count(),
     medios: await db.medios.filter((m) => !m.archivado).count(),
     categorias: await db.categorias.filter((c) => !c.archivada).count(),
+    presupuestos: await db.presupuestos.filter((p) => !p.archivado).count(),
+    fijos: await db.recurrentes.filter((r) => r.tipo === 'ingreso' && r.activo).count(),
+    sueltos: await db.ingresos.filter((i) => !i.recurrenteId).count(),
   }));
+  const plu = (n: number | undefined, a: string, b: string) => `${n ?? 0} ${n === 1 ? a : b}`;
   const file = useRef<HTMLInputElement>(null);
   const [pendingImport, setPendingImport] = useState<Respaldo | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
@@ -90,6 +94,8 @@ export default function Ajustes() {
         </label>
         {fila('Medios de pago', `${stats?.medios ?? 0} ${stats?.medios === 1 ? 'medio' : 'medios'}`, '/medios')}
         {fila('Categorías', `${stats?.categorias ?? 0} categorías`, '/categorias')}
+        {fila('Presupuestos', plu(stats?.presupuestos, 'presupuesto', 'presupuestos'), '/presupuestos')}
+        {fila('Ingresos', `${plu(stats?.fijos, 'fijo', 'fijos')} · ${plu(stats?.sueltos, 'suelto', 'sueltos')}`, '/ingresos')}
         {!!stats?.archivadas && fila('Personas archivadas', `${stats.archivadas} ${stats.archivadas === 1 ? 'persona' : 'personas'}`, '/archivadas')}
 
         <div style={{ padding: '16px 0', borderTop: '2px solid var(--ink)', display: 'flex', flexDirection: 'column', gap: 12 }}>

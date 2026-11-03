@@ -1,11 +1,15 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useDatos } from '../hooks';
-import { diaLabel, fmt } from '../lib/format';
+import { diaLabel, fmt, shortDate } from '../lib/format';
+import type { Medio } from '../db';
+import { estadoCierre, gastosDelPeriodo, resumenTarjeta } from '../lib/periodos';
 import { agruparPorDia, filtrarGastos, type FiltroGastos } from '../lib/search';
 import { useNav } from '../nav';
+import { usePeriodo } from '../periodo';
 import { Icon } from '../ui/icons';
 import { EmptyState, PickerSheet } from '../ui/kit';
+import { PeriodoBar } from '../ui/periodo';
 import { GastoRow } from '../ui/rows';
 
 type Clave = 'cat' | 'medio' | 'persona' | 'grupo';
@@ -19,7 +23,14 @@ export default function Gastos() {
   const [params, setParams] = useSearchParams();
   const [q, setQ] = useState('');
   const [picker, setPicker] = useState<Clave | null>(null);
+  const { periodo } = usePeriodo(d?.medios ?? SIN_MEDIOS);
   if (!d) return <div className="scroll" />;
+  const tarjeta = periodo.tipo === 'tarjeta' ? periodo : null;
+  const rt = tarjeta ? resumenTarjeta(tarjeta, d.gastos, d.movimientos) : null;
+  const medioTarjeta = tarjeta ? d.medio.get(tarjeta.medioId) : undefined;
+  // La búsqueda mira todos los períodos (para encontrar algo de hace meses); sin texto, solo el período elegido.
+  const buscando = q.trim().length > 0;
+  const base = buscando ? d.gastos : gastosDelPeriodo(periodo, d.gastos);
 
   const val = (k: Clave) => params.get(k);
   const setVal = (k: Clave, v: string | null) => {
@@ -34,7 +45,7 @@ export default function Gastos() {
     const v = val(k);
     if (v && !(k === 'cat' && v === 'none')) (filtro as Record<string, string>)[CAMPO[k]] = v;
   });
-  let lista = filtrarGastos(d.gastos, filtro, d.personas.map((v) => v.p));
+  let lista = filtrarGastos(base, filtro, d.personas.map((v) => v.p));
   if (sinCat) lista = lista.filter((g) => !g.categoriaId);
   const dias = agruparPorDia(lista);
 
@@ -67,7 +78,19 @@ export default function Gastos() {
           />
         </label>
       </div>
-      <div style={{ flex: 'none', display: 'flex', gap: 8, overflowX: 'auto', padding: '10px 16px 4px' }}>
+      <PeriodoBar medios={d.medios} style={{ flex: 'none', padding: '10px 16px' }} />
+      {tarjeta && rt && (
+        <div style={{ flex: 'none', margin: '0 16px 10px', borderRadius: 22, background: 'var(--surface)', padding: '12px 16px', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', gap: 12, alignItems: 'center' }}>
+          <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+            <span className="t-meta">{rt.cerrado ? 'Llegó en tu estado de cuenta' : 'Llegará en tu estado de cuenta'}</span>
+            <span style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.3 }}>
+              tuyo {fmt(rt.tuyo)} · de otros {fmt(rt.deOtros)} · {estadoCierre(tarjeta).toLowerCase()}
+            </span>
+          </span>
+          <span style={{ fontSize: 24, fontWeight: 800, letterSpacing: -0.6, whiteSpace: 'nowrap' }}>{fmt(rt.facturado)}</span>
+        </div>
+      )}
+      <div style={{ flex: 'none', display: 'flex', gap: 8, overflowX: 'auto', padding: '0 16px 4px' }}>
         {(Object.keys(CAMPO) as Clave[]).map((k) => {
           const v = val(k);
           return (
@@ -94,12 +117,25 @@ export default function Gastos() {
             </div>
           </div>
         ))}
-        {d.gastos.length > 0 && lista.length === 0 && (
+        {buscando && lista.length > 0 && <div className="t-meta" style={{ padding: '14px 4px 0' }}>Buscando en todos los meses.</div>}
+        {d.gastos.length > 0 && base.length > 0 && lista.length === 0 && (
           <div className="t-note" style={{ padding: '30px 4px' }}>
             Nada por aquí. Prueba con otra palabra o quita un filtro.
           </div>
         )}
-        {d.gastos.length === 0 && (
+        {tarjeta && base.length === 0 && (
+          <div style={{ padding: '40px 4px 0' }}>
+            <div style={{ fontSize: 52, fontWeight: 800, letterSpacing: -2, lineHeight: 0.95 }}>
+              Nada en este
+              <br />
+              período.
+            </div>
+            <div style={{ fontSize: 18, fontWeight: 500, color: 'var(--muted)', marginTop: 14, lineHeight: 1.35, textWrap: 'pretty' }}>
+              No anotaste compras con {medioTarjeta?.nombre ?? 'esta tarjeta'} entre el {shortDate(tarjeta.desde)} y el {shortDate(tarjeta.hasta)}.
+            </div>
+          </div>
+        )}
+        {!tarjeta && base.length === 0 && (
           <EmptyState
             title={<>Ni un<br />peso.</>}
             body="O eres muy ordenado o se te olvidó anotar. Toca Nuevo gasto y partimos con el café de hoy."
@@ -121,3 +157,5 @@ export default function Gastos() {
     </>
   );
 }
+
+const SIN_MEDIOS: Medio[] = [];

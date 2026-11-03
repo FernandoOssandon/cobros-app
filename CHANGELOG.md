@@ -1,5 +1,16 @@
 # Cambios
 
+## 2.4.0 · 25 nov 2026 · presupuestos, ingresos y períodos
+
+- **Períodos por tarjeta.** En Resumen y Gastos, la píldora `‹ noviembre 2026 ›` abre "¿qué período?": el mes calendario o el período de facturación de cada tarjeta de crédito con día de facturación (ej. "Falabella · 14 nov – 13 dic"). La selección es la misma en las dos pestañas, y tocar una tarjeta de crédito en `tus medios.` también la elige.
+  - Resumen de la tarjeta: "Llegará en tu estado de cuenta" con el total, cuántos días faltan para el cierre (o "Facturado el …"), lo tuyo y lo de otros (ya pagado / pendiente) y los cargos del período.
+  - Gastos muestra solo los cargos de esa tarjeta en el período, con una franja de resumen. En el mes calendario, la lista muestra el mes; la búsqueda sigue mirando todos los meses.
+- **Presupuestos** (Resumen → Presupuestos, o Ajustes): un total semanal (lunes a domingo) y topes mensuales por categoría. Cada uno muestra lo gastado, cuánto queda por día, la marca del ritmo parejo y si a este ritmo te pasas. En Resumen aparecen los que están cerca del límite (desde el 80 %) o excedidos. Si tiene el aviso encendido, la app avisa al 80 % y al pasarte, una vez por período. Guardar uno repetido reemplaza al anterior.
+- **Ingresos:** el sueldo como ingreso fijo (monto fijo o variable, "llega el día N") y los ingresos sueltos (una venta, una pega, un reembolso). Suman a la cuenta donde llegan en Mi plata y no aparecen en Gastos. En Resumen: Ingresos − Gasto real = **Te quedan**. Los fijos aparecen también en Recurrentes.
+- **Detectados:** una transferencia recibida de alguien que no está en Personas se propone como ingreso ("Anotar ingreso", o "Editar" para ajustarlo). Si sí era de alguien, "es de alguien" permite anotarla como pago.
+- Nueva categoría con ícono de carro (Supermercado) y logotipo según el handoff (cuadro de tinta con el signo igual).
+- **Datos:** la base pasa a v6 (solo tablas nuevas: `ingresos`, `presupuestos`) y el respaldo a v5 (sigue aceptando v2 a v4). Nada se pierde al actualizar.
+
 ## 2.3.0 · 3 nov 2026 · nueva marca: "a mano."
 
 - **Me Debes ahora se llama a mano.** Cambian el nombre de la app instalada, el título, el ícono (un signo igual en tinta y lima), el favicon y el logotipo en Resumen y en la bienvenida.

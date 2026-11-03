@@ -3,8 +3,8 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect } from 'react';
 import {
   AJUSTES_DEFAULT, db,
-  type Ajustes, type Categoria, type Cobro, type Cuenta, type Detectado, type Gasto, type Grupo, type Medio, type MovAhorro, type Movimiento,
-  type Pendiente, type Persona, type Recurrente,
+  type Ajustes, type Categoria, type Cobro, type Cuenta, type Detectado, type Gasto, type Grupo, type Ingreso, type Medio, type MovAhorro, type Movimiento,
+  type Pendiente, type Persona, type Presupuesto, type Recurrente,
 } from './db';
 import { byDate, cargado, estadosCargos, estadosDeudas, pctPagado, saldo, type EstadoCargo } from './lib/balance';
 import { firstName, initials } from './lib/format';
@@ -72,15 +72,18 @@ export interface Datos {
   movAhorro: MovAhorro[];
   /** Detectados en el correo (todos los estados). */
   detectados: Detectado[];
+  /** Plata que entra (sueldo e ingresos sueltos), del más nuevo al más antiguo. */
+  ingresos: Ingreso[];
+  presupuestos: Presupuesto[];
 }
 
 /** Todos los datos de la app en una sola consulta en vivo (son pocos). `undefined` mientras carga. */
 export function useDatos(): Datos | undefined {
   return useLiveQuery(async () => {
-    const [ps, gs, ms, cs, md, cat, gr, rec, pen, fotos, cuentas, movAhorro, detectados] = await Promise.all([
+    const [ps, gs, ms, cs, md, cat, gr, rec, pen, fotos, cuentas, movAhorro, detectados, ingresos, presupuestos] = await Promise.all([
       db.personas.toArray(), db.gastos.toArray(), db.movimientos.toArray(), db.cobros.toArray(), db.medios.toArray(),
       db.categorias.toArray(), db.grupos.toArray(), db.recurrentes.toArray(), db.pendientes.toArray(), db.fotos.orderBy('gastoId').uniqueKeys(),
-      db.cuentas.toArray(), db.movAhorro.toArray(), db.detectados.toArray(),
+      db.cuentas.toArray(), db.movAhorro.toArray(), db.detectados.toArray(), db.ingresos.toArray(), db.presupuestos.toArray(),
     ]);
     const personas = buildViews(ps, ms, cs);
     const estado = new Map<string, { estado: EstadoCargo; pendiente: number }>();
@@ -108,6 +111,8 @@ export function useDatos(): Datos | undefined {
       cuentas: cuentas.sort((a, b) => a.orden - b.orden),
       movAhorro,
       detectados: detectados.sort((a, b) => b.fecha.localeCompare(a.fecha) || (b.hora ?? '').localeCompare(a.hora ?? '')),
+      ingresos: ingresos.sort((a, b) => b.fecha.localeCompare(a.fecha) || b.creado.localeCompare(a.creado)),
+      presupuestos: presupuestos.filter((p) => !p.archivado).sort((a, b) => a.orden - b.orden),
     } satisfies Datos;
   });
 }

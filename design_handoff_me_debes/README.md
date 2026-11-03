@@ -1,17 +1,19 @@
-# Handoff: Me Debes v2, dirección "Lúdica"
+# Handoff: a mano. (antes Me Debes v2), dirección "Lúdica"
+
+> **Nombre y logo.** La app pasa a llamarse **a mano.** El logo es un signo igual: un cuadro `ink` con radio 11 (34px en Resumen, 26px en el primer uso) y dos barras `bg` de 16×4 con radio 2 y 5px de separación, seguido de `a mano.` en 30/800. La versión dice "a mano 2.0.3" y el respaldo se llama `a-mano-respaldo-DD-MM-AAAA.json`.
 
 ## Resumen
 Me Debes pasa de ser una app para saber "quién me debe" a una app para saber "a dónde se va mi plata". La pieza central ahora es el **gasto**: todo lo que pago queda anotado con su monto, fecha, descripción, categoría, medio de pago y las personas que participaron. Las deudas se derivan de los gastos y van en ambos sentidos. Es una PWA móvil (390×844), en CLP sin decimales y en español de Chile. Funciona sin conexión y guarda los datos en el dispositivo.
 
 ## Archivos
-- `Me Debes v2.dc.html`: el prototipo navegable. La lógica completa (saldos netos, asignación de pagos, reparto, recurrentes y mensajes) está en el `<script data-dc-script>` al final del archivo. La prop `screen` define la pantalla de inicio y la prop `dark` activa el modo oscuro.
-- `Me Debes v2 Pantallas.dc.html`: un tablero con las 39 pantallas y estados lado a lado. La prop `dark` cambia todo el tablero entre claro y oscuro.
+- `a mano.dc.html`: el prototipo navegable vigente (reemplaza a `Me Debes v2.dc.html`, que queda como versión anterior). La lógica completa (saldos netos, asignación de pagos, reparto, recurrentes y mensajes) está en el `<script data-dc-script>` al final del archivo. La prop `screen` define la pantalla de inicio y la prop `dark` activa el modo oscuro.
+- `a mano Pantallas.dc.html`: un tablero con las 53 pantallas y estados, más un panel "dónde vive cada cosa". La prop `dark` cambia todo el tablero entre claro y oscuro.
 - `Me Debes C.dc.html`: la versión 1, que queda como referencia de la dirección visual.
 - `support.js`: el runtime para abrir los prototipos en el navegador. No forma parte del producto.
 
 Los archivos HTML son **referencias de diseño**, no código de producción. Hay que recrearlos en el stack del proyecto. Si todavía no existe, se recomienda React + Vite + vite-plugin-pwa con IndexedDB. **Fidelidad alta:** los colores, la tipografía, los espaciados, los textos y las interacciones son finales.
 
-Valores posibles de `screen`: `onboarding`, `resumen`, `resumen-vacio`, `atrasado`, `actualizacion`, `por-confirmar`, `gastos`, `gastos-vacio`, `deshacer`, `nuevo-solo`, `nuevo-compartido`, `nuevo-otro`, `gasto`, `gasto-sin-categoria`, `borrar`, `personas`, `personas-vacio`, `nueva-persona`, `persona`, `persona-debo`, `pago`, `whatsapp`, `recurrentes`, `recurrentes-vacio`, `nuevo-recurrente`, `grupos`, `grupo`, `categorias`, `medios`, `medio-form` y `ajustes`.
+Valores posibles de `screen`: `onboarding`, `resumen`, `resumen-vacio`, `atrasado`, `actualizacion`, `por-confirmar`, `gastos`, `gastos-vacio`, `deshacer`, `nuevo-solo`, `nuevo-compartido`, `nuevo-otro`, `gasto`, `gasto-sin-categoria`, `borrar`, `personas`, `personas-vacio`, `nueva-persona`, `persona`, `persona-debo`, `pago`, `whatsapp`, `recurrentes`, `recurrentes-vacio`, `nuevo-recurrente`, `grupos`, `grupo`, `categorias`, `medios`, `medio-form`, `ajustes`, `plata`, `plata-sin-correo`, `cuenta`, `depositar`, `cuadrar`, `deposito-plazo`, `correo`, `conectar-gmail`, `resumen-tarjeta`, `periodo`, `periodo-cerrado`, `periodo-vacio`, `gastos-tarjeta`, `resumen-riesgo`, `resumen-sin-ingresos`, `presupuestos`, `presupuestos-vacio`, `nuevo-presupuesto`, `ingresos`, `ingresos-vacio`, `nuevo-ingreso` e `ingreso-suelto`.
 
 ---
 
@@ -66,12 +68,18 @@ Usa una sola familia, **Bricolage Grotesque** (`opsz 12..96`, pesos 400–800). 
 Barra inferior: Resumen | Gastos | Mi plata | Personas | Recurrentes      (+ "Nuevo gasto" flotante en las 5)
 
 Resumen ─┬─ Ajustes ─┬─ Medios de pago ── Nuevo/editar medio
-         │           └─ Categorías
+         │           ├─ Categorías
+         │           └─ Presupuestos · Ingresos
+         ├─ píldora de período → hoja ¿qué período? (Mes calendario | cada tarjeta con día de facturación)
+         ├─ tarjeta Ingresos / Gasto real / Te quedan → Ingresos ── + Ingreso → Nuevo ingreso (fijo o suelto)
+         ├─ presupuestos en riesgo. → Presupuestos ─┬─ + Nuevo → Nuevo presupuesto
+         │                                          └─ tarjeta → Editar presupuesto
          ├─ chips Te deben / Debes → Personas (pestaña correspondiente)
          ├─ tarjeta de medio → Medios de pago
          ├─ Por confirmar → hoja Por confirmar
-         └─ atajos: Por categoría · Grupos y eventos · Medios de pago
-Gastos ──┬─ fila → Detalle de gasto ─┬─ Editar → Nuevo gasto (precargado)
+         └─ atajos: Por categoría · Grupos y eventos · Medios de pago · Presupuestos · Ingresos
+Gastos ──┬─ píldora de período (la misma selección que en Resumen)
+         ├─ fila → Detalle de gasto ─┬─ Editar → Nuevo gasto (precargado)
          │                           ├─ Grupo → Detalle de grupo
          │                           └─ Borrar → hoja de confirmación → toast "Deshacer"
          ├─ filtros → hoja de opciones
@@ -82,7 +90,7 @@ Personas ┬─ + Persona → hoja Nueva persona (Elegir de contactos)
                                           └─ Cobrar por WhatsApp → Cobro
 Mi plata ┬─ fila Cuentas vista / Efectivo → hoja Cuadrar
          ├─ fila Te deben / Debes → Personas · fila Tarjetas → Medios de pago
-         ├─ banner "N cobros detectados" → Detectados ─┬─ Anotar / Descartar / Es el mismo
+         ├─ banner "N cobros detectados" → Detectados ─┬─ Anotar / Descartar / Es el mismo / Anotar ingreso
          │                                             ├─ Editar → Nuevo gasto o Registrar pago (precargado)
          │                                             └─ Desconectar → vuelve a Mi plata
          ├─ banner "Conectar Gmail" (si no está conectado) → Conectar Gmail → Detectados
@@ -90,7 +98,8 @@ Mi plata ┬─ fila Cuentas vista / Efectivo → hoja Cuadrar
          │                                        └─ Cuadrar con el saldo real → hoja Cuadrar
          └─ + Nuevo depósito a plazo → Depósito a plazo
 Recurrentes ┬─ + Nuevo → Nuevo recurrente
-            └─ fila variable pendiente → hoja Por confirmar
+            ├─ fila variable pendiente → hoja Por confirmar
+            └─ ingresos fijos. → Ingresos
 Primer uso: Agrega tus tarjetas → Nuevo medio → Resumen
 ```
 - La navegación usa una **pila**. Cambiar de pestaña la vacía. El botón "‹ {pantalla anterior}" vuelve un nivel.
@@ -297,9 +306,60 @@ Primer uso: Agrega tus tarjetas → Nuevo medio → Resumen
     - Tres puntos numerados: Solo correos de bancos · Solo lectura · Todo queda en tu teléfono.
     - CTA lima "Conectar Gmail" y "Ahora no".
 
+### Períodos, presupuestos e ingresos
+20. **Selector de período** (Resumen y Gastos)
+    - Fila `‹ [píldora] ›`. Flechas de 36px; la píldora ocupa el resto (36px, borde 2px `ink`, 15/700, chevron ▾). Con un período de tarjeta la píldora se rellena en `ink`, como un filtro activo.
+    - Texto: "noviembre 2026" o "Falabella · 14 nov – 13 dic" (nombre corto del medio + período).
+    - ‹ › mueve un mes o un período de facturación. › queda al 30% en el actual.
+    - **Hoja ¿qué período?:** "Mes calendario" y una fila por tarjeta de crédito con día de facturación (miniatura, nombre, "14 nov – 13 dic · cierra en 18 días", radio). Abajo, un enlace a Medios de pago para las tarjetas sin día.
+    - La selección es la misma en Resumen y Gastos. Tocar una tarjeta de crédito en `tus medios.` también la selecciona.
+21. **Resumen · período de tarjeta**
+    - Héroe "Llegará en tu estado de cuenta" ("Llegó…" si ya cerró) con el total en 66/800 y la píldora "Cierra en 18 días · 13 dic" (o "Facturado el 13 nov" en `muted`).
+    - Tarjeta `surface`: **tuyo** y **de otros** en 26/800, barra apilada (tuyo `ink`, ya te pagaron `pos`, pendiente `owe`) y la leyenda "$X ya te pagaron · $Y pendientes".
+    - `cargos del período.` con las filas de gasto y los atajos "Ver en Gastos" y "Medios de pago".
+    - En este modo no se muestran el gasto real del mes, ingresos, presupuestos ni los banners.
+    - Vacío: "Nada en este período." + "No anotaste compras con Visa BCI entre el 29 sep y el 28 oct."
+22. **Gastos · período de tarjeta:** bajo el selector, una franja `surface` con "Llegará en tu estado de cuenta", "tuyo $X · de otros $Y · cierra en 18 días" y el total en 24/800. La lista muestra solo los cargos de esa tarjeta en el período.
+23. **Resumen · ingresos** (solo con Mes calendario)
+    - Tarjeta `surface` tocable bajo los chips Te deben/Debes: Ingresos (en `pos`), Gasto real (en negativo), línea de 2px y **Te quedan** en 34/800 `pos` (o "Gastaste de más" en `danger`). Debajo: "Sueldo llegó el 20 nov a Cuenta RUT · 1 ingreso suelto".
+    - Sin ingresos: caja `soft` "¿Cuánto te entra al mes?" + "Agregar sueldo".
+24. **Resumen · presupuestos en riesgo**
+    - Solo los que están cerca del límite o excedidos: ícono, nombre, barra de 10px con la marca del ritmo, "te quedan $X · a este ritmo te pasas" o "te pasaste por $X", y el % en el color del estado. "Ver los N" abre Presupuestos.
+    - Si todos van bien: caja `soft` "Tus 3 presupuestos van bien. ›". Sin presupuestos: caja `soft` "Ponle tope a la semana." + "Crear presupuesto".
+25. **Presupuestos**
+    - `presupuestos.` y la nota "Cuentan solo tu parte de cada gasto. La marca es lo que llevarías hoy gastando parejo."
+    - Tarjeta por presupuesto: ícono (calendario en `soft` para el semanal, la categoría en los demás), nombre, "lun 23 – dom 29 nov · todos tus gastos" o "Mensual · noviembre", chip de estado (borde 1.5px), "$62.380 de $70.000" y el %.
+    - Barra de 14px (`track`) con el relleno en el color del estado y una marca `ink` de 4×20 con borde `surface` en la posición del ritmo parejo.
+    - Líneas: "te quedan $7.620 · $1.524 por día" (15/800) y "a este ritmo te pasas por $75.553" (13/700 `owe`) o "a este ritmo cierras en $85.176" (`muted`). Excedido: "te pasaste por $6.750" en `danger` y "y quedan 6 días del mes".
+    - Estados: **vas bien** (`pos`), **cerca del límite** (`owe`, desde el 80 %) y **te pasaste** (`danger`).
+    - Vacío: "Sin límites." + CTA lima "Crear presupuesto".
+26. **Nuevo presupuesto** (tarea, ×)
+    - Tipo: tarjetas "Total semanal" / "Por categoría". Con categoría aparecen los chips.
+    - Límite en 52/800 con "a la semana" o "al mes".
+    - Si ya existe uno igual: caja `soft` en `owe` "Salidas ya tiene un tope de $40.000. Si guardas, lo reemplazas."
+    - Vista previa `surface`: "En noviembre llevas $23.000 en Transporte" y, con monto, "Así quedaría hoy" con chip, barra y líneas.
+    - Switch "Avisarme al 80 %". CTA "Guardar presupuesto".
+27. **Ingresos**
+    - `ingresos.`, el mes, "Te entró este mes" en 60/800 y "Te quedan $X después de tu gasto real de $Y." en `pos`.
+    - `fijos.`: "Sueldo · Cada mes, el día 20 · llega a Cuenta RUT", "+$1.450.000" en `pos` (o badge `variable`) y "llegó el 20 nov".
+    - `sueltos.`: "Venta de la bici · Miércoles 11 · Mercado Pago". Sin sueltos: "Nada suelto este mes…".
+    - Vacío: "Nada entró." + CTA lima "Agregar sueldo".
+28. **Nuevo ingreso** (tarea, ×)
+    - Segmentado **Fijo cada mes** / **Suelto**.
+    - Fijo: nombre en 30/800, Monto fijo / Variable, "Llega el día" − n +.
+    - Suelto: monto en 52/800, "¿De qué fue?" y fecha Hoy / Ayer / Otro día.
+    - Ambos: "Llega a" (Cuenta RUT, Mach, Tenpo, Mercado Pago, Efectivo) y una caja de ayuda que explica qué pasa al guardar.
+29. **Detectados · transferencia recibida como ingreso:** si quien transfiere no está en Personas, la tarjeta muestra "+$180.000" en `pos`, "No está en Personas · se anota como ingreso en Cuenta RUT" y **Anotar ingreso** / **Editar** (abre Nuevo ingreso suelto precargado) / Descartar.
+
 ## Estados
 | Estado | Dónde | Texto |
 |---|---|---|
+| Período sin compras | Resumen y Gastos | "Nada en este período." |
+| Período cerrado | Resumen | "Llegó en tu estado de cuenta" + "Facturado el 13 nov" |
+| Presupuesto bien / cerca / excedido | Presupuestos y Resumen | "vas bien" · "cerca del límite" · "te pasaste" |
+| Sin presupuestos | Presupuestos / Resumen | "Sin límites." / "Ponle tope a la semana." |
+| Sin ingresos | Ingresos / Resumen | "Nada entró." / "¿Cuánto te entra al mes?" |
+| Gastaste más de lo que entró | Resumen e Ingresos | "Gastaste de más" en `danger` |
 | Vacío | Resumen | "Mes en blanco." |
 | Vacío | Gastos | "Ni un peso." |
 | Vacío | Personas | "Sin cuentas." |
@@ -346,7 +406,22 @@ Primer uso: Agrega tus tarjetas → Nuevo medio → Resumen
   - Si al abrir la app hay ocurrencias vencidas de meses anteriores, se agrupan en el banner de atrasado. "Anotar los N" crea todos esos gastos.
   - Los compartidos generan un gasto con un reparto igual entre los participantes y yo.
   - "Próximos pagos" muestra los que vencen en los próximos 30 días, ordenados por fecha.
-- **Período de facturación:** desde el día de facturación + 1 del mes anterior hasta el día de facturación del mes actual.
+- **Período de facturación:** desde el día de facturación + 1 hasta el día de facturación del mes siguiente. El período actual es el que contiene hoy; si hoy ya pasó el día de facturación, el período cierra el mes siguiente.
+  - **Llegará en el estado de cuenta** = Σ totales de los gastos que pagué con esa tarjeta en el período.
+  - **Tuyo** = Σ `sh.me` de esos gastos. **De otros** = total − tuyo, dividido en ya pagado y pendiente con la misma asignación FIFO.
+  - **Días para el cierre** = fecha de cierre − hoy. Con 0: "Cierra hoy". Con negativo: "Facturado el …".
+- **Presupuestos:**
+  - Cuentan solo `sh.me` de gastos tipo `gasto` (no cobros). El semanal suma todas las categorías de lunes a domingo; el de categoría, el mes calendario.
+  - % = gastado / límite. **Cerca** desde 80 %; **excedido** si gastado > límite.
+  - **Te quedan** = límite − gastado. **Por día** = te quedan / días restantes, contando hoy.
+  - **Ritmo** = gastado / días transcurridos × días del período. Si supera el límite: "a este ritmo te pasas por (ritmo − límite)". La marca de la barra va en días transcurridos / días del período.
+  - Un solo total semanal y uno por categoría; guardar uno repetido reemplaza al anterior.
+  - Avisos (si está encendido): notificación al cruzar 80 % y al pasar 100 %, una vez por período.
+- **Ingresos:**
+  - Los **fijos** se anotan solos su día y suman a la cuenta donde llegan. Los **variables** quedan por confirmar ese día, igual que los recurrentes variables.
+  - Los **sueltos** suman a su cuenta en Mi plata. No son gasto ni aparecen en Gastos.
+  - **Ingresos del mes** = fijos ya llegados + sueltos del mes. **Te quedan** = ingresos del mes − gasto real del mes.
+  - **Transferencia detectada** de alguien que no está en Personas: se propone como ingreso suelto en Cuenta RUT.
 - **Respaldo:**
   - Exportar genera `me-debes-respaldo-DD-MM-AAAA.json` y lo comparte con `navigator.share({ files })`. Si el navegador no lo permite, lo descarga.
   - Después de exportar, la fecha del último respaldo se actualiza.
@@ -401,7 +476,11 @@ type Saldos       = { cuentaVista: number; efectivo: number; cuadradoEl?: string
 type Detectado    = { id: string; correoId: string; banco: string; fecha: string; comercio: string; monto: number; tipo: 'gasto' | 'pago';
                       medioId?: string; categoriaId?: string; personaId?: string; duplicadoDe?: string; estado: 'pendiente' | 'anotado' | 'descartado' };
 type ConexionCorreo = { proveedor: 'gmail'; email: string; ultimaRevision: string; remitentes: string[] };
-type Respaldo = { version: 3; exportado: string; gastos: Gasto[]; pagos: Pago[]; avisos: AvisoCobro[]; personas: Persona[]; medios: Medio[]; categorias: Categoria[]; grupos: Grupo[]; recurrentes: Recurrente[]; ajustes: Ajustes;
+type Presupuesto   = { id: string; tipo: 'semanal' | 'categoria'; categoriaId?: string; limite: number; avisar80: boolean };
+type IngresoFijo   = { id: string; nombre: string; monto: number | null /* null = variable */; diaMes: number; cuentaId: 'vista' | 'efectivo' | string; ultimoMonto?: number; pendientes: string[] };
+type IngresoSuelto = { id: string; descripcion: string; monto: number; fecha: string; cuentaId: 'vista' | 'efectivo' | string; detectadoId?: string };
+// Medio gana `nombreCorto?: string` ("Falabella") para la píldora de período. Detectado.tipo suma 'ingreso'.
+type Respaldo = { version: 4; presupuestos: Presupuesto[]; ingresosFijos: IngresoFijo[]; ingresosSueltos: IngresoSuelto[]; exportado: string; gastos: Gasto[]; pagos: Pago[]; avisos: AvisoCobro[]; personas: Persona[]; medios: Medio[]; categorias: Categoria[]; grupos: Grupo[]; recurrentes: Recurrente[]; ajustes: Ajustes;
                   ahorros: CuentaAhorro[]; depositos: DepositoPlazo[]; saldos: Saldos; detectados: Detectado[] /* el token de Gmail NO va en el respaldo */ };
 ```
 **Migración desde la v1:**
@@ -409,7 +488,11 @@ type Respaldo = { version: 3; exportado: string; gastos: Gasto[]; pagos: Pago[];
 - Cada `pago` pasa a ser un `Pago` con `sentido: 'recibido'`.
 
 ## Datos de ejemplo (en el prototipo, "hoy" es el 25 nov 2026)
-- **Medios:** Visa BCI (crédito, factura el 25), Débito Banco Estado y Efectivo.
+- **Medios:** Visa BCI (crédito, factura el 28), CMR Falabella (crédito, factura el 13), Débito Banco Estado y Efectivo.
+- **CMR Falabella, período 14 nov – 13 dic:** Tottus $28.600 y Sodimac $45.980 (la mitad es de Javiera). Llegarán $74.580: tuyos $51.590, de otros $22.990. Cierra en 18 días. El período anterior tiene Falabella · sábanas $24.990.
+- **Categoría nueva:** Supermercado (Jumbo, Tottus y los detectados de Líder y Jumbo).
+- **Presupuestos:** total semanal $70.000 (lleva $62.380, cerca), Salidas $40.000 al mes (lleva $46.750, excedido) y Supermercado $120.000 (lleva $70.980, bien).
+- **Ingresos:** Sueldo $1.450.000 fijo el día 20 en Cuenta RUT y Venta de la bici $120.000 (11 nov, Mercado Pago). Detectada: transferencia de Rodrigo Silva por $180.000.
 - **Recurrentes:**
   - Arriendo, $350.000 el día 5.
   - Luz, variable el día 10 (octubre: $28.450).
@@ -419,7 +502,7 @@ type Respaldo = { version: 3; exportado: string; gastos: Gasto[]; pagos: Pago[];
 - **Grupo "Viaje a Pucón" ($480.000):** cabaña y bencina (pagué yo), asado (pagó Camila) y kayak (pagó Matías).
 - **Saldos resultantes:**
   - Camila te debe $20.475.
-  - Javiera te debe $15.475.
+  - Javiera te debe $38.465 (incluye su mitad de Sodimac).
   - Le debes $8.000 a Diego.
   - Matías y Fernanda están al día.
 - **Mi plata:**
@@ -427,6 +510,11 @@ type Respaldo = { version: 3; exportado: string; gastos: Gasto[]; pagos: Pago[];
   - Depósito a plazo Banco Estado: $2.000.000 a 90 días al 0,45% cada 30 días, desde el 3 oct. Faltan 37 días, vence el 1 ene 2027 y al vencer recibes $2.027.000.
   - Cuenta RUT $486.300 y efectivo $38.000.
 - **Detectados:** Líder Express $18.450 (débito, hoy), Copec $35.000 (Visa, ayer), Jumbo Bilbao $42.380 (posible duplicado del Jumbo del 23), transferencia de Camila $12.000 y Spotify $6.500.
+
+## Pendiente en períodos, presupuestos e ingresos
+- No hay borrar presupuesto ni borrar ingreso; editar presupuesto reutiliza el formulario.
+- Los ingresos fijos variables no tienen todavía su hoja "¿cuánto llegó?"; debería reutilizar la de Por confirmar.
+- El período de tarjeta no considera compras en cuotas: cada gasto entra completo en el período de su fecha.
 
 ## Pendiente en Mi plata
 - La conexión con Google está simulada. En producción: OAuth con `gmail.readonly`, consulta `from:(remitentes bancarios) newer_than:30d` y parseo por plantilla de cada banco.

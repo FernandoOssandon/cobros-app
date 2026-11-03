@@ -4,6 +4,7 @@
 // - 'mio':        gasto fijo propio (arriendo, luz, gimnasio) → genera un gasto 100% mío.
 // - 'compartido': pago el total y se reparte (Netflix con amigos) → genera un gasto con cargos a cada uno.
 // - 'cobro':      alguien me paga una cuota (préstamo, pieza) → genera un cargo a esa persona, sin gasto mío.
+// - 'ingreso':    el sueldo u otro ingreso fijo → genera un ingreso (y su depósito en la cuenta donde llega).
 //
 // Monto fijo: se anota solo. Monto variable: queda "por confirmar" hasta que ingrese el monto real.
 // Los ids generados son deterministas (`<recurrente>@<fecha>`), así que generar dos veces no duplica nada.
@@ -11,6 +12,7 @@ import { db, guardarGasto, now, uid, type Recurrente } from './db';
 import { computeSplit, type SplitResult } from './lib/split';
 import { ocurrenciasEntre } from './lib/recurrence';
 import { todayISO } from './lib/format';
+import { guardarIngreso, tipoPorNombre } from './ingresos';
 
 export const idOcurrencia = (recurrenteId: string, fecha: string) => `${recurrenteId}@${fecha}`;
 
@@ -50,6 +52,11 @@ export const mesNombre = (fecha: string) => MESES[Number(fecha.slice(5, 7)) - 1]
 /** Anota una ocurrencia con el monto dado. `descripcion` reemplaza al nombre (ej. "Luz de noviembre"). */
 export async function materializar(r: Recurrente, fecha: string, monto: number, descripcion = r.nombre) {
   const id = idOcurrencia(r.id, fecha);
+  if (r.tipo === 'ingreso') {
+    if (monto <= 0) return;
+    await guardarIngreso({ id, descripcion, tipo: tipoPorNombre(r.nombre), monto, fecha, cuentaId: r.cuentaId, recurrenteId: r.id });
+    return;
+  }
   if (r.tipo === 'cobro') {
     if (!r.personaId || monto <= 0) return;
     await db.movimientos.put({ id, personaId: r.personaId, tipo: 'cargo', detalle: descripcion, monto, fecha, recurrenteId: r.id, creado: now() });

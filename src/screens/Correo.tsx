@@ -3,9 +3,11 @@ import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import scriptGmail from '../../integraciones/gmail/Codigo.gs?raw';
 import {
-  anotarDetectado, anotarPagoDetectado, conectarCorreo, desconectarCorreo, descartarDetectado, ErrorCorreo, leerCorreo, restaurarDetectado, vincularDetectado,
+  anotarDetectado, anotarIngresoDetectado, anotarPagoDetectado, conectarCorreo, desconectarCorreo, descartarDetectado, ErrorCorreo, leerCorreo, restaurarDetectado, vincularDetectado,
 } from '../correo';
+import { ID_EFECTIVO } from '../ahorros';
 import { borrarGasto, borrarMovimiento, db, guardarAjustes, type Detectado } from '../db';
+import { borrarIngreso, cuentasDestino } from '../ingresos';
 import { useAjustes, useDatos, type Datos } from '../hooks';
 import { daysBetween, fmt, shortDate, todayISO } from '../lib/format';
 import { useNav } from '../nav';
@@ -30,10 +32,13 @@ export function haceLbl(iso?: string, ahora = Date.now()) {
   return `hace ${Math.floor(h / 24)} ${Math.floor(h / 24) === 1 ? 'día' : 'días'}`;
 }
 
-/** Cómo se presenta cada detectado: gasto o pago con una persona. */
+/** Cómo se presenta cada detectado: gasto, pago con una persona o ingreso. */
 function vista(x: Detectado, d: Datos) {
   const v = x.personaId ? d.persona.get(x.personaId) : undefined;
   const recibido = x.tipo === 'recibido';
+  // Transferencia recibida de alguien que no está en Personas: se propone como ingreso suelto.
+  const esIngreso = recibido && !v;
+  const destino = esIngreso ? cuentasDestino(d.cuentas).find((c) => c.id !== ID_EFECTIVO) : undefined;
   // Una transferencia enviada a alguien a quien le debes se propone como pago ("le pagué").
   const esPago = recibido || (x.tipo === 'transferencia' && !!v && v.saldo < 0);
   const gastoParecido = !esPago && x.parecidoA ? d.gasto.get(x.parecidoA) : undefined;
@@ -41,7 +46,9 @@ function vista(x: Detectado, d: Datos) {
   let meta = '';
   if (recibido) {
     titulo = `Transferencia de ${x.comercio}`;
-    meta = v ? `Se anota como pago de ${v.first}${v.saldo > 0 ? ` · te debe ${fmt(v.saldo)}` : ''}` : 'Transferencia recibida · elige de quién';
+    meta = v
+      ? `Se anota como pago de ${v.first}${v.saldo > 0 ? ` · te debe ${fmt(v.saldo)}` : ''}`
+      : `No está en Personas · se anota como ingreso${destino ? ` en ${destino.nombre}` : ''}`;
   } else if (esPago && v) {
     titulo = `Transferencia a ${x.comercio}`;
     meta = `Se anota como pago a ${v.first} · le debes ${fmt(-v.saldo)}`;
@@ -50,7 +57,7 @@ function vista(x: Detectado, d: Datos) {
     const cat = x.categoriaId ? d.categoria.get(x.categoriaId) : undefined;
     meta = `${medio?.nombre ?? 'Medio por definir'} · ${cat ? `${cat.nombre} (sugerida)` : 'Sin categoría'}`;
   }
-  return { v, esPago, recibido, gastoParecido, titulo, meta };
+  return { v, esPago: esPago && !esIngreso, esIngreso, destino, recibido, gastoParecido, titulo, meta };
 }
 
 export function Detectados() {
@@ -61,6 +68,8 @@ export function Detectados() {
   const [leyendo, setLeyendo] = useState(false);
   const [error, setError] = useState('');
   const [elegirPersona, setElegirPersona] = useState<{ x: Detectado; editar: boolean } | null>(null);
+  // Al desconectar se vuelve a Mi plata; sin esto, la pantalla alcanza a mandar a "Conectar Gmail".
+  const [saliendo, setSaliendo] = useState(false);
   const conectado = !!aj.correo;
   const ultima = aj.correo?.ultimaLectura;
 
@@ -85,7 +94,7 @@ export function Detectados() {
   }, [conectado]);
 
   if (!aj.cargado || !d) return <div className="scroll" />;
-  if (!conectado) return <Navigate to="/correo/conectar" replace />;
+  if (!conectado) return saliendo ? <div className="scroll" /> : <Navigate to="/correo/conectar" replace />;
 
   const pendientes = d.detectados.filter((x) => x.estado === 'pendiente');
 
@@ -109,6 +118,19 @@ export function Detectados() {
         label: 'Deshacer',
         run: async () => {
           await borrarMovimiento(mid);
+          await restaurarDetectado(antes);
+        },
+      });
+  };
+  const anotarIngreso = async (x: Detectado, cuentaId?: string) => {
+    const antes = { ...x };
+    const iid = await anotarIngresoDetectado(x.id, { cuentaId });
+    const destino = cuentaId ? d.cuentas.find((c) => c.id === cuentaId)?.nombre : undefined;
+    if (iid)
+      toast(`Ingreso anotado · +${fmt(x.monto)}${destino ? ` en ${destino}` : ''}`, {
+        label: 'Deshacer',
+        run: async () => {
+          await borrarIngreso(iid);
           await restaurarDetectado(antes);
         },
       });
@@ -151,7 +173,20 @@ export function Detectados() {
                   {fmt(x.monto)}
                 </span>
               </div>
-              <div className="t-meta" style={{ marginTop: -4 }}>{vw.meta}</div>
+              <div className="t-meta" style={{ marginTop: -4 }}>
+                {vw.meta}
+                {vw.esIngreso && d.personas.length > 0 && (
+                  <>
+                    {' · '}
+                    <button
+                      onClick={() => setElegirPersona({ x, editar: false })}
+                      style={{ border: 'none', background: 'none', padding: 0, font: 'inherit', color: 'var(--ink)', textDecoration: 'underline' }}
+                    >
+                      es de alguien
+                    </button>
+                  </>
+                )}
+              </div>
               {vw.gastoParecido && (
                 <div style={{ borderRadius: 14, background: 'var(--soft)', padding: '10px 12px', fontSize: 14, fontWeight: 700, color: 'var(--owe)', lineHeight: 1.3 }}>
                   Ya anotaste {vw.gastoParecido.descripcion} por {fmt(vw.gastoParecido.total)} el {shortDate(vw.gastoParecido.fecha)}. ¿Es el mismo?
@@ -171,6 +206,15 @@ export function Detectados() {
                     </button>
                     <button className="det-sec" onClick={() => anotar(x)}>
                       Anotar igual
+                    </button>
+                  </>
+                ) : vw.esIngreso ? (
+                  <>
+                    <button className="det-prim" onClick={() => anotarIngreso(x, vw.destino?.id)}>
+                      Anotar ingreso
+                    </button>
+                    <button className="det-sec" onClick={() => push(`/ingreso/nuevo?tipo=suelto&det=${encodeURIComponent(x.id)}`)}>
+                      Editar
                     </button>
                   </>
                 ) : vw.esPago ? (
@@ -224,6 +268,7 @@ export function Detectados() {
           className="btn-o"
           style={{ height: 38, fontSize: 13, padding: '0 14px' }}
           onClick={async () => {
+            setSaliendo(true);
             await desconectarCorreo();
             toast('Gmail desconectado');
             back('/plata');

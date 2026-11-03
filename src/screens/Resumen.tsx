@@ -1,16 +1,22 @@
-import { useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useMemo, useRef, useState } from 'react';
 import { diasSinRespaldo } from '../backup';
-import { useAjustes, useDatos } from '../hooks';
-import { diaMes, fmt, mesLargo, shortDate, sumarMes, todayISO } from '../lib/format';
+import type { Medio } from '../db';
+import { useAjustes, useDatos, type Datos } from '../hooks';
+import { diaLabel, diaMes, fmt, mesLargo, shortDate, todayISO } from '../lib/format';
+import { ingresosMes } from '../lib/ingresosMes';
+import { clavePeriodo, estadoCierre, gastosDelPeriodo, periodoEn, periodoTarjeta, rangoPeriodo, resumenTarjeta, tienePeriodo, type PeriodoTarjeta } from '../lib/periodos';
+import { avances } from '../lib/presupuestos';
 import { proxima } from '../lib/recurrence';
-import { mesDe, periodoFacturacion, resumenMes } from '../lib/resumen';
+import { mesDe, resumenMes } from '../lib/resumen';
 import { useNav } from '../nav';
+import { elegirClavePeriodo, usePeriodo } from '../periodo';
 import { Logo } from '../ui/Logo';
 import { anotarAtrasados, mesNombre, repartoRecurrente } from '../recurrentes';
 import { useRespaldar } from '../useRespaldo';
 import { Icon } from '../ui/icons';
-import { MedioCard, tipoMedioLabel } from '../ui/rows';
+import { PeriodoBar } from '../ui/periodo';
+import { BarraPresupuesto, IconoPresupuesto, lineasPresupuesto, nombrePresupuesto } from '../ui/presupuesto';
+import { GastoRow, MedioCard, tipoMedioLabel } from '../ui/rows';
 import { PorConfirmarSheet } from '../ui/sheets';
 import { useToast } from '../ui/toast';
 
@@ -20,22 +26,47 @@ export default function Resumen() {
   const { push, tab } = useNav();
   const toast = useToast();
   const respaldar = useRespaldar();
-  const [params, setParams] = useSearchParams();
+  const scroll = useRef<HTMLDivElement>(null);
+  const { periodo } = usePeriodo(d?.medios ?? SIN_MEDIOS);
   const hoy = todayISO();
   const mesActual = hoy.slice(0, 7);
-  const mes = params.get('mes') ?? mesActual;
+  const mes = periodo.tipo === 'mes' ? periodo.mes : periodo.cierreMes;
   const esActual = mes === mesActual;
   const [confirmando, setConfirmando] = useState<string | null>(null);
 
   const r = useMemo(() => (d ? resumenMes(mes, d.gastos, d.movimientos, d.medios) : null), [d, mes]);
   if (!d || !r) return <div className="scroll" />;
 
+  const encabezado = (
+    <>
+      <div className="row-between" style={{ padding: '6px 4px 12px' }}>
+        <h1 className="t-tab">
+          <Logo size={34} />
+        </h1>
+        <button className="btn-o" onClick={() => push('/ajustes')}>
+          Ajustes
+        </button>
+      </div>
+      <PeriodoBar medios={d.medios} style={{ padding: '0 4px' }} />
+    </>
+  );
+  if (periodo.tipo === 'tarjeta') {
+    return (
+      <div className="scroll pad-tab" style={{ padding: '0 16px 96px' }}>
+        {encabezado}
+        <PeriodoTarjetaVista p={periodo} d={d} />
+      </div>
+    );
+  }
+
   const delMes = d.gastos.filter((g) => mesDe(g.fecha) === mes);
   const hayDatos = d.gastos.length > 0 || d.personas.length > 0;
-  const cambiarMes = (n: number) => {
-    const m = sumarMes(mes, n);
-    if (m > mesActual) return;
-    setParams(m === mesActual ? {} : { mes: m }, { replace: true });
+  /** Tocar una tarjeta de crédito con día de facturación la elige como período. */
+  const abrirMedio = (m?: Medio) => {
+    if (m && tienePeriodo(m)) {
+      elegirClavePeriodo(clavePeriodo(esActual ? periodoEn(hoy, m) : periodoTarjeta(m, mes)));
+      scroll.current?.scrollTo({ top: 0 });
+    } else push('/medios');
   };
 
   // Recurrentes atrasados (fijos de meses anteriores) agrupados.
@@ -65,24 +96,8 @@ export default function Resumen() {
   const verSaldos = r.teDeben > 0 || r.debes > 0;
 
   return (
-    <div className="scroll pad-tab" style={{ padding: '0 16px 96px' }}>
-      <div className="row-between" style={{ padding: '6px 4px 12px' }}>
-        <h1 className="t-tab">
-          <Logo size={26} />
-        </h1>
-        <button className="btn-o" onClick={() => push('/ajustes')}>
-          Ajustes
-        </button>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 4px' }}>
-        <button className="btn-round" onClick={() => cambiarMes(-1)} aria-label="Mes anterior">
-          <Icon name="back" size={16} w={3} />
-        </button>
-        <span style={{ fontSize: 17, fontWeight: 700, minWidth: 140, textAlign: 'center' }}>{mesLargo(mes)}</span>
-        <button className="btn-round" style={{ opacity: esActual ? 0.3 : 1 }} disabled={esActual} onClick={() => cambiarMes(1)} aria-label="Mes siguiente">
-          <Icon name="next" size={16} w={3} />
-        </button>
-      </div>
+    <div className="scroll pad-tab" style={{ padding: '0 16px 96px' }} ref={scroll}>
+      {encabezado}
 
       {esActual && atrasados.length > 0 && (
         <div className="banner-line" style={{ marginTop: 14 }}>
@@ -151,6 +166,8 @@ export default function Resumen() {
         </div>
       )}
 
+      <IngresosYPresupuestos d={d} mes={mes} esActual={esActual} gastoReal={r.gastoReal} />
+
       {hayMes && r.porMedio.length > 0 && (
         <>
           <h2 className="t-section">tus medios.</h2>
@@ -158,11 +175,8 @@ export default function Resumen() {
             {r.porMedio.map((pm) => {
               const m = pm.medioId ? d.medio.get(pm.medioId) : undefined;
               let meta = m ? tipoMedioLabel(m.tipo) : 'Gastos anotados antes de las tarjetas';
-              if (m?.tipo === 'credito' && m.diaFacturacion) {
-                const p = periodoFacturacion(mes, m.diaFacturacion);
-                meta += ` · período ${shortDate(p.desde)} – ${shortDate(p.hasta)}`;
-              }
-              return <MedioCard key={pm.medioId ?? 'sin'} r={pm} medio={m} meta={meta} onClick={() => push('/medios')} />;
+              if (m && tienePeriodo(m)) meta += ` · período ${rangoPeriodo(esActual ? periodoEn(hoy, m) : periodoTarjeta(m, mes))}`;
+              return <MedioCard key={pm.medioId ?? 'sin'} r={pm} medio={m} meta={meta} onClick={() => abrirMedio(m)} />;
             })}
           </div>
         </>
@@ -207,7 +221,9 @@ export default function Resumen() {
               {proximos.map(({ x, f }) => {
                 const dm = diaMes(f);
                 const sub =
-                  x.tipo === 'cobro'
+                  x.tipo === 'ingreso'
+                    ? 'Ingreso'
+                    : x.tipo === 'cobro'
                     ? `Te paga ${d.persona.get(x.personaId ?? '')?.first ?? ''}`
                     : x.tipo === 'compartido'
                       ? `Compartido · tu parte ${fmt(repartoRecurrente(x, x.monto).mine)}`
@@ -223,8 +239,8 @@ export default function Resumen() {
                       <span style={{ fontSize: 16, fontWeight: 700 }}>{x.nombre}</span>
                       <span className="t-meta" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub}</span>
                     </span>
-                    <span style={{ fontSize: 16, fontWeight: 800, color: x.tipo === 'cobro' ? 'var(--pos)' : variable ? 'var(--muted)' : 'var(--ink)' }}>
-                      {variable ? 'variable' : (x.tipo === 'cobro' ? '+' : '') + fmt(x.monto)}
+                    <span style={{ fontSize: 16, fontWeight: 800, color: x.tipo === 'cobro' || x.tipo === 'ingreso' ? 'var(--pos)' : variable ? 'var(--muted)' : 'var(--ink)' }}>
+                      {variable ? 'variable' : (x.tipo === 'cobro' || x.tipo === 'ingreso' ? '+' : '') + fmt(x.monto)}
                     </span>
                   </div>
                 );
@@ -245,11 +261,225 @@ export default function Resumen() {
           <button className="btn-o" onClick={() => push('/medios')}>
             Medios de pago
           </button>
+          <button className="btn-o" onClick={() => push('/presupuestos')}>
+            Presupuestos
+          </button>
+          <button className="btn-o" onClick={() => push('/ingresos')}>
+            Ingresos
+          </button>
         </div>
       )}
 
       {confirmP && confirmR && <PorConfirmarSheet p={confirmP} r={confirmR} onClose={() => setConfirmando(null)} />}
     </div>
+  );
+}
+
+const SIN_MEDIOS: Medio[] = [];
+
+const caja = { borderRadius: 22, background: 'var(--soft)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 } as const;
+const botonTinta = { height: 40, padding: '0 16px', borderRadius: 20, border: 'none', background: 'var(--ink)', color: 'var(--bg)', fontWeight: 800, fontSize: 14 } as const;
+
+/** Tarjeta "Ingresos · Gasto real · Te quedan" y presupuestos en riesgo (solo en el mes calendario). */
+function IngresosYPresupuestos({ d, mes, esActual, gastoReal }: { d: Datos; mes: string; esActual: boolean; gastoReal: number }) {
+  const { push } = useNav();
+  const hoy = todayISO();
+  const im = ingresosMes(mes, d.ingresos, d.recurrentes, d.pendientes, hoy);
+  const hayIngresos = im.total > 0 || im.fijos.length > 0 || im.sueltos.length > 0;
+  const quedan = im.total - gastoReal;
+  const cuenta = (id?: string) => (id ? d.cuentas.find((c) => c.id === id)?.nombre : undefined);
+  const sub = [
+    ...im.fijos.map((f) => {
+      const a = cuenta(f.r.cuentaId);
+      if (f.estado === 'llego') return `${f.r.nombre} llegó el ${shortDate(f.fecha!)}${a ? ` a ${a}` : ''}`;
+      if (f.estado === 'confirmar') return `${f.r.nombre} por confirmar`;
+      if (f.estado === 'llega' && f.fecha && mesDe(f.fecha) === mes) return `${f.r.nombre} llega el ${shortDate(f.fecha)}`;
+      return '';
+    }),
+    im.sueltos.length ? `${im.sueltos.length} ${im.sueltos.length === 1 ? 'ingreso suelto' : 'ingresos sueltos'}` : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  const avs = esActual ? avances(d.presupuestos, d.gastos, hoy) : [];
+  const riesgo = avs.filter((a) => a.estado !== 'bien').sort((a, b) => a.presupuesto.orden - b.presupuesto.orden);
+
+  return (
+    <>
+      {hayIngresos && (esActual || im.total > 0) ? (
+        <button
+          onClick={() => push('/ingresos')}
+          aria-label="Ingresos del mes"
+          style={{ width: '100%', marginTop: 18, border: 'none', borderRadius: 24, background: 'var(--surface)', padding: 16, display: 'flex', flexDirection: 'column', gap: 10, textAlign: 'left' }}
+        >
+          <span className="row-between" style={{ width: '100%', alignItems: 'baseline' }}>
+            <span style={{ fontSize: 16, fontWeight: 700 }}>Ingresos</span>
+            <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--pos)' }}>{fmt(im.total)}</span>
+          </span>
+          <span className="row-between" style={{ width: '100%', alignItems: 'baseline' }}>
+            <span style={{ fontSize: 16, fontWeight: 700 }}>Gasto real</span>
+            <span style={{ fontSize: 18, fontWeight: 800 }}>{fmt(-gastoReal)}</span>
+          </span>
+          <span className="row-between" style={{ width: '100%', alignItems: 'baseline', paddingTop: 12, borderTop: '2px solid var(--ink)' }}>
+            <span style={{ fontSize: 18, fontWeight: 800 }}>{quedan >= 0 ? 'Te quedan' : 'Gastaste de más'}</span>
+            <span style={{ fontSize: 34, fontWeight: 800, letterSpacing: -1.2, color: quedan >= 0 ? 'var(--pos)' : 'var(--danger)', whiteSpace: 'nowrap' }}>{fmt(Math.abs(quedan))}</span>
+          </span>
+          {sub && <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)', lineHeight: 1.3 }}>{sub}</span>}
+        </button>
+      ) : (
+        esActual && (
+          <div style={{ ...caja, marginTop: 18 }}>
+            <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: -0.3, lineHeight: 1.15 }}>¿Cuánto te entra al mes?</span>
+            <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--muted)', lineHeight: 1.35 }}>Anota tu sueldo y te digo cuánto te queda después de los gastos.</span>
+            <span style={{ display: 'flex' }}>
+              <button style={botonTinta} onClick={() => push('/ingreso/nuevo?sueldo=1')}>
+                Agregar sueldo
+              </button>
+            </span>
+          </div>
+        )
+      )}
+
+      {esActual && riesgo.length > 0 && (
+        <>
+          <div className="row-between" style={{ alignItems: 'baseline', padding: '28px 4px 10px' }}>
+            <h2 style={{ fontSize: 22, fontWeight: 800, letterSpacing: -0.6 }}>presupuestos en riesgo.</h2>
+            <button style={{ border: 'none', background: 'transparent', padding: 0, fontWeight: 700, fontSize: 14, color: 'var(--muted)' }} onClick={() => push('/presupuestos')}>
+              {avs.length > 1 ? `Ver los ${avs.length}` : 'Ver'}
+            </button>
+          </div>
+          <div className="list">
+            <div className="inner">
+              {riesgo.map((a) => {
+                const cat = a.presupuesto.categoriaId ? d.categoria.get(a.presupuesto.categoriaId) : undefined;
+                const l = lineasPresupuesto(a);
+                return (
+                  <button
+                    key={a.presupuesto.id}
+                    onClick={() => push('/presupuestos')}
+                    style={{ width: '100%', border: 'none', borderTop: '1px solid var(--line)', background: 'transparent', padding: 14, display: 'grid', gridTemplateColumns: '36px minmax(0,1fr) auto', gap: 12, alignItems: 'center', textAlign: 'left' }}
+                  >
+                    <IconoPresupuesto p={a.presupuesto} cat={cat} size={36} />
+                    <span style={{ display: 'flex', flexDirection: 'column', gap: 7, minWidth: 0 }}>
+                      <span style={{ fontSize: 16, fontWeight: 700 }}>{nombrePresupuesto(a.presupuesto, cat)}</span>
+                      <BarraPresupuesto a={a} alto={10} />
+                      <span style={{ fontSize: 13, fontWeight: 700, color: l.color }}>{l.riesgo}</span>
+                    </span>
+                    <span style={{ fontSize: 16, fontWeight: 800, color: l.color, whiteSpace: 'nowrap' }}>{l.pct}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
+      {esActual && avs.length > 0 && riesgo.length === 0 && (
+        <button
+          onClick={() => push('/presupuestos')}
+          style={{ width: '100%', marginTop: 14, border: 'none', borderRadius: 22, background: 'var(--soft)', padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', textAlign: 'left', fontSize: 15, fontWeight: 700 }}
+        >
+          <span>{avs.length === 1 ? 'Tu presupuesto va bien.' : `Tus ${avs.length} presupuestos van bien.`}</span>
+          <Icon name="next" size={18} />
+        </button>
+      )}
+      {esActual && avs.length === 0 && (
+        <div style={{ ...caja, marginTop: 14 }}>
+          <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: -0.3, lineHeight: 1.15 }}>Ponle tope a la semana.</span>
+          <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--muted)', lineHeight: 1.35 }}>Un límite semanal o por categoría, y te aviso antes de pasarte.</span>
+          <span style={{ display: 'flex' }}>
+            <button style={botonTinta} onClick={() => push('/presupuesto/nuevo')}>
+              Crear presupuesto
+            </button>
+          </span>
+        </div>
+      )}
+    </>
+  );
+}
+
+/** Resumen de un período de tarjeta: lo que llegará en su estado de cuenta. */
+function PeriodoTarjetaVista({ p, d }: { p: PeriodoTarjeta; d: Datos }) {
+  const { push, tab } = useNav();
+  const hoy = todayISO();
+  const m = d.medio.get(p.medioId);
+  const r = resumenTarjeta(p, d.gastos, d.movimientos, hoy);
+  const gastos = gastosDelPeriodo(p, d.gastos).sort((a, b) => b.fecha.localeCompare(a.fecha) || b.creado.localeCompare(a.creado));
+  if (!gastos.length)
+    return (
+      <div style={{ padding: '60px 4px 0' }}>
+        <div style={{ fontSize: 56, fontWeight: 800, letterSpacing: -2.4, lineHeight: 0.95 }}>
+          Nada en este
+          <br />
+          período.
+        </div>
+        <p className="t-body-muted">
+          No anotaste compras con {m?.nombre ?? 'esta tarjeta'} entre el {shortDate(p.desde)} y el {shortDate(p.hasta)}.
+        </p>
+      </div>
+    );
+  const seg = (v: number, bg: string) => <span style={{ display: v > 0 ? 'block' : 'none', flexGrow: v, background: bg }} />;
+  return (
+    <>
+      <div style={{ padding: '20px 4px 0' }}>
+        <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--muted)' }}>{r.cerrado ? 'Llegó en tu estado de cuenta' : 'Llegará en tu estado de cuenta'}</div>
+        <div className="t-hero" style={{ marginTop: 6 }}>{fmt(r.facturado)}</div>
+        <div style={{ display: 'flex', marginTop: 14 }}>
+          <span style={{ height: 36, padding: '0 14px', borderRadius: 18, border: `2px solid ${r.cerrado ? 'var(--muted)' : 'var(--ink)'}`, color: r.cerrado ? 'var(--muted)' : 'var(--ink)', fontWeight: 800, fontSize: 15, display: 'flex', alignItems: 'center' }}>
+            {estadoCierre(p, hoy)}
+          </span>
+        </div>
+      </div>
+      <div style={{ marginTop: 20, borderRadius: 24, background: 'var(--surface)', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--muted)' }}>
+              <span style={{ width: 8, height: 8, borderRadius: 4, background: 'var(--ink)' }} />
+              tuyo
+            </span>
+            <span style={{ fontSize: 26, fontWeight: 800, letterSpacing: -0.8 }}>{fmt(r.tuyo)}</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)' }}>de otros</span>
+            <span style={{ fontSize: 26, fontWeight: 800, letterSpacing: -0.8 }}>{fmt(r.deOtros)}</span>
+          </div>
+        </div>
+        <span className="stack">
+          {seg(r.tuyo, 'var(--ink)')}
+          {seg(r.recuperado, 'var(--pos)')}
+          {seg(r.pendiente, 'var(--owe)')}
+        </span>
+        {r.deOtros > 0 ? (
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 13, fontWeight: 600, color: 'var(--muted)' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 8, height: 8, borderRadius: 4, background: 'var(--pos)' }} />
+              {fmt(r.recuperado)} ya te pagaron
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 8, height: 8, borderRadius: 4, background: 'var(--owe)' }} />
+              {fmt(r.pendiente)} pendientes
+            </span>
+          </div>
+        ) : (
+          <div className="t-meta">Todo tuyo, nadie te debe nada de este estado de cuenta.</div>
+        )}
+      </div>
+      <h2 className="t-section">cargos del período.</h2>
+      <div className="list">
+        <div className="inner">
+          {gastos.map((g) => (
+            <GastoRow key={g.id} g={g} d={d} meta={diaLabel(g.fecha)} onClick={() => push(`/gasto/${g.id}`)} />
+          ))}
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: '20px 4px 0' }}>
+        <button className="btn-o" onClick={() => tab('/gastos')}>
+          Ver en Gastos
+        </button>
+        <button className="btn-o" onClick={() => push('/medios')}>
+          Medios de pago
+        </button>
+      </div>
+    </>
   );
 }
 

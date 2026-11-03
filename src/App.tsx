@@ -27,6 +27,9 @@ import Archivadas from './screens/Archivadas';
 import MiPlata from './screens/Plata';
 import { CuentaDetalle, CuentaForm, DapForm } from './screens/Cuenta';
 import { ConectarGmail, Detectados } from './screens/Correo';
+import { PresupuestoForm, Presupuestos } from './screens/Presupuestos';
+import { IngresoForm, Ingresos } from './screens/Ingresos';
+import { AvisosPresupuesto } from './ui/avisos';
 import { renovarVencidos } from './ahorros';
 import { leerCorreo } from './correo';
 
@@ -41,6 +44,7 @@ export default function App() {
             <UpdateToast />
             <RecurrentesAlDia />
             <CorreoAlDia />
+            <AvisosPresupuesto />
             <PrimerUso />
             <Routes>
               <Route path="/" element={<Tab><Resumen /></Tab>} />
@@ -72,6 +76,13 @@ export default function App() {
               <Route path="/deposito/:id" element={<DapForm />} />
               <Route path="/correo" element={<Detectados />} />
               <Route path="/correo/conectar" element={<ConectarGmail />} />
+              <Route path="/presupuestos" element={<Presupuestos />} />
+              <Route path="/presupuesto/nuevo" element={<PresupuestoForm />} />
+              <Route path="/presupuesto/:id" element={<PresupuestoForm />} />
+              <Route path="/ingresos" element={<Ingresos />} />
+              <Route path="/ingreso/nuevo" element={<IngresoForm />} />
+              <Route path="/ingreso/fijo/:rid" element={<IngresoForm />} />
+              <Route path="/ingreso/:id" element={<IngresoForm />} />
               <Route path="/bienvenida" element={<Onboarding />} />
               <Route path="/archivadas" element={<Archivadas />} />
               {/* Rutas de la 1.x */}

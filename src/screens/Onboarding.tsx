@@ -21,7 +21,7 @@ export default function Onboarding() {
     <div className="screen">
       <div className="scroll" style={{ padding: '36px 20px 20px' }}>
         <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: -0.6 }}>
-          <Logo size={22} gap={8} />
+          <Logo size={26} gap={8} />
         </div>
         <h1 style={{ fontSize: 56, fontWeight: 800, letterSpacing: -2.4, lineHeight: 0.95, marginTop: 28 }}>
           Agrega tus

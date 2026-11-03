@@ -29,7 +29,7 @@ export type TipoMedio = 'credito' | 'debito' | 'efectivo' | 'transferencia';
 export const AVATAR_COLORS = ['#7FD9A8', '#FFD36E', '#9EC9FF', '#FF9E8A', '#D9B8FF', '#BDE7E0'];
 export const CAT_COLORS = ['#FFD36E', '#9EC9FF', '#7FD9A8', '#D9B8FF', '#FF9E8A', '#BDE7E0'];
 export const MEDIO_COLORS = ['#9EC9FF', '#FFD36E', '#7FD9A8', '#FF9E8A', '#D9B8FF', '#E9E4D4'];
-export const ICONOS_CATEGORIA = ['comida', 'transporte', 'casa', 'subs', 'salidas', 'salud', 'regalo', 'libro'] as const;
+export const ICONOS_CATEGORIA = ['comida', 'super', 'transporte', 'casa', 'subs', 'salidas', 'salud', 'regalo', 'libro'] as const;
 
 /** Medio de pago con nombre (ej. "Visa BCI"). */
 export interface Medio {
@@ -42,6 +42,8 @@ export interface Medio {
   diaFacturacion?: number;
   /** Últimos 4 dígitos de la tarjeta: sirven para reconocerla en los correos del banco. */
   ultimos4?: string;
+  /** Nombre corto para la píldora de período (ej. "Falabella"). Si falta, se deriva del nombre. */
+  nombreCorto?: string;
   archivado: boolean;
   orden: number;
   creado: string;
@@ -119,7 +121,7 @@ export interface Cobro {
   mensaje: string;
 }
 
-export type TipoRecurrente = 'mio' | 'compartido' | 'cobro';
+export type TipoRecurrente = 'mio' | 'compartido' | 'cobro' | 'ingreso';
 export type UnidadFrecuencia = 'dia' | 'semana' | 'mes' | 'anio';
 
 export interface Frecuencia {
@@ -158,6 +160,8 @@ export interface Recurrente {
   reparto?: Reparto;
   /** Solo para 'cobro'. */
   personaId?: string;
+  /** Solo para 'ingreso': cuenta donde llega la plata (ej. la Cuenta RUT). */
+  cuentaId?: string;
   /** Última fecha ya generada (o confirmada/saltada). */
   generadoHasta?: string;
   /** Fecha de la última ocurrencia variable confirmada (para "en octubre llegaron $X"). */
@@ -240,6 +244,46 @@ export interface MovAhorro {
   monto: number;
   fecha: string; // YYYY-MM-DD
   nota?: string;
+  /** Depósito que viene de un ingreso (sueldo, etc.): se borra junto con él. */
+  ingresoId?: string;
+  creado: string;
+}
+
+// ---------- Ingresos y presupuestos ----------
+
+export type TipoIngreso = 'sueldo' | 'otro';
+
+/** Plata que entra: el sueldo u otro ingreso. Si tiene cuenta, se deposita ahí (Mi plata). */
+export interface Ingreso {
+  id: string;
+  descripcion: string;
+  tipo: TipoIngreso;
+  monto: number;
+  fecha: string; // YYYY-MM-DD
+  cuentaId?: string;
+  recurrenteId?: string;
+  /** Si vino de un correo detectado. */
+  detectadoId?: string;
+  creado: string;
+}
+
+/**
+ * Límite de gasto:
+ * - 'semana': lunes a domingo; 'mes': mes calendario.
+ * - Sin categoría: cuenta todo tu gasto real (tu parte de cada gasto). Con categoría: solo esa.
+ */
+export interface Presupuesto {
+  id: string;
+  nombre: string;
+  periodo: 'semana' | 'mes';
+  monto: number;
+  categoriaId?: string;
+  /** Avisar al cruzar el 80 % y al pasar el 100 % (una vez por período). */
+  avisar?: boolean;
+  /** Último aviso dado: "<inicio del período>:80" o "<inicio del período>:100". */
+  avisado?: string;
+  archivado: boolean;
+  orden: number;
   creado: string;
 }
 
@@ -268,6 +312,8 @@ export interface Detectado {
   personaId?: string;
   /** Pago registrado al anotar una transferencia. */
   movimientoId?: string;
+  /** Ingreso registrado al anotar una transferencia recibida como ingreso. */
+  ingresoId?: string;
   remitente: string;
   asunto: string;
   estado: 'pendiente' | 'anotado' | 'descartado';
@@ -341,6 +387,8 @@ type DB = Dexie & {
   cuentas: EntityTable<Cuenta, 'id'>;
   movAhorro: EntityTable<MovAhorro, 'id'>;
   detectados: EntityTable<Detectado, 'id'>;
+  ingresos: EntityTable<Ingreso, 'id'>;
+  presupuestos: EntityTable<Presupuesto, 'id'>;
 };
 
 // El nombre de la base viene de cuando la app se llamaba Me Debes. NO cambiarlo: los datos guardados están ahí.
@@ -386,6 +434,12 @@ db.version(5).stores({
   cuentas: 'id',
   movAhorro: 'id, cuentaId, fecha',
   detectados: 'id, estado, fecha',
+});
+
+// v6 (app 2.4): ingresos (sueldo) y presupuestos. Solo agrega tablas.
+db.version(6).stores({
+  ingresos: 'id, fecha, recurrenteId, cuentaId',
+  presupuestos: 'id',
 });
 
 /** Migración v3 → v4. Exportada para poder probarla. */
@@ -718,10 +772,10 @@ export const guardarAjustes = async (patch: Partial<Omit<Ajustes, 'id'>>) => {
 export async function borrarTodo() {
   await db.transaction(
     'rw',
-    [db.personas, db.gastos, db.movimientos, db.cobros, db.medios, db.grupos, db.recurrentes, db.pendientes, db.fotos, db.cuentas, db.movAhorro, db.detectados],
+    [db.personas, db.gastos, db.movimientos, db.cobros, db.medios, db.grupos, db.recurrentes, db.pendientes, db.fotos, db.cuentas, db.movAhorro, db.detectados, db.ingresos, db.presupuestos],
     async () => {
       await Promise.all(
-        [db.personas, db.gastos, db.movimientos, db.cobros, db.medios, db.grupos, db.recurrentes, db.pendientes, db.fotos, db.cuentas, db.movAhorro, db.detectados].map((t) => t.clear()),
+        [db.personas, db.gastos, db.movimientos, db.cobros, db.medios, db.grupos, db.recurrentes, db.pendientes, db.fotos, db.cuentas, db.movAhorro, db.detectados, db.ingresos, db.presupuestos].map((t) => t.clear()),
       );
       await db.medios.put({ ...MEDIO_EFECTIVO, creado: now() });
     },

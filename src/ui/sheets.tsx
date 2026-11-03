@@ -21,7 +21,7 @@ export function PorConfirmarSheet({ p, r, onClose }: { p: Pendiente; r: Recurren
     }
     await confirmarPendiente(p.id, monto);
     onClose();
-    toast(`${r.nombre} anotada · ${fmt(monto)}`);
+    toast(r.tipo === 'ingreso' ? `${r.nombre} anotado · +${fmt(monto)}` : `${r.nombre} anotada · ${fmt(monto)}`);
   };
   return (
     <Sheet onClose={onClose} label="Por confirmar">

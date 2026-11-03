@@ -42,7 +42,14 @@ export function periodoFacturacion(mes: string, dia: number): { desde: string; h
 }
 
 export function resumenMes(mes: string, gastos: Gasto[], movimientos: Movimiento[], medios: Medio[] = []): Resumen {
-  const delMes = gastos.filter((g) => mesDe(g.fecha) === mes);
+  return resumenDe(mes, gastos.filter((g) => mesDe(g.fecha) === mes), movimientos, medios);
+}
+
+/**
+ * Resumen de un conjunto de gastos ya filtrado (un mes, el período de una tarjeta…).
+ * `mes` es solo una etiqueta del período.
+ */
+export function resumenDe(mes: string, delMes: Gasto[], movimientos: Movimiento[], medios: Medio[] = []): Resumen {
 
   // Estado de cada cargo (FIFO por persona), para separar lo cobrado de lo pendiente.
   const porPersona = new Map<string, Movimiento[]>();

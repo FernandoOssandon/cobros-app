@@ -2,6 +2,8 @@
 
 > Antes se llamaba **Me Debes**. Cambió de nombre en la 2.3 porque ya no es solo "quién me debe": son tus gastos, lo que te deben y dónde está tu plata. Por dentro se mantienen algunos nombres antiguos a propósito: la base de datos (`me-debes`), el formato de respaldo (`app: 'me-debes'`) y la carpeta del proyecto. Cambiarlos haría perder los datos guardados o dejaría de leer los respaldos.
 
+**Versión 2.4**: presupuestos (semanal y por categoría), ingresos (sueldo fijo y sueltos, con "te quedan" del mes) y períodos de facturación por tarjeta en Resumen y Gastos. Detalle en [CHANGELOG.md](CHANGELOG.md).
+
 **Versión 2.3**: nueva marca **a mano.** (nombre, símbolo de igual, íconos y textos). No hay cambios en los datos.
 
 
@@ -82,6 +84,7 @@ También sirven GitHub Pages o Cloudflare Pages. La app usa rutas con `#` y una 
 | `medios`, `categorias`, `grupos`, `fotos` | Tarjetas con nombre y color (el efectivo viene incluido), categorías con ícono y color (vienen 6), eventos y fotos de boletas (se achican antes de guardarse). |
 | `personas`, `cobros`, `ajustes` | Igual que en la 1.0, más el recordatorio de respaldo. |
 | `cuentas`, `movAhorro` | Mi plata (base v5): cuentas remuneradas, vista, depósitos a plazo e inversiones. `movAhorro` guarda cuadres (saldo real), depósitos y retiros. El saldo se estima con interés diario desde el último cuadre. |
+| `ingresos`, `presupuestos` | (base v6) El sueldo y otros ingresos, que se depositan en la cuenta donde llegan. Presupuestos semanales o mensuales, del total o de una categoría. |
 | `detectados` | Movimientos leídos de los correos del banco, por confirmar (ver `integraciones/gmail/README.md`). |
 
 La lógica pura vive en `src/lib/`: `resumen.ts` (gasto real del mes y desglose por tarjeta), `recurrence.ts` (fechas), `search.ts` (búsqueda) y `balance.ts` (saldos netos). Las pantallas del rediseño (Resumen, Gastos, Recurrentes) se conectan sobre esa base.
@@ -92,12 +95,15 @@ La lógica pura vive en `src/lib/`: `resumen.ts` (gasto real del mes y desglose 
 src/
   db.ts              Esquema Dexie, migraciones v1→v3 y operaciones (gastos, pagos, medios…)
   backup.ts          Respaldo v3 (con fotos), importación de respaldos v2, compartir/descargar
-  recurrentes.ts     Motor de recurrentes (generar, confirmar, saltar)
+  recurrentes.ts     Motor de recurrentes (generar, confirmar, saltar; también los ingresos fijos)
+  ingresos.ts        Ingresos (y su depósito en la cuenta donde llegan) · presupuestos.ts: guardar y borrar
+  periodo.ts         Período elegido (mes o tarjeta), compartido entre Resumen y Gastos
   hooks.ts           Consultas en vivo y tema claro/oscuro
-  lib/               Lógica pura: format, split, balance, resumen, recurrence, search, messages, csv, contacts
+  lib/               Lógica pura: format, split, balance, resumen, periodos, presupuestos, ingresosMes, recurrence, search, messages, csv, contacts
   nav.ts             Pestañas y pila de pantallas ("‹ {pantalla anterior}")
   screens/           Resumen, Gastos, NuevoGasto, GastoDetalle, Personas, Person, Pay, Collect, Recurrentes,
-                     NuevoRecurrente, Grupos, Categorias, Medios, Onboarding, Ajustes, EditPerson, Archivadas
+                     NuevoRecurrente, Grupos, Categorias, Medios, Onboarding, Ajustes, EditPerson, Archivadas,
+                     Plata, Cuenta, Correo, Presupuestos, Ingresos
   ui/                Kit (botones, chips, hojas), íconos, filas (gasto, tarjeta de medio, barra inferior),
                      hojas compartidas (por confirmar, nueva persona, categoría), toast y aviso de versión nueva
   tests/             Pruebas con Vitest
@@ -107,7 +113,7 @@ e2e/                 Pruebas de punta a punta con Playwright (y sus datos de eje
 ## Rutas
 
 Pestañas: `/` (Resumen) · `/gastos` · `/plata` (Mi plata) · `/personas` · `/recurrentes`
-Pantallas: `/gasto/nuevo[?p=id]` · `/gasto/:id[/editar]` · `/persona/:id[/editar|/pago|/cobro]` · `/recurrente/nuevo` · `/recurrente/:id` · `/grupos` · `/grupo/:id` · `/categorias` · `/medios` · `/medio/nuevo` · `/medio/:id` · `/ajustes` · `/bienvenida` · `/archivadas` · `/cuenta/nueva` · `/cuenta/:id[/editar]` · `/deposito/nuevo` · `/deposito/:id` · `/correo` · `/correo/conectar`
+Pantallas: `/gasto/nuevo[?p=id]` · `/gasto/:id[/editar]` · `/persona/:id[/editar|/pago|/cobro]` · `/recurrente/nuevo` · `/recurrente/:id` · `/grupos` · `/grupo/:id` · `/categorias` · `/medios` · `/medio/nuevo` · `/medio/:id` · `/ajustes` · `/bienvenida` · `/archivadas` · `/cuenta/nueva` · `/cuenta/:id[/editar]` · `/deposito/nuevo` · `/deposito/:id` · `/correo` · `/correo/conectar` · `/presupuestos` · `/presupuesto/nuevo` · `/presupuesto/:id` · `/ingresos` · `/ingreso/nuevo[?sueldo=1|?tipo=suelto&det=id]` · `/ingreso/:id` · `/ingreso/fijo/:id`
 
 ## Datos y respaldo
 

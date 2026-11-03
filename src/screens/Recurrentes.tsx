@@ -9,6 +9,7 @@ import { Icon } from '../ui/icons';
 import { Avatar, CatIcon, EmptyState } from '../ui/kit';
 import { PorConfirmarSheet } from '../ui/sheets';
 import { useToast } from '../ui/toast';
+import { IconoIngreso } from '../ui/ingreso';
 
 const SECCIONES: [Recurrente['tipo'], string][] = [
   ['mio', 'gastos fijos tuyos.'],
@@ -25,12 +26,16 @@ export default function Recurrentes() {
 
   const hoy = todayISO();
   const recs = d.recurrentes.filter((r) => r.activo).sort((a, b) => a.creado.localeCompare(b.creado));
-  const fijosSalen = recs.filter((r) => r.tipo !== 'cobro' && r.montoTipo === 'fijo').reduce((s, r) => s + montoMensual(r.monto, r.frecuencia), 0);
-  const variables = recs.filter((r) => r.tipo !== 'cobro' && r.montoTipo === 'variable').map((r) => r.nombre);
+  const fijosSalen = recs.filter((r) => (r.tipo === 'mio' || r.tipo === 'compartido') && r.montoTipo === 'fijo').reduce((s, r) => s + montoMensual(r.monto, r.frecuencia), 0);
+  const variables = recs.filter((r) => (r.tipo === 'mio' || r.tipo === 'compartido') && r.montoTipo === 'variable').map((r) => r.nombre);
   const entran = recs.filter((r) => r.tipo === 'cobro' && r.montoTipo === 'fijo').reduce((s, r) => s + montoMensual(r.monto, r.frecuencia), 0);
+  const ingresosFijos = recs.filter((r) => r.tipo === 'ingreso');
+  const sueldos = ingresosFijos.filter((r) => r.montoTipo === 'fijo');
+  const sueldo = sueldos.reduce((s, r) => s + montoMensual(r.monto, r.frecuencia), 0);
   const sub = [
     variables.length ? `más ${juntarY(variables)}, que ${variables.length === 1 ? 'es variable' : 'son variables'}` : '',
     entran ? `te entran ${fmt(entran)} en cobros` : '',
+    sueldo ? `${fmt(sueldo)} de ${juntarY(sueldos.map((r) => r.nombre.toLowerCase()))} al mes` : '',
   ]
     .filter(Boolean)
     .join(' · ');
@@ -142,6 +147,45 @@ export default function Recurrentes() {
                 </div>
               );
             })}
+
+            {ingresosFijos.length > 0 && (
+              <div>
+                <h2 className="t-section" style={{ paddingTop: 26 }}>ingresos fijos.</h2>
+                <div className="list">
+                  <div className="inner">
+                    {ingresosFijos.map((r) => {
+                      const conf = d.pendientes.find((p) => p.recurrenteId === r.id && p.tipo === 'confirmar');
+                      const sig = proxima(r.frecuencia, r.inicio, [r.generadoHasta ?? '', hoy].sort()[1], r.fin);
+                      const cuenta = r.cuentaId ? d.cuentas.find((c) => c.id === r.cuentaId)?.nombre : undefined;
+                      return (
+                        <button key={r.id} className="list-row" onClick={() => (conf ? setConfirmando(conf.id) : push('/ingresos'))}>
+                          <IconoIngreso fijo />
+                          <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+                            <span style={{ fontSize: 16, fontWeight: 700 }}>{r.nombre}</span>
+                            <span className="t-meta" style={{ lineHeight: 1.3 }}>
+                              {describirFrecuencia(r.frecuencia, r.inicio)}
+                              {cuenta ? ` · llega a ${cuenta}` : ''}
+                            </span>
+                          </span>
+                          <span className="r-right">
+                            {r.montoTipo === 'variable' ? (
+                              <span className="badge" style={{ height: 22, padding: '0 9px', borderRadius: 11, fontSize: 12, color: 'var(--ink)' }}>
+                                variable
+                              </span>
+                            ) : (
+                              <span className="r-amt" style={{ color: 'var(--pos)' }}>+{fmt(r.monto)}</span>
+                            )}
+                            <span style={{ fontSize: 12, fontWeight: 700, color: conf ? 'var(--owe)' : 'var(--muted)', whiteSpace: 'nowrap' }}>
+                              {conf ? 'por confirmar' : sig ? `próx. ${shortDate(sig)}` : 'terminado'}
+                            </span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         ) : (
           <EmptyState

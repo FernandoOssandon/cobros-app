@@ -9,7 +9,7 @@ import { sumarDias } from './lib/recurrence';
  * el orden de registro decide si un cuadre va antes o después de un depósito.
  */
 let ultimaMarca = 0;
-const marca = () => {
+export const marca = () => {
   ultimaMarca = Math.max(Date.now(), ultimaMarca + 1);
   return new Date(ultimaMarca).toISOString();
 };

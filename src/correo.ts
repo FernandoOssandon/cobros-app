@@ -1,6 +1,7 @@
 // Cobros detectados en el correo: pide los correos nuevos al script de Gmail, los interpreta
 // y los deja "por confirmar". Nada se anota solo: tú decides si es un gasto, si ya estaba o si se descarta.
 import { db, guardarAjustes, guardarPago, now, guardarGasto, type ConfigCorreo, type Detectado } from './db';
+import { guardarIngreso, tipoPorNombre } from './ingresos';
 import { buscarParecido, interpretarCorreo, reconocerMedio, reconocerPersona, sugerirCategoria, type CorreoCrudo } from './lib/correo';
 import { sumarDias } from './lib/recurrence';
 import { todayISO } from './lib/format';
@@ -140,6 +141,23 @@ export async function anotarPagoDetectado(id: string, personaId?: string, monto?
   const movId = await guardarPago(pid, monto ?? d.monto, 'Transferencia', d.fecha, undefined, d.tipo === 'recibido' ? 'pago' : 'abono');
   await db.detectados.update(id, { estado: 'anotado', personaId: pid, movimientoId: movId });
   return movId;
+}
+
+/** Transferencia recibida → ingreso (ej. el sueldo o un pago que no es de una persona de la lista). */
+export async function anotarIngresoDetectado(id: string, cambios: { descripcion?: string; cuentaId?: string; tipo?: 'sueldo' | 'otro' } = {}): Promise<string | undefined> {
+  const d = await db.detectados.get(id);
+  if (!d || d.estado !== 'pendiente' || d.tipo !== 'recibido') return undefined;
+  const descripcion = cambios.descripcion ?? `Transferencia de ${d.comercio}`;
+  const ingresoId = await guardarIngreso({
+    descripcion,
+    tipo: cambios.tipo ?? tipoPorNombre(descripcion),
+    monto: d.monto,
+    fecha: d.fecha,
+    cuentaId: cambios.cuentaId,
+    detectadoId: d.id,
+  });
+  await db.detectados.update(id, { estado: 'anotado', ingresoId });
+  return ingresoId;
 }
 
 /** "Ya lo tenía": lo vincula al gasto que ya estaba anotado, sin crear otro. */
