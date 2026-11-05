@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { MEDIO_COLORS, guardarMedio, quitarMedio, type TipoMedio } from '../db';
+import { MEDIO_COLORS, db, guardarMedio, quitarMedio, type Medio, type TipoMedio } from '../db';
 import { useDatos } from '../hooks';
-import { fmt, todayISO } from '../lib/format';
+import { dg, diaLabel, fmt, show, todayISO } from '../lib/format';
+import { usoTarjeta } from '../lib/tarjetas';
+import { borrarPagoTarjeta, cuadrarTarjeta } from '../tarjetas';
+import { CupoTarjeta, PagarTarjetaSheet } from '../ui/tarjeta';
 import { mesDe } from '../lib/resumen';
 import { useNav } from '../nav';
 import { Icon } from '../ui/icons';
@@ -14,6 +17,7 @@ import { useToast } from '../ui/toast';
 export function Medios() {
   const d = useDatos();
   const { push, back, backLabel } = useNav();
+  const [pagar, setPagar] = useState<Medio | null>(null);
   if (!d) return <div className="scroll" />;
   const mes = todayISO().slice(0, 7);
   const activos = d.medios.filter((m) => !m.archivado);
@@ -30,7 +34,8 @@ export function Medios() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {activos.map((m) => {
           const total = d.imputados.filter((g) => g.medioId === m.id && g.pagador === 'yo' && mesDe(g.fecha) === mes).reduce((s, g) => s + g.total, 0);
-          return (
+          const cuenta = m.cuentaId ? d.cuentas.find((c) => c.id === m.cuentaId)?.nombre : undefined;
+          const fila = (
             <button key={m.id} className="card" style={{ display: 'grid', gridTemplateColumns: '48px minmax(0,1fr) auto', gap: 12, alignItems: 'center' }} onClick={() => push(`/medio/${m.id}`)}>
               <MedioThumb medio={m} w={48} h={32} r={7} />
               <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
@@ -39,6 +44,7 @@ export function Medios() {
                   {tipoMedioLabel(m.tipo)}
                   {m.tipo === 'credito' && m.diaFacturacion ? ` · factura el ${m.diaFacturacion}` : ''}
                   {m.ultimos4 ? ` · •••• ${m.ultimos4}` : ''}
+                  {cuenta && m.tipo !== 'credito' ? ` · sale de ${cuenta}` : ''}
                 </span>
               </span>
               <span className="r-right" style={{ gap: 0 }}>
@@ -47,8 +53,26 @@ export function Medios() {
               </span>
             </button>
           );
+          if (m.tipo !== 'credito') return fila;
+          const u = usoTarjeta(m, d.gastos, d.pagosTarjeta);
+          return (
+            <div key={m.id} className="card" style={{ padding: 0, gap: 0, overflow: 'hidden' }}>
+              <div style={{ width: '100%' }}>{fila}</div>
+              {(u.cupo || u.cuadrado || u.usado > 0) && (
+                <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 10, padding: '0 16px 14px' }}>
+                  <CupoTarjeta m={m} d={d} compacto />
+                  <span style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <button className="pill h36" onClick={() => setPagar(m)} aria-label={`Pagar ${m.nombre}`}>
+                      Pagar tarjeta
+                    </button>
+                  </span>
+                </div>
+              )}
+            </div>
+          );
         })}
       </div>
+      {pagar && <PagarTarjetaSheet m={pagar} d={d} onClose={() => setPagar(null)} />}
     </div>
   );
 }
@@ -66,6 +90,9 @@ export function MedioForm() {
   const [billOn, setBillOn] = useState(true);
   const [bill, setBill] = useState(25);
   const [ultimos4, setUltimos4] = useState('');
+  const [cuentaId, setCuentaId] = useState<string | null>(null);
+  const [cupo, setCupo] = useState('');
+  const [usado, setUsado] = useState('');
   const [quitar, setQuitar] = useState(false);
   const loaded = useRef(false);
   const editing = id ? d?.medio.get(id) : undefined;
@@ -79,19 +106,25 @@ export function MedioForm() {
     setBillOn(!!editing.diaFacturacion);
     setBill(editing.diaFacturacion ?? 25);
     setUltimos4(editing.ultimos4 ?? '');
+    setCuentaId(editing.cuentaId ?? null);
+    setCupo(editing.cupo ? String(editing.cupo) : '');
   }, [editing]);
 
   const guardar = async () => {
     if (!nombre.trim()) return toast('Ponle nombre');
     const conTarjeta = tipo === 'credito' || tipo === 'debito';
-    await guardarMedio({
+    const mid = await guardarMedio({
       id,
       nombre: nombre.trim(),
       tipo,
       color,
       diaFacturacion: tipo === 'credito' && billOn ? bill : undefined,
       ultimos4: conTarjeta && ultimos4.length === 4 ? ultimos4 : undefined,
+      cuentaId: cuentaId ?? undefined,
+      cupo: tipo === 'credito' && dg(cupo) ? dg(cupo) : undefined,
     });
+    // "Lo usado hoy" cuadra la tarjeta con el banco (solo si se escribió algo).
+    if (tipo === 'credito' && usado !== '') await cuadrarTarjeta(mid, dg(usado));
     toast(id ? 'Medio actualizado' : `${nombre.trim()} agregada`);
     back('/medios');
   };
@@ -133,6 +166,51 @@ export function MedioForm() {
             <div className="t-meta" style={{ padding: '6px 4px 0' }}>Para reconocer la tarjeta en los correos del banco.</div>
           </div>
         )}
+        {d && (
+          <div>
+            <div className="t-label">{tipo === 'credito' ? 'Se paga desde' : tipo === 'efectivo' ? 'Es la plata de' : 'Sale de la cuenta'}</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {d.cuentas
+                .filter((c) => !c.archivada && c.tipo !== 'dap')
+                .map((c) => (
+                  <button key={c.id} className="pill h38" aria-pressed={cuentaId === c.id} onClick={() => setCuentaId(c.id)}>
+                    {c.nombre}
+                  </button>
+                ))}
+              <button className="pill h38" aria-pressed={cuentaId === null} onClick={() => setCuentaId(null)}>
+                Ninguna
+              </button>
+            </div>
+            <div className="t-meta" style={{ padding: '6px 4px 0', lineHeight: 1.35 }}>
+              {tipo === 'credito'
+                ? 'La cuenta que aparece primero al pagar la tarjeta.'
+                : 'Lo que pagas con este medio baja el saldo estimado de esa cuenta en Mi plata.'}
+            </div>
+          </div>
+        )}
+        {tipo === 'credito' && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span className="t-label" style={{ padding: '0 4px' }}>Cupo</span>
+              <input className="input-big" style={{ fontSize: 18 }} value={cupo ? `$${show(cupo)}` : ''} onChange={(e) => setCupo(e.target.value.replace(/\D/g, '').slice(0, 10))} placeholder="$0" inputMode="numeric" aria-label="Cupo" />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span className="t-label" style={{ padding: '0 4px' }}>Usado hoy</span>
+              <input
+                className="input-big"
+                style={{ fontSize: 18 }}
+                value={usado !== '' ? `$${show(usado)}` : ''}
+                onChange={(e) => setUsado(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                placeholder={editing ? `$${show(String(usoTarjeta(editing, d?.gastos ?? [], d?.pagosTarjeta ?? []).usado))}` : '$0'}
+                inputMode="numeric"
+                aria-label="Usado hoy"
+              />
+            </label>
+            <div className="t-meta" style={{ gridColumn: '1 / -1', padding: '0 4px', lineHeight: 1.35 }}>
+              "Usado hoy" es el cupo utilizado que muestra tu banco. Desde ahí la app suma tus compras y resta los pagos.
+            </div>
+          </div>
+        )}
         <div>
           <div className="t-label">Color</div>
           <ColorPicker colors={MEDIO_COLORS} value={color} onChange={setColor} />
@@ -160,6 +238,38 @@ export function MedioForm() {
                 </span>
               </div>
             )}
+          </div>
+        )}
+        {editing?.tipo === 'credito' && d && d.pagosTarjeta.some((p) => p.medioId === editing.id) && (
+          <div>
+            <div className="t-label">Pagos anotados (toca para quitar)</div>
+            <div className="list">
+              <div className="inner">
+                {d.pagosTarjeta
+                  .filter((p) => p.medioId === editing.id)
+                  .slice(0, 12)
+                  .map((p) => (
+                    <button
+                      key={p.id}
+                      className="mov-row"
+                      style={{ padding: '12px 14px' }}
+                      onClick={async () => {
+                        const copia = await borrarPagoTarjeta(p.id);
+                        toast('Pago quitado', copia && { label: 'Deshacer', run: () => void db.pagosTarjeta.put(copia) });
+                      }}
+                    >
+                      <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                        <span style={{ fontSize: 16, fontWeight: 700 }}>Pago</span>
+                        <span className="t-meta">
+                          {diaLabel(p.fecha)}
+                          {p.cuentaId ? ` · desde ${d.cuentas.find((c) => c.id === p.cuentaId)?.nombre ?? ''}` : ''}
+                        </span>
+                      </span>
+                      <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--pos)' }}>{fmt(p.monto)}</span>
+                    </button>
+                  ))}
+              </div>
+            </div>
           </div>
         )}
         {id && (

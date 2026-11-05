@@ -35,9 +35,9 @@ export function CuentaDetalle() {
     );
   }
   const hoy = todayISO();
-  const r = resumenCuenta(c, d.movAhorro, hoy);
-  const filas = movimientosCuenta(c, d.movAhorro, hoy);
-  const serie = historialCuenta(c, d.movAhorro, hoy);
+  const r = resumenCuenta(c, d.movCuentas, hoy);
+  const filas = movimientosCuenta(c, d.movCuentas, hoy);
+  const serie = historialCuenta(c, d.movCuentas, hoy);
   const conTasa = !!c.tasa && (c.tipo === 'remunerada' || c.tipo === 'inversion');
 
   // Gráfico (mismo trazado que el prototipo: 318×120, margen de 6 px).
@@ -150,6 +150,15 @@ export function CuentaDetalle() {
                   </span>
                 </>
               );
+              if (f.origen) {
+                const o = f.origen;
+                const ir = o.tipo === 'gasto' ? `/gasto/${o.id}` : o.tipo === 'pago' ? `/persona/${o.personaId}` : '/medios';
+                return (
+                  <button key={`${o.tipo}:${o.id}`} className="mov-row" onClick={() => push(ir)}>
+                    {contenido}
+                  </button>
+                );
+              }
               return f.id ? (
                 <button key={f.id} className="mov-row" onClick={() => setBorrarMov(f.id!)}>
                   {contenido}

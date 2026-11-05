@@ -165,7 +165,7 @@ export interface Patrimonio {
 }
 
 export function patrimonio(
-  d: { cuentas: Cuenta[]; movAhorro: MovAhorro[]; personas: Persona[]; movimientos: Movimiento[]; gastos: Gasto[]; medios: Medio[] },
+  d: { cuentas: Cuenta[]; movAhorro: MovAhorro[]; personas: Persona[]; movimientos: Movimiento[]; gastos: Gasto[]; medios: Medio[]; usadoTarjetas?: Map<string, number> },
   hoy = todayISO(),
 ): Patrimonio {
   const cuentas = d.cuentas.filter((c) => !c.archivada).map((c) => resumenCuenta(c, d.movAhorro, hoy));
@@ -184,6 +184,12 @@ export function patrimonio(
   const tarjetasCredito = d.medios.filter((m) => m.tipo === 'credito' && !m.archivado);
   let tarjetas = 0;
   for (const m of tarjetasCredito) {
+    // Si la tarjeta está cuadrada con el banco (o tiene pagos), lo que debes es lo usado.
+    const usado = d.usadoTarjetas?.get(m.id);
+    if (usado !== undefined) {
+      tarjetas += usado;
+      continue;
+    }
     const desde = m.diaFacturacion ? periodoAbierto(m.diaFacturacion, hoy).desde : `${hoy.slice(0, 7)}-01`;
     tarjetas += d.gastos.filter((g) => g.medioId === m.id && g.pagador === 'yo' && g.fecha >= desde && g.fecha <= hoy).reduce((s, g) => s + g.total, 0);
   }
@@ -208,6 +214,8 @@ export interface FilaMovimiento {
   /** Con signo: + entra, − sale. */
   monto: number;
   tipo: 'inicial' | 'deposito' | 'retiro' | 'ajuste' | 'interes';
+  /** Viene de un gasto, un pago o el pago de una tarjeta (no se borra desde la cuenta). */
+  origen?: MovAhorro['origen'];
 }
 
 /**
@@ -221,8 +229,9 @@ export function movimientosCuenta(c: Cuenta, todos: MovAhorro[], hoy = todayISO(
   const ord = ordenar(todos.filter((m) => m.cuentaId === c.id && m.fecha <= hoy));
   const filas: FilaMovimiento[] = [];
   ord.forEach((m, i) => {
-    if (m.tipo === 'deposito') filas.push({ id: m.id, fecha: m.fecha, label: m.nota || 'Depósito', monto: m.monto, tipo: 'deposito' });
-    else if (m.tipo === 'retiro') filas.push({ id: m.id, fecha: m.fecha, label: m.nota || 'Retiro', monto: -m.monto, tipo: 'retiro' });
+    const id = m.origen ? undefined : m.id;
+    if (m.tipo === 'deposito') filas.push({ id, fecha: m.fecha, label: m.nota || 'Depósito', monto: m.monto, tipo: 'deposito', origen: m.origen });
+    else if (m.tipo === 'retiro') filas.push({ id, fecha: m.fecha, label: m.nota || 'Retiro', monto: -m.monto, tipo: 'retiro', origen: m.origen });
     else if (i === 0) filas.push({ id: m.id, fecha: m.fecha, label: 'Saldo inicial', monto: m.monto, tipo: 'inicial' });
     else {
       const antes = saldoExacto(c, ord.slice(0, i), m.fecha);
@@ -249,7 +258,8 @@ export function movimientosCuenta(c: Cuenta, todos: MovAhorro[], hoy = todayISO(
       mes = siguiente;
     }
   }
-  return filas.sort((a, b) => b.fecha.localeCompare(a.fecha));
+  // Del más nuevo al más antiguo; dentro del mismo día, el último registrado primero.
+  return filas.reverse().sort((a, b) => b.fecha.localeCompare(a.fecha));
 }
 
 export interface PuntoHistorial {

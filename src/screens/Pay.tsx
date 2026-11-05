@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
+import { ID_EFECTIVO } from '../ahorros';
 import { db, guardarPago } from '../db';
 import { useDatos } from '../hooks';
 import { dg, fmt, pressKey, shortDate, show, todayISO } from '../lib/format';
@@ -19,6 +20,8 @@ export default function Pay() {
   const [pay, setPay] = useState('');
   const [via, setVia] = useState('Transferencia');
   const [fecha, setFecha] = useState(todayISO());
+  /** Cuenta de Mi plata donde llegó (o de donde salió) la transferencia. undefined = sin elegir todavía. */
+  const [cuenta, setCuenta] = useState<string | null | undefined>(undefined);
   const loaded = useRef(false);
   const v = d?.persona.get(id);
   const editing = movId ? v?.movs.find((m) => m.id === movId) : undefined;
@@ -29,6 +32,7 @@ export default function Pay() {
     setPay(String(editing.monto));
     setVia(editing.detalle);
     setFecha(editing.fecha);
+    setCuenta(editing.cuentaId ?? null);
   }, [editing]);
   const det = detId ? d?.detectados.find((x) => x.id === detId) : undefined;
   useEffect(() => {
@@ -48,7 +52,15 @@ export default function Pay() {
     return () => window.removeEventListener('keydown', k);
   }, []);
 
-  if (!v) return <div className="screen" />;
+  if (!v || !d) return <div className="screen" />;
+  const cuentas = d.cuentas.filter((c) => !c.archivada && c.tipo !== 'dap' && c.tipo !== 'efectivo');
+  // Por defecto: la del detectado (su medio), la última usada en un pago o la primera cuenta vista.
+  const medioDet = det?.medioId ? d.medio.get(det.medioId) : undefined;
+  const ultima = d.movimientos.filter((m) => m.cuentaId && (m.tipo === 'pago' || m.tipo === 'abono')).sort((a, b) => b.creado.localeCompare(a.creado))[0]?.cuentaId;
+  const porDefecto = [medioDet?.cuentaId, ultima, cuentas.find((c) => c.tipo === 'vista')?.id].find((x) => x && cuentas.some((c) => c.id === x)) ?? null;
+  const cuentaElegida = cuenta === undefined ? porDefecto : cuenta;
+  const efectivo = d.cuentas.find((c) => c.id === ID_EFECTIVO && !c.archivada)?.id;
+  const cuentaFinal = via === 'Transferencia' ? cuentaElegida ?? undefined : efectivo;
 
   // Sentido: si la persona te debe (o están a mano) registras lo que te pagó; si tú le debes, lo que le pagaste.
   const dir: 'pago' | 'abono' = editing
@@ -66,7 +78,7 @@ export default function Pay() {
       toast('Ingresa el monto');
       return;
     }
-    const mid = await guardarPago(id, pa, via, fecha, movId, dir);
+    const mid = await guardarPago(id, pa, via, fecha, movId, dir, cuentaFinal);
     if (det && !movId) await db.detectados.update(det.id, { estado: 'anotado', personaId: id, movimientoId: mid });
     toast(movId ? 'Pago actualizado' : `Pago de ${fmt(pa)} registrado`);
     cerrar();
@@ -105,6 +117,21 @@ export default function Pay() {
           ))}
           <DateInputPill value={fecha} label={fecha === todayISO() ? 'Hoy' : shortDate(fecha)} onChange={setFecha} />
         </div>
+        {via === 'Transferencia' && cuentas.length > 0 && (
+          <div style={{ marginTop: 14 }}>
+            <div className="t-label">{dir === 'pago' ? '¿A qué cuenta llegó?' : '¿De qué cuenta salió?'}</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {cuentas.map((c) => (
+                <button key={c.id} className="pill h36" aria-pressed={cuentaElegida === c.id} onClick={() => setCuenta(c.id)}>
+                  {c.nombre}
+                </button>
+              ))}
+              <button className="pill h36" aria-pressed={cuentaElegida === null} onClick={() => setCuenta(null)}>
+                Otra
+              </button>
+            </div>
+          </div>
+        )}
       </div>
       <div style={{ flex: 'none', padding: '6px 16px' }}>
         <Keypad h={48} onKey={(k) => setPay((p) => pressKey(p, k))} />

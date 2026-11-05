@@ -45,6 +45,16 @@ export interface Medio {
   ultimos4?: string;
   /** Nombre corto para la píldora de período (ej. "Falabella"). Si falta, se deriva del nombre. */
   nombreCorto?: string;
+  /**
+   * Cuenta de Mi plata ligada al medio:
+   * - débito, transferencia o efectivo: la cuenta de donde sale la plata (los gastos bajan su saldo);
+   * - crédito: la cuenta desde la que se suele pagar la tarjeta.
+   */
+  cuentaId?: string;
+  /** Solo crédito: cupo total de la tarjeta. */
+  cupo?: number;
+  /** Solo crédito: lo usado según el banco en una fecha. Desde ahí se suman compras y se restan pagos. */
+  usoCuadrado?: { monto: number; fecha: string; creado: string };
   archivado: boolean;
   orden: number;
   creado: string;
@@ -124,6 +134,8 @@ export interface Movimiento {
   fecha: string; // YYYY-MM-DD
   gastoId?: string;
   recurrenteId?: string;
+  /** Pago o abono por transferencia: la cuenta de Mi plata donde llegó o de donde salió. */
+  cuentaId?: string;
   creado: string;
 }
 
@@ -266,6 +278,21 @@ export interface MovAhorro {
   nota?: string;
   /** Depósito que viene de un ingreso (sueldo, etc.): se borra junto con él. */
   ingresoId?: string;
+  /**
+   * Solo en memoria (no se guarda): el movimiento viene de otra parte de la app y se calcula al leer.
+   * Un gasto con débito, un pago de una persona por transferencia o el pago de una tarjeta.
+   */
+  origen?: { tipo: 'gasto' | 'pago' | 'pagoTarjeta'; id: string; personaId?: string };
+  creado: string;
+}
+
+/** Pago de una tarjeta de crédito (baja lo usado de la tarjeta y, si tiene cuenta, sale de esa cuenta). */
+export interface PagoTarjeta {
+  id: string;
+  medioId: string;
+  cuentaId?: string;
+  monto: number;
+  fecha: string;
   creado: string;
 }
 
@@ -443,6 +470,7 @@ type DB = Dexie & {
   ingresos: EntityTable<Ingreso, 'id'>;
   presupuestos: EntityTable<Presupuesto, 'id'>;
   metas: EntityTable<Meta, 'id'>;
+  pagosTarjeta: EntityTable<PagoTarjeta, 'id'>;
 };
 
 // El nombre de la base viene de cuando la app se llamaba Me Debes. NO cambiarlo: los datos guardados están ahí.
@@ -498,6 +526,9 @@ db.version(6).stores({
 
 // v7 (app 2.5): metas de ahorro. Solo agrega una tabla.
 db.version(7).stores({ metas: 'id, cuentaId' });
+
+// v8 (app 2.6): pagos de tarjetas de crédito. Solo agrega una tabla.
+db.version(8).stores({ pagosTarjeta: 'id, medioId, cuentaId, fecha' });
 
 /** Migración v3 → v4. Exportada para poder probarla. */
 export async function migrarV3aV4(tx: Transaction) {
@@ -722,13 +753,15 @@ export async function guardarPago(
   fecha: string,
   existingId?: string,
   tipo: 'pago' | 'abono' = 'pago',
+  cuentaId?: string,
 ) {
+  // Solo una transferencia mueve una cuenta (el efectivo va a la billetera si está ligada).
   if (existingId) {
-    await db.movimientos.update(existingId, { monto, detalle: medio, fecha });
+    await db.movimientos.update(existingId, { monto, detalle: medio, fecha, cuentaId });
     return existingId;
   }
   const id = uid();
-  await db.movimientos.add({ id, personaId, tipo, detalle: medio, monto, fecha, creado: now() });
+  await db.movimientos.add({ id, personaId, tipo, detalle: medio, monto, fecha, cuentaId, creado: now() });
   return id;
 }
 
@@ -834,10 +867,10 @@ export const guardarAjustes = async (patch: Partial<Omit<Ajustes, 'id'>>) => {
 export async function borrarTodo() {
   await db.transaction(
     'rw',
-    [db.personas, db.gastos, db.movimientos, db.cobros, db.medios, db.grupos, db.recurrentes, db.pendientes, db.fotos, db.cuentas, db.movAhorro, db.detectados, db.ingresos, db.presupuestos, db.metas],
+    [db.personas, db.gastos, db.movimientos, db.cobros, db.medios, db.grupos, db.recurrentes, db.pendientes, db.fotos, db.cuentas, db.movAhorro, db.detectados, db.ingresos, db.presupuestos, db.metas, db.pagosTarjeta],
     async () => {
       await Promise.all(
-        [db.personas, db.gastos, db.movimientos, db.cobros, db.medios, db.grupos, db.recurrentes, db.pendientes, db.fotos, db.cuentas, db.movAhorro, db.detectados, db.ingresos, db.presupuestos, db.metas].map((t) => t.clear()),
+        [db.personas, db.gastos, db.movimientos, db.cobros, db.medios, db.grupos, db.recurrentes, db.pendientes, db.fotos, db.cuentas, db.movAhorro, db.detectados, db.ingresos, db.presupuestos, db.metas, db.pagosTarjeta].map((t) => t.clear()),
       );
       await db.medios.put({ ...MEDIO_EFECTIVO, creado: now() });
     },

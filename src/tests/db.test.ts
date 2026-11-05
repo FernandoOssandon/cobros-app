@@ -190,7 +190,7 @@ describe('base de datos', () => {
     await db.detectados.add({ id: 'gm1', tipo: 'compra', monto: 4990, comercio: 'Uber', fecha: '2026-10-02', remitente: 'x', asunto: 'y', estado: 'pendiente', creado: '' });
     await guardarAjustes({ correo: { url: 'https://script.google.com/x', clave: 'secreta' } });
     const r = JSON.parse(JSON.stringify(await construirRespaldo()));
-    expect(r.version).toBe(6);
+    expect(r.version).toBe(7);
     expect(r.cuentas).toHaveLength(1);
     expect(r.movAhorro).toHaveLength(1);
     expect(r.detectados).toHaveLength(1);
@@ -206,6 +206,6 @@ describe('base de datos', () => {
 
   it('un respaldo v3 (app 2.0) se importa sin Mi plata', async () => {
     const r = validarRespaldo({ app: 'me-debes', version: 3, exportado: '', personas: [], gastos: [], movimientos: [], cobros: [] });
-    expect(r).toMatchObject({ version: 6, cuentas: [], movAhorro: [], detectados: [], ingresos: [], presupuestos: [], metas: [] });
+    expect(r).toMatchObject({ version: 7, cuentas: [], movAhorro: [], detectados: [], ingresos: [], presupuestos: [], metas: [], pagosTarjeta: [] });
   });
 });

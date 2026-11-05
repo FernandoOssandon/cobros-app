@@ -17,6 +17,7 @@ import { anotarAtrasados, mesNombre, repartoRecurrente } from '../recurrentes';
 import { useRespaldar } from '../useRespaldo';
 import { Icon } from '../ui/icons';
 import { PeriodoBar } from '../ui/periodo';
+import { CupoTarjeta, PagarTarjetaSheet } from '../ui/tarjeta';
 import { BarraPresupuesto, IconoPresupuesto, lineasPresupuesto, nombrePresupuesto } from '../ui/presupuesto';
 import { GastoRow, MedioCard, tipoMedioLabel } from '../ui/rows';
 import { PorConfirmarSheet } from '../ui/sheets';
@@ -405,6 +406,7 @@ function IngresosYPresupuestos({ d, mes, esActual, gastoReal }: { d: Datos; mes:
 /** Resumen de un período de tarjeta: lo que llegará en su estado de cuenta. */
 function PeriodoTarjetaVista({ p, d }: { p: PeriodoTarjeta; d: Datos }) {
   const { push, tab } = useNav();
+  const [pagar, setPagar] = useState(false);
   const hoy = todayISO();
   const m = d.medio.get(p.medioId);
   const r = resumenTarjeta(p, d.imputados, d.movimientos, hoy);
@@ -420,6 +422,11 @@ function PeriodoTarjetaVista({ p, d }: { p: PeriodoTarjeta; d: Datos }) {
         <p className="t-body-muted">
           No anotaste compras con {m?.nombre ?? 'esta tarjeta'} entre el {shortDate(p.desde)} y el {shortDate(p.hasta)}.
         </p>
+        {m && (m.cupo || m.usoCuadrado) && (
+          <div className="card" style={{ marginTop: 20 }}>
+            <CupoTarjeta m={m} d={d} />
+          </div>
+        )}
       </div>
     );
   const seg = (v: number, bg: string) => <span style={{ display: v > 0 ? 'block' : 'none', flexGrow: v, background: bg }} />;
@@ -434,6 +441,11 @@ function PeriodoTarjetaVista({ p, d }: { p: PeriodoTarjeta; d: Datos }) {
           </span>
         </div>
       </div>
+      {m && (m.cupo || m.usoCuadrado) && (
+        <div style={{ padding: '16px 4px 0' }}>
+          <CupoTarjeta m={m} d={d} />
+        </div>
+      )}
       <div style={{ marginTop: 20, borderRadius: 24, background: 'var(--surface)', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -480,10 +492,16 @@ function PeriodoTarjetaVista({ p, d }: { p: PeriodoTarjeta; d: Datos }) {
         <button className="btn-o" onClick={() => tab('/gastos')}>
           Ver en Gastos
         </button>
+        {m && (
+          <button className="btn-o" onClick={() => setPagar(true)}>
+            Pagar tarjeta
+          </button>
+        )}
         <button className="btn-o" onClick={() => push('/medios')}>
           Medios de pago
         </button>
       </div>
+      {pagar && m && <PagarTarjetaSheet m={m} d={d} onClose={() => setPagar(false)} />}
     </>
   );
 }

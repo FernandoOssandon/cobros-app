@@ -2,6 +2,8 @@
 
 > Antes se llamaba **Me Debes**. Cambió de nombre en la 2.3 porque ya no es solo "quién me debe": son tus gastos, lo que te deben y dónde está tu plata. Por dentro se mantienen algunos nombres antiguos a propósito: la base de datos (`me-debes`), el formato de respaldo (`app: 'me-debes'`) y la carpeta del proyecto. Cambiarlos haría perder los datos guardados o dejaría de leer los respaldos.
 
+**Versión 2.6**: cada medio de pago se liga a su cuenta (el débito baja el saldo), pagos por transferencia a una cuenta, cupo usado y disponible de las tarjetas de crédito, y pagar la tarjeta desde una cuenta.
+
 **Versión 2.5**: compras en cuotas, tendencias mes a mes, metas de ahorro, montos en UF/dólar/euro, planillas de ingresos y presupuestos, y pruebas automáticas en GitHub antes de publicar.
 
 **Versión 2.4**: presupuestos (semanal y por categoría), ingresos (sueldo fijo y sueltos, con "te quedan" del mes) y períodos de facturación por tarjeta en Resumen y Gastos. Detalle en [CHANGELOG.md](CHANGELOG.md).
@@ -101,8 +103,9 @@ src/
   ingresos.ts        Ingresos (y su depósito en la cuenta donde llegan) · presupuestos.ts: guardar y borrar
   periodo.ts         Período elegido (mes o tarjeta), compartido entre Resumen y Gastos
   metas.ts           Metas de ahorro y aportes · indicadores.ts: UF, dólar y euro desde mindicador.cl
+  tarjetas.ts        Pagos y cuadre de tarjetas de crédito
   hooks.ts           Consultas en vivo y tema claro/oscuro
-  lib/               Lógica pura: format, split, balance, resumen, periodos, presupuestos, ingresosMes, cuotas, monedas, metas, tendencias, recurrence, search, messages, csv, contacts
+  lib/               Lógica pura: format, split, balance, resumen, periodos, presupuestos, ingresosMes, cuotas, monedas, metas, tendencias, flujos (lo que mueve cada cuenta), tarjetas (cupo y por pagar), recurrence, search, messages, csv, contacts
   nav.ts             Pestañas y pila de pantallas ("‹ {pantalla anterior}")
   screens/           Resumen, Gastos, NuevoGasto, GastoDetalle, Personas, Person, Pay, Collect, Recurrentes,
                      NuevoRecurrente, Grupos, Categorias, Medios, Onboarding, Ajustes, EditPerson, Archivadas,

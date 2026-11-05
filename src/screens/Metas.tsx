@@ -84,7 +84,7 @@ export function MetaDetalle() {
         <div className="t-note" style={{ padding: '40px 4px' }}>Esta meta ya no existe.</div>
       </div>
     );
-  const a = avanceMeta(m, d.cuentas, d.movAhorro, aj.indicadores);
+  const a = avanceMeta(m, d.cuentas, d.movCuentas, aj.indicadores);
   const l = lineaMeta(a);
   const aporte = quitar ? m.aportes.find((x) => x.id === quitar) : undefined;
   return (
@@ -256,7 +256,7 @@ export function MetaForm() {
       ? avanceMeta(
           { id: id ?? 'nueva', nombre, monto, fecha: conFecha ? fecha : undefined, cuentaId: cuenta ?? undefined, aportes: editing?.aportes ?? [], color: '', archivada: false, orden: 0, creado: '' },
           d.cuentas,
-          d.movAhorro,
+          d.movCuentas,
           aj.indicadores,
           hoy,
         )

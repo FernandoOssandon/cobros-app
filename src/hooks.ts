@@ -3,11 +3,12 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect } from 'react';
 import {
   AJUSTES_DEFAULT, db,
-  type Ajustes, type Categoria, type Cobro, type Cuenta, type Detectado, type Gasto, type Grupo, type Ingreso, type Medio, type Meta, type MovAhorro, type Movimiento,
+  type Ajustes, type Categoria, type Cobro, type Cuenta, type Detectado, type Gasto, type Grupo, type Ingreso, type Medio, type Meta, type PagoTarjeta, type MovAhorro, type Movimiento,
   type Pendiente, type Persona, type Presupuesto, type Recurrente,
 } from './db';
 import { byDate, cargado, estadosCargos, estadosDeudas, pctPagado, saldo, type EstadoCargo } from './lib/balance';
 import { imputar, type GastoImputado } from './lib/cuotas';
+import { flujosCuentas } from './lib/flujos';
 import { firstName, initials } from './lib/format';
 import { avatarColor } from './ui/kit';
 
@@ -83,15 +84,21 @@ export interface Datos {
   presupuestos: Presupuesto[];
   /** Metas de ahorro activas, en orden. */
   metas: Meta[];
+  pagosTarjeta: PagoTarjeta[];
+  /**
+   * Movimientos de las cuentas de Mi plata más los que vienen de otras partes (gastos con débito,
+   * pagos por transferencia, pagos de tarjeta). Úsalo para saldos; `movAhorro` es solo lo guardado.
+   */
+  movCuentas: MovAhorro[];
 }
 
 /** Todos los datos de la app en una sola consulta en vivo (son pocos). `undefined` mientras carga. */
 export function useDatos(): Datos | undefined {
   return useLiveQuery(async () => {
-    const [ps, gs, ms, cs, md, cat, gr, rec, pen, fotos, cuentas, movAhorro, detectados, ingresos, presupuestos, metas] = await Promise.all([
+    const [ps, gs, ms, cs, md, cat, gr, rec, pen, fotos, cuentas, movAhorro, detectados, ingresos, presupuestos, metas, pagosTarjeta] = await Promise.all([
       db.personas.toArray(), db.gastos.toArray(), db.movimientos.toArray(), db.cobros.toArray(), db.medios.toArray(),
       db.categorias.toArray(), db.grupos.toArray(), db.recurrentes.toArray(), db.pendientes.toArray(), db.fotos.orderBy('gastoId').uniqueKeys(),
-      db.cuentas.toArray(), db.movAhorro.toArray(), db.detectados.toArray(), db.ingresos.toArray(), db.presupuestos.toArray(), db.metas.toArray(),
+      db.cuentas.toArray(), db.movAhorro.toArray(), db.detectados.toArray(), db.ingresos.toArray(), db.presupuestos.toArray(), db.metas.toArray(), db.pagosTarjeta.toArray(),
     ]);
     const personas = buildViews(ps, ms, cs);
     const estado = new Map<string, { estado: EstadoCargo; pendiente: number }>();
@@ -123,6 +130,8 @@ export function useDatos(): Datos | undefined {
       ingresos: ingresos.sort((a, b) => b.fecha.localeCompare(a.fecha) || b.creado.localeCompare(a.creado)),
       presupuestos: presupuestos.filter((p) => !p.archivado).sort((a, b) => a.orden - b.orden),
       metas: metas.filter((m) => !m.archivada).sort((a, b) => a.orden - b.orden),
+      pagosTarjeta: pagosTarjeta.sort((a, b) => b.fecha.localeCompare(a.fecha) || b.creado.localeCompare(a.creado)),
+      movCuentas: flujosCuentas({ cuentas, movAhorro, gastos: gs, medios: md, movimientos: ms, pagosTarjeta, personas: ps }),
     } satisfies Datos;
   });
 }

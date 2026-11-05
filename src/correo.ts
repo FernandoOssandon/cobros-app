@@ -138,7 +138,9 @@ export async function anotarPagoDetectado(id: string, personaId?: string, monto?
   const d = await db.detectados.get(id);
   const pid = personaId ?? d?.personaId;
   if (!d || d.estado !== 'pendiente' || !pid) return undefined;
-  const movId = await guardarPago(pid, monto ?? d.monto, 'Transferencia', d.fecha, undefined, d.tipo === 'recibido' ? 'pago' : 'abono');
+  // Si el correo trae la cuenta (por el medio reconocido), el pago entra o sale de esa cuenta.
+  const cuentaId = d.medioId ? (await db.medios.get(d.medioId))?.cuentaId : undefined;
+  const movId = await guardarPago(pid, monto ?? d.monto, 'Transferencia', d.fecha, undefined, d.tipo === 'recibido' ? 'pago' : 'abono', cuentaId);
   await db.detectados.update(id, { estado: 'anotado', personaId: pid, movimientoId: movId });
   return movId;
 }

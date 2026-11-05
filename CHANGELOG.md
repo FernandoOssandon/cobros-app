@@ -1,5 +1,14 @@
 # Cambios
 
+## 2.6.0 · 5 nov 2026 · cuentas que cuadran y cupos de tarjeta
+
+- **Medios ligados a su cuenta.** En cada medio de pago eliges de qué cuenta de Mi plata sale la plata (débito, transferencia, efectivo). Lo que pagas con ese medio baja el saldo estimado de la cuenta, y aparece en sus movimientos (tocándolo abre el gasto).
+- **Pagos por transferencia.** Al registrar que alguien te pagó (o que le pagaste) por transferencia, eliges la cuenta donde llegó o de donde salió. Las transferencias detectadas en el correo usan la cuenta de su medio.
+- **Cupo de las tarjetas de crédito:** cupo, lo usado y lo disponible, en Medios de pago y en el resumen del período de la tarjeta. "Usado hoy" cuadra la tarjeta con lo que dice el banco; desde ahí se suman las compras (las en cuotas bloquean todo el cupo) y se restan los pagos.
+- **Pagar la tarjeta:** anota cuánto pagaste y desde qué cuenta. Sugiere lo facturado en el último período (menos lo ya pagado) o todo lo usado. El pago sale de la cuenta y baja lo usado. En Mi plata, "Tarjetas por pagar" usa lo usado de cada tarjeta cuadrada.
+- Los movimientos de una cuenta del mismo día se muestran del último al primero.
+- **Datos:** la base pasa a v8 (tabla nueva `pagosTarjeta`) y el respaldo a v7 (acepta v2 a v6). Nada se pierde al actualizar; los medios quedan sin cuenta ligada hasta que la elijas.
+
 ## 2.5.0 · 5 nov 2026 · cuotas, tendencias, metas y monedas
 
 - **Compras en cuotas.** En Nuevo gasto, con una tarjeta de crédito, eliges en cuántas cuotas (hasta 48). Cada cuota cuenta en su mes: en el gasto real, en el período de facturación de la tarjeta, en los presupuestos y en Tendencias. Lo que otros te deben de la compra se reparte entre las cuotas. La lista muestra "cuota 2/3" y el detalle cuántas van. Las cuotas se toman sin interés: la primera cae en el mes de la compra.

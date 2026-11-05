@@ -1,6 +1,7 @@
 // Mi plata: patrimonio, cuentas de ahorro, depósitos a plazo y la hoja para depositar, retirar o cuadrar.
 import { avanceMeta } from '../lib/metas';
 import { TarjetaMeta } from './Metas';
+import { usadoTarjetas } from '../ui/tarjeta';
 import { useState } from 'react';
 import { asegurarEfectivo, borrarMovAhorro, cobrarDap, cuadrar, ID_EFECTIVO, moverPlata } from '../ahorros';
 import { db, type Cuenta } from '../db';
@@ -51,7 +52,7 @@ export default function MiPlata() {
   if (!d) return <div className="scroll" />;
 
   const hoy = todayISO();
-  const p = patrimonio({ cuentas: d.cuentas, movAhorro: d.movAhorro, personas: d.personas.map((v) => v.p), movimientos: d.movimientos, gastos: d.imputados, medios: d.medios }, hoy);
+  const p = patrimonio({ cuentas: d.cuentas, movAhorro: d.movCuentas, personas: d.personas.map((v) => v.p), movimientos: d.movimientos, gastos: d.imputados, medios: d.medios, usadoTarjetas: usadoTarjetas(d, hoy) }, hoy);
   const ahorro = p.cuentas.filter((r) => r.cuenta.tipo === 'remunerada' || r.cuenta.tipo === 'inversion');
   const daps = p.cuentas.filter((r) => r.cuenta.tipo === 'dap' && r.cuenta.dap?.estado === 'vigente');
   const vs = vistas(d);
@@ -180,7 +181,7 @@ export default function MiPlata() {
       {d.metas.length ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {d.metas.map((m) => (
-            <TarjetaMeta key={m.id} a={avanceMeta(m, d.cuentas, d.movAhorro, aj.indicadores, hoy)} onClick={() => push(`/meta/${m.id}`)} />
+            <TarjetaMeta key={m.id} a={avanceMeta(m, d.cuentas, d.movCuentas, aj.indicadores, hoy)} onClick={() => push(`/meta/${m.id}`)} />
           ))}
         </div>
       ) : (
@@ -322,7 +323,7 @@ export function MovSheet({ d, pedido, onClose }: { d: Datos; pedido: MovPedido; 
   const hoy = todayISO();
   const saldoDe = (id: string) => {
     const x = d.cuentas.find((y) => y.id === id);
-    return x ? saldoCuenta(x, d.movAhorro.filter((m) => m.cuentaId === id), hoy) : 0;
+    return x ? saldoCuenta(x, d.movCuentas.filter((m) => m.cuentaId === id), hoy) : 0;
   };
   // Origen/destino: las cuentas vista, el efectivo y "otra parte" (plata que la app no lleva).
   const opciones = [
