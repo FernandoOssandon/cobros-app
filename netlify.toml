@@ -1,6 +1,8 @@
 # Configuración de Netlify: cada push a main compila y publica la app.
+# Antes de compilar corren las pruebas unitarias: si alguna falla, no se publica y el sitio sigue con la versión anterior.
+# (Las pruebas de punta a punta corren en GitHub Actions: .github/workflows/pruebas.yml.)
 [build]
-  command = "npm run build"
+  command = "npm test && npm run build"
   publish = "dist"
 
 [build.environment]

@@ -16,7 +16,7 @@ export default function Categorias() {
   const [editar, setEditar] = useState<Categoria | 'nueva' | null>(null);
   if (!d) return <div className="scroll" />;
   const mes = params.get('mes') ?? todayISO().slice(0, 7);
-  const delMes = d.gastos.filter((g) => mesDe(g.fecha) === mes);
+  const delMes = d.imputados.filter((g) => mesDe(g.fecha) === mes);
   const real = delMes.reduce((s, g) => s + g.miParte, 0);
   const por = new Map<string, number>();
   for (const g of delMes) por.set(g.categoriaId ?? 'none', (por.get(g.categoriaId ?? 'none') ?? 0) + g.miParte);

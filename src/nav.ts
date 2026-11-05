@@ -27,6 +27,8 @@ export function nombrePantalla(pathname: string): string {
   if (pathname === '/correo') return 'Detectados';
   if (pathname === '/presupuestos') return 'Presupuestos';
   if (pathname === '/ingresos') return 'Ingresos';
+  if (pathname === '/tendencias') return 'Tendencias';
+  if (pathname.startsWith('/meta/')) return 'Meta';
   return 'Volver';
 }
 

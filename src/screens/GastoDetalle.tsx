@@ -1,9 +1,11 @@
+import { cuotasDe, esEnCuotas, fechaMasMeses, parteCuota } from '../lib/cuotas';
+import { fmtMoneda, nombreMoneda } from '../lib/monedas';
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { borrarFoto, borrarGasto, db, reemplazarFoto, restaurar } from '../db';
 import { useDatos } from '../hooks';
-import { fmt, juntarY, shortDate } from '../lib/format';
+import { fmt, juntarY, MESES_LARGOS, shortDate, todayISO } from '../lib/format';
 import { achicarImagen } from '../lib/imagen';
 import { describirFrecuencia } from '../lib/recurrence';
 import { useNav } from '../nav';
@@ -123,6 +125,26 @@ export default function GastoDetalle() {
         <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--muted)', marginTop: 4 }}>
           {shortDate(g.fecha)} · {other ? `pagó ${payer?.first ?? ''}` : medio?.nombre ?? 'sin medio de pago'}
         </div>
+        {g.moneda && (
+          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--muted)', marginTop: 2 }}>
+            {fmtMoneda(g.moneda.codigo, g.moneda.monto)} a {fmt(Math.round(g.moneda.valor))} ({nombreMoneda(g.moneda.codigo)} del {shortDate(g.moneda.fecha)})
+          </div>
+        )}
+        {esEnCuotas(g) && (
+          <div style={{ marginTop: 14, borderRadius: 20, background: 'var(--soft)', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span style={{ fontSize: 16, fontWeight: 800 }}>
+              En {g.cuotas} cuotas de {fmt(parteCuota(g.total, g.cuotas!, 1))}
+            </span>
+            <span className="t-meta">
+              {(() => {
+                const hoy = todayISO();
+                const van = cuotasDe(g).filter((c) => c.fecha <= hoy).length;
+                const ultima = fechaMasMeses(g.fecha, g.cuotas! - 1);
+                return `${van === g.cuotas ? 'Ya se cobraron todas' : `Van ${van} de ${g.cuotas}`} · la última ${ultima <= hoy ? 'fue' : 'llega'} en ${MESES_LARGOS[Number(ultima.slice(5, 7)) - 1]}${ultima.slice(0, 4) !== hoy.slice(0, 4) ? ' ' + ultima.slice(0, 4) : ''}. Cada cuota cuenta en su mes.`;
+              })()}
+            </span>
+          </div>
+        )}
 
         {!cat && (
           <div style={{ marginTop: 16, border: '2px dashed var(--danger)', borderRadius: 22, padding: 14 }}>

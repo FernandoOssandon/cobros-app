@@ -7,6 +7,8 @@ import { ingresosMes } from '../lib/ingresosMes';
 import { clavePeriodo, estadoCierre, gastosDelPeriodo, periodoEn, periodoTarjeta, rangoPeriodo, resumenTarjeta, tienePeriodo, type PeriodoTarjeta } from '../lib/periodos';
 import { avances } from '../lib/presupuestos';
 import { proxima } from '../lib/recurrence';
+import { idOrigen } from '../lib/cuotas';
+import { fmtMoneda } from '../lib/monedas';
 import { mesDe, resumenMes } from '../lib/resumen';
 import { useNav } from '../nav';
 import { elegirClavePeriodo, usePeriodo } from '../periodo';
@@ -34,7 +36,7 @@ export default function Resumen() {
   const esActual = mes === mesActual;
   const [confirmando, setConfirmando] = useState<string | null>(null);
 
-  const r = useMemo(() => (d ? resumenMes(mes, d.gastos, d.movimientos, d.medios) : null), [d, mes]);
+  const r = useMemo(() => (d ? resumenMes(mes, d.imputados, d.movimientos, d.medios) : null), [d, mes]);
   if (!d || !r) return <div className="scroll" />;
 
   const encabezado = (
@@ -59,7 +61,7 @@ export default function Resumen() {
     );
   }
 
-  const delMes = d.gastos.filter((g) => mesDe(g.fecha) === mes);
+  const delMes = d.imputados.filter((g) => mesDe(g.fecha) === mes);
   const hayDatos = d.gastos.length > 0 || d.personas.length > 0;
   /** Tocar una tarjeta de crédito con día de facturación la elige como período. */
   const abrirMedio = (m?: Medio) => {
@@ -240,7 +242,7 @@ export default function Resumen() {
                       <span className="t-meta" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub}</span>
                     </span>
                     <span style={{ fontSize: 16, fontWeight: 800, color: x.tipo === 'cobro' || x.tipo === 'ingreso' ? 'var(--pos)' : variable ? 'var(--muted)' : 'var(--ink)' }}>
-                      {variable ? 'variable' : (x.tipo === 'cobro' || x.tipo === 'ingreso' ? '+' : '') + fmt(x.monto)}
+                      {variable ? 'variable' : (x.tipo === 'cobro' || x.tipo === 'ingreso' ? '+' : '') + (x.moneda && x.montoMoneda ? fmtMoneda(x.moneda, x.montoMoneda) : fmt(x.monto))}
                     </span>
                   </div>
                 );
@@ -254,6 +256,9 @@ export default function Resumen() {
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: '24px 4px 0' }}>
           <button className="btn-o" onClick={() => push(`/categorias${esActual ? '' : '?mes=' + mes}`)}>
             Por categoría
+          </button>
+          <button className="btn-o" onClick={() => push('/tendencias')}>
+            Tendencias
           </button>
           <button className="btn-o" onClick={() => push('/grupos')}>
             Grupos y eventos
@@ -301,7 +306,7 @@ function IngresosYPresupuestos({ d, mes, esActual, gastoReal }: { d: Datos; mes:
     .filter(Boolean)
     .join(' · ');
 
-  const avs = esActual ? avances(d.presupuestos, d.gastos, hoy) : [];
+  const avs = esActual ? avances(d.presupuestos, d.imputados, hoy) : [];
   const riesgo = avs.filter((a) => a.estado !== 'bien').sort((a, b) => a.presupuesto.orden - b.presupuesto.orden);
 
   return (
@@ -402,8 +407,8 @@ function PeriodoTarjetaVista({ p, d }: { p: PeriodoTarjeta; d: Datos }) {
   const { push, tab } = useNav();
   const hoy = todayISO();
   const m = d.medio.get(p.medioId);
-  const r = resumenTarjeta(p, d.gastos, d.movimientos, hoy);
-  const gastos = gastosDelPeriodo(p, d.gastos).sort((a, b) => b.fecha.localeCompare(a.fecha) || b.creado.localeCompare(a.creado));
+  const r = resumenTarjeta(p, d.imputados, d.movimientos, hoy);
+  const gastos = gastosDelPeriodo(p, d.imputados).sort((a, b) => b.fecha.localeCompare(a.fecha) || b.creado.localeCompare(a.creado));
   if (!gastos.length)
     return (
       <div style={{ padding: '60px 4px 0' }}>
@@ -467,7 +472,7 @@ function PeriodoTarjetaVista({ p, d }: { p: PeriodoTarjeta; d: Datos }) {
       <div className="list">
         <div className="inner">
           {gastos.map((g) => (
-            <GastoRow key={g.id} g={g} d={d} meta={diaLabel(g.fecha)} onClick={() => push(`/gasto/${g.id}`)} />
+            <GastoRow key={g.id} g={g} d={d} meta={diaLabel(g.fecha)} onClick={() => push(`/gasto/${idOrigen(g)}`)} />
           ))}
         </div>
       </div>

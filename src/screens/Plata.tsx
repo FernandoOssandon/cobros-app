@@ -1,4 +1,6 @@
 // Mi plata: patrimonio, cuentas de ahorro, depósitos a plazo y la hoja para depositar, retirar o cuadrar.
+import { avanceMeta } from '../lib/metas';
+import { TarjetaMeta } from './Metas';
 import { useState } from 'react';
 import { asegurarEfectivo, borrarMovAhorro, cobrarDap, cuadrar, ID_EFECTIVO, moverPlata } from '../ahorros';
 import { db, type Cuenta } from '../db';
@@ -49,7 +51,7 @@ export default function MiPlata() {
   if (!d) return <div className="scroll" />;
 
   const hoy = todayISO();
-  const p = patrimonio({ cuentas: d.cuentas, movAhorro: d.movAhorro, personas: d.personas.map((v) => v.p), movimientos: d.movimientos, gastos: d.gastos, medios: d.medios }, hoy);
+  const p = patrimonio({ cuentas: d.cuentas, movAhorro: d.movAhorro, personas: d.personas.map((v) => v.p), movimientos: d.movimientos, gastos: d.imputados, medios: d.medios }, hoy);
   const ahorro = p.cuentas.filter((r) => r.cuenta.tipo === 'remunerada' || r.cuenta.tipo === 'inversion');
   const daps = p.cuentas.filter((r) => r.cuenta.tipo === 'dap' && r.cuenta.dap?.estado === 'vigente');
   const vs = vistas(d);
@@ -165,6 +167,31 @@ export default function MiPlata() {
             </button>
           </span>
         </div>
+      )}
+
+      <div className="row-between" style={{ alignItems: 'baseline', padding: '28px 4px 10px' }}>
+        <h2 style={{ fontSize: 22, fontWeight: 800, letterSpacing: -0.6 }}>metas.</h2>
+        {d.metas.length > 0 && (
+          <button style={{ border: 'none', background: 'transparent', padding: 0, fontWeight: 700, fontSize: 14, color: 'var(--muted)' }} onClick={() => push('/meta/nueva')}>
+            + Nueva
+          </button>
+        )}
+      </div>
+      {d.metas.length ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {d.metas.map((m) => (
+            <TarjetaMeta key={m.id} a={avanceMeta(m, d.cuentas, d.movAhorro, aj.indicadores, hoy)} onClick={() => push(`/meta/${m.id}`)} />
+          ))}
+        </div>
+      ) : (
+        <button
+          onClick={() => push('/meta/nueva')}
+          style={{ width: '100%', border: 'none', borderRadius: 22, background: 'var(--soft)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 4, textAlign: 'left' }}
+        >
+          <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: -0.3 }}>¿Para qué estás ahorrando?</span>
+          <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--muted)', lineHeight: 1.35 }}>Ponle nombre, monto y fecha: vacaciones, el pie del depto, un fondo de emergencia.</span>
+          <span style={{ marginTop: 6, alignSelf: 'flex-start', height: 40, padding: '0 16px', borderRadius: 20, background: 'var(--ink)', color: 'var(--bg)', fontWeight: 800, fontSize: 14, display: 'flex', alignItems: 'center' }}>Crear meta</span>
+        </button>
       )}
 
       <h2 className="t-section" id="cuentas-ahorro" style={{ scrollMarginTop: 8 }}>

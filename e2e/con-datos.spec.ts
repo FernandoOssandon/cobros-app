@@ -48,12 +48,12 @@ test('cobrar por WhatsApp deja el registro en el historial', async ({ page }) =>
   await expect(page.locator('.aviso')).toHaveCount(2);
 });
 
-test('exportar respaldo v5', async ({ page }) => {
+test('exportar respaldo v6', async ({ page }) => {
   await page.goto('#/ajustes');
   const descarga = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Exportar' }).click();
   const r = JSON.parse(fs.readFileSync((await (await descarga).path())!, 'utf8'));
-  expect(r.version).toBe(5);
+  expect(r.version).toBe(6);
   expect(r.cuentas).toEqual([]);
   expect(r.gastos).toHaveLength(13);
   expect(r.recurrentes).toHaveLength(5);

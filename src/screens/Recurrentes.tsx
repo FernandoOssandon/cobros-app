@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import type { Recurrente } from '../db';
-import { useDatos } from '../hooks';
+import { useAjustes, useDatos } from '../hooks';
 import { fmt, juntarY, shortDate, todayISO } from '../lib/format';
+import { aPesos, fmtMoneda } from '../lib/monedas';
 import { describirFrecuencia, montoMensual, proxima } from '../lib/recurrence';
 import { useNav } from '../nav';
 import { anotarAtrasados, mesNombre, repartoRecurrente } from '../recurrentes';
@@ -19,6 +20,7 @@ const SECCIONES: [Recurrente['tipo'], string][] = [
 
 export default function Recurrentes() {
   const d = useDatos();
+  const aj = useAjustes();
   const { push } = useNav();
   const toast = useToast();
   const [confirmando, setConfirmando] = useState<string | null>(null);
@@ -26,7 +28,12 @@ export default function Recurrentes() {
 
   const hoy = todayISO();
   const recs = d.recurrentes.filter((r) => r.activo).sort((a, b) => a.creado.localeCompare(b.creado));
-  const fijosSalen = recs.filter((r) => (r.tipo === 'mio' || r.tipo === 'compartido') && r.montoTipo === 'fijo').reduce((s, r) => s + montoMensual(r.monto, r.frecuencia), 0);
+  // En UF o dólares, con el valor de hoy.
+  const enPesos = (r: Recurrente) => {
+    const v = r.moneda ? aj.indicadores?.[r.moneda]?.valor : undefined;
+    return r.moneda && r.montoMoneda && v ? aPesos(r.montoMoneda, v) : r.monto;
+  };
+  const fijosSalen = recs.filter((r) => (r.tipo === 'mio' || r.tipo === 'compartido') && r.montoTipo === 'fijo').reduce((s, r) => s + montoMensual(enPesos(r), r.frecuencia), 0);
   const variables = recs.filter((r) => (r.tipo === 'mio' || r.tipo === 'compartido') && r.montoTipo === 'variable').map((r) => r.nombre);
   const entran = recs.filter((r) => r.tipo === 'cobro' && r.montoTipo === 'fijo').reduce((s, r) => s + montoMensual(r.monto, r.frecuencia), 0);
   const ingresosFijos = recs.filter((r) => r.tipo === 'ingreso');
@@ -134,7 +141,7 @@ export default function Recurrentes() {
                               ) : (
                                 <span className="r-amt" style={{ color: tipo === 'cobro' ? 'var(--pos)' : 'var(--ink)' }}>
                                   {tipo === 'cobro' ? '+' : ''}
-                                  {fmt(r.monto)}
+                                  {r.moneda && r.montoMoneda ? fmtMoneda(r.moneda, r.montoMoneda) : fmt(r.monto)}
                                 </span>
                               )}
                               <span style={{ fontSize: 12, fontWeight: 700, color: nextColor, whiteSpace: 'nowrap' }}>{next}</span>

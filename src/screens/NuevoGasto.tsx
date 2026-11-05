@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { agregarFoto, crearPersona, db, guardarGasto, guardarGrupo, type ModoGasto } from '../db';
-import { useDatos } from '../hooks';
+import { fechaMasMeses, parteCuota } from '../lib/cuotas';
+import { agregarFoto, crearPersona, db, guardarGasto, guardarGrupo, type CodigoMoneda, type ModoGasto } from '../db';
+import { aBorrador, aPesos, fmtValor, leerDecimal, MONEDAS, mostrarDecimal, nombreMoneda, simboloMoneda, teclaDecimal } from '../lib/monedas';
+import { useAjustes, useDatos } from '../hooks';
+import { actualizarIndicadores } from '../indicadores';
 import { achicarImagen } from '../lib/imagen';
-import { dg, fmt, pressKey, shortDate, show, todayISO } from '../lib/format';
+import { dg, fmt, MESES_LARGOS, pressKey, shortDate, show, todayISO } from '../lib/format';
 import { sumarDias } from '../lib/recurrence';
 import { computeSplit, type SplitResult } from '../lib/split';
 import { useNav } from '../nav';
@@ -43,6 +46,14 @@ export default function NuevoGasto() {
   const [parts, setParts] = useState<Record<string, number>>({});
   const [myParts, setMyParts] = useState(1);
   const [grupo, setGrupo] = useState<string | null>(null);
+  const [cuotas, setCuotas] = useState(1);
+  // Monto en otra moneda (UF, dólar, euro): se convierte a pesos con el valor del día.
+  const [moneda, setMoneda] = useState<CodigoMoneda | 'CLP'>('CLP');
+  const [amtMon, setAmtMon] = useState('');
+  const [valorManual, setValorManual] = useState('');
+  const [monedaSheet, setMonedaSheet] = useState(false);
+  const aj = useAjustes();
+  const enPesos = moneda === 'CLP';
   const [foto, setFoto] = useState<Blob | null>(null);
   const [tieneFoto, setTieneFoto] = useState(false);
   const [rep, setRep] = useState(false);
@@ -63,6 +74,10 @@ export default function NuevoGasto() {
     loaded.current = true;
     if (editing) {
       setAmt(String(editing.total));
+      if (editing.moneda) {
+        setMoneda(editing.moneda.codigo);
+        setAmtMon(aBorrador(editing.moneda.monto));
+      }
       setDesc(editing.descripcion);
       setFecha(editing.fecha);
       setCat(editing.categoriaId ?? null);
@@ -75,6 +90,7 @@ export default function NuevoGasto() {
       setParts(editing.partes);
       setMyParts(editing.misPartes || 1);
       setGrupo(editing.grupoId ?? null);
+      setCuotas(editing.cuotas ?? 1);
       setTieneFoto(d.conFoto.has(editing.id));
     } else if (detId && d.detectados.some((x) => x.id === detId)) {
       const x = d.detectados.find((y) => y.id === detId)!;
@@ -97,19 +113,27 @@ export default function NuevoGasto() {
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement).closest('input,textarea')) return;
-      if (/^\d$/.test(e.key)) setAmt((v) => pressKey(v, e.key));
-      else if (e.key === 'Backspace') setAmt((v) => pressKey(v, '⌫'));
+      const tecla = /^\d$/.test(e.key) ? e.key : e.key === 'Backspace' ? '⌫' : e.key === ',' || e.key === '.' ? ',' : null;
+      if (!tecla) return;
+      if (enPesos) {
+        if (tecla !== ',') setAmt((v) => pressKey(v, tecla));
+      } else setAmtMon((v) => teclaDecimal(v, tecla));
     };
     window.addEventListener('keydown', k);
     return () => window.removeEventListener('keydown', k);
-  }, []);
+  }, [enPesos]);
 
   const personas = useMemo(() => (d?.personas ?? []).filter((v) => !v.p.archivada || sel.includes(v.p.id) || payer === v.p.id), [d, sel, payer]);
   if (!d) return <div className="screen" />;
 
   const payerOther = payer !== 'yo';
   const payerV = payerOther ? d.persona.get(payer) : undefined;
-  const amount = dg(amt);
+  // Valor de la moneda: el guardado en el gasto (al editar), el del día o uno escrito a mano.
+  const valorGuardado = !enPesos && editing?.moneda?.codigo === moneda ? editing.moneda : undefined;
+  const indicador = enPesos ? undefined : valorGuardado ?? aj.indicadores?.[moneda];
+  const valorMoneda = indicador?.valor ?? leerDecimal(valorManual);
+  const montoMoneda = leerDecimal(amtMon);
+  const amount = enPesos ? dg(amt) : aPesos(montoMoneda, valorMoneda);
   const ids = personas.filter((v) => sel.includes(v.p.id)).map((v) => v.p.id);
   const meEf = payerOther ? true : me;
   const sp: SplitResult =
@@ -155,6 +179,9 @@ export default function NuevoGasto() {
     if (mode !== 'solo' && !sel.includes(pid)) setSel((s) => [...s, pid]);
   };
 
+  const esCredito = !payerOther && !!medio && d?.medio.get(medio)?.tipo === 'credito';
+  const enCuotas = esCredito && cuotas > 1;
+
   const guardar = async () => {
     if (!saveOk) {
       toast(!amount ? 'Ingresa un monto' : 'Revisa cómo se reparte el monto');
@@ -176,6 +203,8 @@ export default function NuevoGasto() {
         grupoId: grupo ?? undefined,
         recurrenteId: editing?.recurrenteId,
         nota: editing?.nota,
+        cuotas: enCuotas ? cuotas : undefined,
+        moneda: enPesos ? undefined : { codigo: moneda, monto: montoMoneda, valor: valorMoneda, fecha: indicador?.fecha ?? hoy },
       },
       sp,
       editId,
@@ -231,14 +260,40 @@ export default function NuevoGasto() {
   return (
     <div className="screen">
       <TaskHeader title={editId ? 'editar gasto.' : 'nuevo gasto.'} onClose={() => back('/gastos')} />
-      <button
-        onClick={() => setKp(true)}
-        className="t-hero-64"
-        style={{ flex: 'none', border: 'none', background: 'transparent', textAlign: 'left', padding: '6px 20px 0', color: amt ? 'var(--ink)' : 'var(--muted)' }}
-        aria-label="Monto total"
-      >
-        ${show(amt) || '0'}
-      </button>
+      <div style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 8, padding: '6px 16px 0 20px' }}>
+        <button
+          onClick={() => setKp(true)}
+          className="t-hero-64"
+          style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', textAlign: 'left', padding: 0, color: (enPesos ? amt : amtMon) ? 'var(--ink)' : 'var(--muted)' }}
+          aria-label="Monto total"
+        >
+          {enPesos ? `$${show(amt) || '0'}` : `${simboloMoneda(moneda)} ${mostrarDecimal(amtMon) || '0'}`}
+        </button>
+        <button className="pill h36" style={{ flex: 'none', padding: '0 10px 0 12px', gap: 4 }} onClick={() => setMonedaSheet(true)} aria-label={`Moneda: ${enPesos ? 'pesos' : nombreMoneda(moneda)}`}>
+          {enPesos ? 'CLP' : moneda}
+          <Icon name="down" size={14} w={3} />
+        </button>
+      </div>
+      {!enPesos &&
+        (valorMoneda > 0 ? (
+          <div className="t-meta" style={{ flex: 'none', padding: '0 20px', fontSize: 14 }}>
+            = {fmt(amount)} · {nombreMoneda(moneda)} a {fmtValor(valorMoneda)}
+            {indicador ? ` del ${shortDate(indicador.fecha)}` : ''}
+          </div>
+        ) : (
+          <label className="t-meta" style={{ flex: 'none', padding: '0 20px', fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+            Sin conexión: ¿a cuánto está el {nombreMoneda(moneda)}?
+            <input
+              value={valorManual}
+              onChange={(e) => setValorManual(e.target.value.replace(/[^\d,.]/g, '').slice(0, 12))}
+              inputMode="decimal"
+              placeholder="0"
+              aria-label={`Valor del ${nombreMoneda(moneda)}`}
+              onFocus={() => setKp(false)}
+              style={{ width: 96, height: 30, padding: '0 10px', borderRadius: 15, border: '2px solid var(--ink)', background: 'transparent', fontSize: 14, fontWeight: 700 }}
+            />
+          </label>
+        ))}
       <div style={{ flex: 'none', padding: '0 20px 8px' }}>
         <input
           value={desc}
@@ -286,6 +341,29 @@ export default function NuevoGasto() {
                   <MedioChip key={m.id} medio={m} on={medio === m.id} onClick={() => setMedio(m.id)} />
                 ))}
             </div>
+            {esCredito && (
+              <div className="row-between" style={{ marginTop: 12, padding: '0 4px' }}>
+                <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                  <span style={{ fontSize: 16, fontWeight: 700 }}>{cuotas > 1 ? `En ${cuotas} cuotas` : 'Sin cuotas'}</span>
+                  <span className="t-meta" style={{ lineHeight: 1.3 }}>
+                    {cuotas > 1
+                      ? `${amount ? `de ${fmt(parteCuota(amount, cuotas, 1))} · ` : ''}la última llega en ${MESES_LARGOS[Number(fechaMasMeses(fecha, cuotas - 1).slice(5, 7)) - 1]}`
+                      : 'Se cobra completa en el próximo estado de cuenta'}
+                  </span>
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 'none' }}>
+                  <button className="btn-round" style={{ fontWeight: 800, fontSize: 18, opacity: cuotas > 1 ? 1 : 0.3 }} disabled={cuotas <= 1} onClick={() => setCuotas((x) => Math.max(1, x - 1))} aria-label="Menos cuotas">
+                    −
+                  </button>
+                  <span style={{ fontSize: 22, fontWeight: 800, minWidth: 28, textAlign: 'center' }} aria-label="Cuotas">
+                    {cuotas}
+                  </span>
+                  <button className="btn-round" style={{ fontWeight: 800, fontSize: 18 }} onClick={() => setCuotas((x) => Math.min(48, x + 1))} aria-label="Más cuotas">
+                    +
+                  </button>
+                </span>
+              </div>
+            )}
           </div>
         )}
 
@@ -482,7 +560,7 @@ export default function NuevoGasto() {
               Listo
             </button>
           </div>
-          <Keypad onKey={(k) => setAmt((v) => pressKey(v, k))} />
+          <Keypad decimal={!enPesos} onKey={(k) => (enPesos ? setAmt((v) => pressKey(v, k)) : setAmtMon((v) => teclaDecimal(v, k)))} />
         </div>
       )}
       <div className="foot">
@@ -492,6 +570,25 @@ export default function NuevoGasto() {
         </button>
       </div>
 
+      {monedaSheet && (
+        <PickerSheet
+          title="¿En qué moneda?"
+          value={moneda}
+          options={[{ value: 'CLP' as const, label: 'Pesos chilenos' }, ...MONEDAS.map((c) => ({ value: c, label: c === 'UF' ? 'UF' : c === 'USD' ? 'Dólar (US$)' : 'Euro (€)' }))]}
+          onClose={() => setMonedaSheet(false)}
+          onPick={(v) => {
+            setMonedaSheet(false);
+            if (v === moneda) return;
+            setMoneda(v);
+            if (v !== 'CLP') void actualizarIndicadores();
+            setAmtMon('');
+            setValorManual('');
+            if (v === 'CLP') setAmt(amount ? String(amount) : '');
+            setKp(true);
+          }}
+          footer={<div className="t-meta" style={{ padding: '12px 4px 0', lineHeight: 1.35 }}>Se guarda en pesos con el valor del día (mindicador.cl, datos del Banco Central).</div>}
+        />
+      )}
       {grupoSheet && (
         <PickerSheet
           title="Grupo o evento"

@@ -1,5 +1,6 @@
 // Componentes de lista del diseño v2: fila de gasto, tarjeta de medio con barra apilada, barra de pestañas.
-import type { Gasto, Medio } from '../db';
+import type { Medio } from '../db';
+import type { GastoImputado } from '../lib/cuotas';
 import type { Datos } from '../hooks';
 import { fmt } from '../lib/format';
 import type { ResumenMedio } from '../lib/resumen';
@@ -8,12 +9,13 @@ import { NAV, Svg, Icon } from './icons';
 import { CatIcon, MedioThumb } from './kit';
 
 /** Fila de gasto (ícono de categoría, descripción, medio + badge, tu parte y el total). */
-export function GastoRow({ g, d, onClick, meta: metaFija }: { g: Gasto; d: Datos; onClick: () => void; meta?: string }) {
+export function GastoRow({ g, d, onClick, meta: metaFija }: { g: GastoImputado; d: Datos; onClick: () => void; meta?: string }) {
   const cat = g.categoriaId ? d.categoria.get(g.categoriaId) : undefined;
   const byOther = g.pagador !== 'yo';
   const shared = !byOther && g.participantes.length > 0;
   const medio = g.medioId ? d.medio.get(g.medioId) : undefined;
-  const meta = metaFija ?? (byOther ? (cat?.nombre ?? 'Sin categoría') : (medio?.nombre ?? cat?.nombre ?? ''));
+  const cuotas = g.cuota ? `cuota ${g.cuota.n}/${g.cuota.de}` : g.cuotas && g.cuotas > 1 ? `${g.cuotas} cuotas` : '';
+  const meta = [metaFija ?? (byOther ? (cat?.nombre ?? 'Sin categoría') : (medio?.nombre ?? cat?.nombre ?? '')), cuotas].filter(Boolean).join(' · ');
   let badge: { text: string; color: string } | null = null;
   if (!cat) badge = { text: 'sin categoría', color: 'var(--danger)' };
   else if (byOther) badge = { text: 'pagó ' + (d.persona.get(g.pagador)?.first ?? ''), color: 'var(--owe)' };

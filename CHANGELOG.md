@@ -1,6 +1,16 @@
 # Cambios
 
-## 2.4.0 · 25 nov 2026 · presupuestos, ingresos y períodos
+## 2.5.0 · 5 nov 2026 · cuotas, tendencias, metas y monedas
+
+- **Compras en cuotas.** En Nuevo gasto, con una tarjeta de crédito, eliges en cuántas cuotas (hasta 48). Cada cuota cuenta en su mes: en el gasto real, en el período de facturación de la tarjeta, en los presupuestos y en Tendencias. Lo que otros te deben de la compra se reparte entre las cuotas. La lista muestra "cuota 2/3" y el detalle cuántas van. Las cuotas se toman sin interés: la primera cae en el mes de la compra.
+- **Tendencias** (Resumen → Tendencias): gasto real de los últimos meses en barras, comparación con el mes anterior **a la misma fecha** (si el mes va en curso), cambios por categoría y cuánto te quedó cada mes.
+- **Metas de ahorro** (en Mi plata): nombre, monto, fecha opcional y dónde la juntas. Ligada a una cuenta, el avance es su saldo estimado; aparte, anotas aportes y retiros a mano. Dice cuánto apartar al mes para llegar.
+- **UF, dólar y euro.** Un gasto, un recurrente o una meta pueden ir en otra moneda: se guarda en pesos con el valor del día (mindicador.cl, datos del Banco Central) y queda anotado el monto original. Un arriendo en UF se convierte cada mes con la UF de ese día; sin conexión, queda por confirmar. El último valor se guarda para usar sin internet.
+- **Planillas:** nuevas de ingresos y de presupuestos; la de gastos suma cuotas y moneda original.
+- **Pruebas automáticas:** GitHub corre tipos, lint, pruebas unitarias y de punta a punta en cada push, y Netlify ya no publica si fallan las unitarias.
+- **Datos:** la base pasa a v7 (tabla nueva `metas`) y el respaldo a v6 (acepta v2 a v5). Nada se pierde al actualizar.
+
+## 2.4.0 · 3 nov 2026 · presupuestos, ingresos y períodos
 
 - **Períodos por tarjeta.** En Resumen y Gastos, la píldora `‹ noviembre 2026 ›` abre "¿qué período?": el mes calendario o el período de facturación de cada tarjeta de crédito con día de facturación (ej. "Falabella · 14 nov – 13 dic"). La selección es la misma en las dos pestañas, y tocar una tarjeta de crédito en `tus medios.` también la elige.
   - Resumen de la tarjeta: "Llegará en tu estado de cuenta" con el total, cuántos días faltan para el cierre (o "Facturado el …"), lo tuyo y lo de otros (ya pagado / pendiente) y los cargos del período.

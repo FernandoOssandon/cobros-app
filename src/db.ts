@@ -9,6 +9,7 @@
 //     abono  → yo le pagué                  (+)
 //   Saldo neto = cargos − pagos − deudas + abonos. Positivo: te debe. Negativo: le debes.
 // - Recurrente: plantilla que genera gastos o cargos cada cierto tiempo.
+import type { Indicadores } from './lib/monedas';
 import Dexie, { type EntityTable, type Transaction } from 'dexie';
 import type { SplitMode, SplitResult } from './lib/split';
 
@@ -92,7 +93,23 @@ export interface Gasto {
   /** Parte calculada de cada participante (incluida la de quien pagó, si no fui yo). */
   montos?: Record<string, number>;
   nota?: string;
+  /** Compra en cuotas con tarjeta de crédito (2 o más): cada cuota cuenta en su mes y en su período de facturación. */
+  cuotas?: number;
+  /** Si se anotó en otra moneda: el monto original y el valor usado para pasarlo a pesos. */
+  moneda?: MontoMoneda;
   creado: string;
+}
+
+export type CodigoMoneda = 'UF' | 'USD' | 'EUR';
+
+/** Monto en otra moneda (UF, dólar, euro) y el valor en pesos con que se convirtió. */
+export interface MontoMoneda {
+  codigo: CodigoMoneda;
+  monto: number;
+  /** Pesos por unidad (ej. UF = 39.512,34). */
+  valor: number;
+  /** Fecha del valor usado. */
+  fecha: string;
 }
 
 export type TipoMovimiento = 'cargo' | 'pago' | 'deuda' | 'abono';
@@ -162,6 +179,9 @@ export interface Recurrente {
   personaId?: string;
   /** Solo para 'ingreso': cuenta donde llega la plata (ej. la Cuenta RUT). */
   cuentaId?: string;
+  /** Monto fijo en otra moneda (ej. arriendo de 12 UF): se pasa a pesos con el valor del día en que se anota. `monto` guarda el último equivalente en pesos. */
+  moneda?: CodigoMoneda;
+  montoMoneda?: number;
   /** Última fecha ya generada (o confirmada/saltada). */
   generadoHasta?: string;
   /** Fecha de la última ocurrencia variable confirmada (para "en octubre llegaron $X"). */
@@ -287,6 +307,37 @@ export interface Presupuesto {
   creado: string;
 }
 
+/** Aporte a mano a una meta que no está ligada a una cuenta. */
+export interface AporteMeta {
+  id: string;
+  fecha: string;
+  /** Positivo: aporte · negativo: saqué plata de la meta. */
+  monto: number;
+}
+
+/**
+ * Meta de ahorro ("Vacaciones $500.000 a marzo", "Pie del depto 200 UF").
+ * - Con `cuentaId`: el avance es el saldo estimado de esa cuenta de Mi plata.
+ * - Sin cuenta: el avance es la suma de los aportes a mano.
+ */
+export interface Meta {
+  id: string;
+  nombre: string;
+  /** Objetivo en pesos (si es en UF o dólares, el último equivalente). */
+  monto: number;
+  moneda?: CodigoMoneda;
+  montoMoneda?: number;
+  /** Fecha para la que se quiere juntar (opcional). */
+  fecha?: string;
+  cuentaId?: string;
+  aportes: AporteMeta[];
+  /** Color de la tarjeta (uno de CAT_COLORS). */
+  color: string;
+  archivada: boolean;
+  orden: number;
+  creado: string;
+}
+
 // ---------- Detectados en el correo ----------
 
 export type TipoDetectado = 'compra' | 'transferencia' | 'recibido' | 'otro';
@@ -346,6 +397,8 @@ export interface Ajustes {
   onboardingHecho: boolean;
   /** Lectura de correos del banco (opcional). */
   correo?: ConfigCorreo;
+  /** Último valor conocido de la UF, el dólar y el euro (de mindicador.cl), para usar sin conexión. */
+  indicadores?: Indicadores;
 }
 
 export const AJUSTES_DEFAULT: Ajustes = {
@@ -389,6 +442,7 @@ type DB = Dexie & {
   detectados: EntityTable<Detectado, 'id'>;
   ingresos: EntityTable<Ingreso, 'id'>;
   presupuestos: EntityTable<Presupuesto, 'id'>;
+  metas: EntityTable<Meta, 'id'>;
 };
 
 // El nombre de la base viene de cuando la app se llamaba Me Debes. NO cambiarlo: los datos guardados están ahí.
@@ -441,6 +495,9 @@ db.version(6).stores({
   ingresos: 'id, fecha, recurrenteId, cuentaId',
   presupuestos: 'id',
 });
+
+// v7 (app 2.5): metas de ahorro. Solo agrega una tabla.
+db.version(7).stores({ metas: 'id, cuentaId' });
 
 /** Migración v3 → v4. Exportada para poder probarla. */
 export async function migrarV3aV4(tx: Transaction) {
@@ -553,6 +610,8 @@ export interface GastoDraft {
   grupoId?: string;
   recurrenteId?: string;
   nota?: string;
+  cuotas?: number;
+  moneda?: MontoMoneda;
 }
 
 /**
@@ -584,6 +643,9 @@ export function armarGasto(d: GastoDraft, split: SplitResult, id: string, creado
     partes: d.partes,
     montos: solo ? {} : Object.fromEntries(split.rows.map((r) => [r.id, r.v])),
     nota: d.nota,
+    // Las cuotas solo tienen sentido si pagué yo (con mi tarjeta).
+    cuotas: pagador === 'yo' && d.cuotas && d.cuotas > 1 ? Math.min(48, Math.round(d.cuotas)) : undefined,
+    moneda: d.moneda,
     creado,
   };
   let movs: Movimiento[] = [];
@@ -772,10 +834,10 @@ export const guardarAjustes = async (patch: Partial<Omit<Ajustes, 'id'>>) => {
 export async function borrarTodo() {
   await db.transaction(
     'rw',
-    [db.personas, db.gastos, db.movimientos, db.cobros, db.medios, db.grupos, db.recurrentes, db.pendientes, db.fotos, db.cuentas, db.movAhorro, db.detectados, db.ingresos, db.presupuestos],
+    [db.personas, db.gastos, db.movimientos, db.cobros, db.medios, db.grupos, db.recurrentes, db.pendientes, db.fotos, db.cuentas, db.movAhorro, db.detectados, db.ingresos, db.presupuestos, db.metas],
     async () => {
       await Promise.all(
-        [db.personas, db.gastos, db.movimientos, db.cobros, db.medios, db.grupos, db.recurrentes, db.pendientes, db.fotos, db.cuentas, db.movAhorro, db.detectados, db.ingresos, db.presupuestos].map((t) => t.clear()),
+        [db.personas, db.gastos, db.movimientos, db.cobros, db.medios, db.grupos, db.recurrentes, db.pendientes, db.fotos, db.cuentas, db.movAhorro, db.detectados, db.ingresos, db.presupuestos, db.metas].map((t) => t.clear()),
       );
       await db.medios.put({ ...MEDIO_EFECTIVO, creado: now() });
     },

@@ -1,5 +1,7 @@
 // Exportación a CSV pensada para Excel en español (separador ";" y BOM UTF-8).
-import type { Categoria, Gasto, Medio, Movimiento, Persona } from '../db';
+import type { Categoria, Cuenta, Gasto, Ingreso, Medio, Movimiento, Persona, Presupuesto } from '../db';
+import { avancePresupuesto } from './presupuestos';
+import { fmtMoneda } from './monedas';
 import { byDate } from './balance';
 
 const cell = (v: string | number) => {
@@ -30,7 +32,7 @@ export function gastosCsv(gastos: Gasto[], personas: Persona[], medios: Medio[],
   const pName = new Map(personas.map((p) => [p.id, p.nombre]));
   const mName = new Map(medios.map((m) => [m.id, m.nombre]));
   const cName = new Map(categorias.map((c) => [c.id, c.nombre]));
-  const header = ['Fecha', 'Descripción', 'Categoría', 'Medio de pago', 'Pagó', 'Total', 'Mi parte', 'De otros', 'Participantes'];
+  const header = ['Fecha', 'Descripción', 'Categoría', 'Medio de pago', 'Pagó', 'Total', 'Mi parte', 'De otros', 'Participantes', 'Cuotas', 'Moneda original'];
   const rows = [...gastos].sort(byDate).map((g) => [
     g.fecha,
     g.descripcion,
@@ -41,6 +43,33 @@ export function gastosCsv(gastos: Gasto[], personas: Persona[], medios: Medio[],
     g.miParte,
     g.pagador === 'yo' ? g.total - g.miParte : 0,
     g.participantes.map((id) => pName.get(id) ?? '?').join(', '),
+    g.cuotas && g.cuotas > 1 ? g.cuotas : '',
+    g.moneda ? `${fmtMoneda(g.moneda.codigo, g.moneda.monto)} a $${g.moneda.valor}` : '',
   ]);
+  return csv([header, ...rows]);
+}
+
+/** Ingresos: el sueldo (fijo) y los sueltos, con la cuenta donde llegaron. */
+export function ingresosCsv(ingresos: Ingreso[], cuentas: Cuenta[]): string {
+  const cName = new Map(cuentas.map((c) => [c.id, c.nombre]));
+  const header = ['Fecha', 'Descripción', 'Tipo', 'Monto', 'Llegó a'];
+  const rows = [...ingresos]
+    .sort((a, b) => a.fecha.localeCompare(b.fecha))
+    .map((i) => [i.fecha, i.descripcion, i.recurrenteId ? 'Fijo' : 'Suelto', i.monto, cName.get(i.cuentaId ?? '') ?? '']);
+  return csv([header, ...rows]);
+}
+
+/** Presupuestos con su avance de hoy. `gastos` van imputados (las cuotas en su mes). */
+export function presupuestosCsv(presupuestos: Presupuesto[], gastos: Gasto[], categorias: Categoria[], hoy: string): string {
+  const cName = new Map(categorias.map((c) => [c.id, c.nombre]));
+  const ESTADO = { bien: 'Vas bien', cerca: 'Cerca del límite', excedido: 'Te pasaste' } as const;
+  const header = ['Presupuesto', 'Período', 'Desde', 'Hasta', 'Límite', 'Gastado', 'Te queda', '%', 'Estado'];
+  const rows = presupuestos
+    .filter((p) => !p.archivado)
+    .map((p) => {
+      const a = avancePresupuesto(p, gastos, hoy);
+      const nombre = p.categoriaId ? cName.get(p.categoriaId) ?? p.nombre : p.periodo === 'semana' ? 'Total semanal' : 'Total mensual';
+      return [nombre, p.periodo === 'semana' ? 'Semanal' : 'Mensual', a.desde, a.hasta, p.monto, a.gastado, a.restante, Math.round(a.pct * 100), ESTADO[a.estado]];
+    });
   return csv([header, ...rows]);
 }

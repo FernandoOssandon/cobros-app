@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import type { Frecuencia, Recurrente } from '../db';
-import { useDatos } from '../hooks';
+import type { CodigoMoneda, Frecuencia, Recurrente } from '../db';
+import { useAjustes, useDatos } from '../hooks';
+import { actualizarIndicadores } from '../indicadores';
+import { aBorrador, aPesos, fmtMoneda, leerDecimal, MONEDAS, nombreMoneda, simboloMoneda } from '../lib/monedas';
 import { dg, fmt, shortDate, show, todayISO } from '../lib/format';
 import { describirFrecuencia, sumarDias } from '../lib/recurrence';
 import { computeSplit, type SplitMode } from '../lib/split';
@@ -50,6 +52,9 @@ export default function NuevoRecurrente() {
   const [tipo, setTipo] = useState<Recurrente['tipo']>('mio');
   const [variable, setVariable] = useState(false);
   const [amt, setAmt] = useState('');
+  const [moneda, setMoneda] = useState<CodigoMoneda | 'CLP'>('CLP');
+  const [amtMon, setAmtMon] = useState('');
+  const aj = useAjustes();
   const [freq, setFreq] = useState<Freq>('mes');
   const [dia, setDia] = useState(Number(hoy.slice(8, 10)));
   const [wd, setWd] = useState(0);
@@ -84,6 +89,10 @@ export default function NuevoRecurrente() {
     setTipo(editing.tipo);
     setVariable(editing.montoTipo === 'variable');
     setAmt(editing.montoTipo === 'fijo' ? String(editing.monto) : '');
+    if (editing.moneda && editing.montoMoneda) {
+      setMoneda(editing.moneda);
+      setAmtMon(aBorrador(editing.montoMoneda));
+    }
     const [y, m, dd] = editing.inicio.split('-').map(Number);
     if (f.unidad === 'mes' && f.cada === 1) [setFreq('mes'), setDia(f.dia ?? dd)];
     else if (f.unidad === 'semana' && f.cada === 1) [setFreq('semana'), setWd((new Date(y, m - 1, dd).getDay() + 6) % 7)];
@@ -121,13 +130,17 @@ export default function NuevoRecurrente() {
         : freq === 'anio'
           ? { unidad: 'anio', cada: 1 }
           : { unidad: unit, cada: n, ...(unit === 'mes' ? { dia: Number(inicio.slice(8, 10)) } : {}) };
-  const amount = dg(amt);
+  const enPesos = moneda === 'CLP' || variable;
+  const montoMoneda = leerDecimal(amtMon);
+  const ind = moneda === 'CLP' ? undefined : aj.indicadores?.[moneda];
+  // En UF o dólares, el monto en pesos es una estimación con el valor de hoy (se recalcula cada vez que se anota).
+  const amount = enPesos ? dg(amt) : ind ? aPesos(montoMoneda, ind.valor) : editing?.monto ?? 0;
   const ids = personas.filter((v) => sel.includes(v.p.id)).map((v) => v.p.id);
   const rsp = computeSplit({ amount, ids, me: true, mode: modo, exact: Object.fromEntries(Object.entries(exact).map(([k, v]) => [k, dg(v)])), parts, myParts: 1 });
 
   const guardar = async () => {
     if (!nombre.trim()) return toast('Ponle nombre');
-    if (!variable && !amount) return toast('Falta el monto');
+    if (!variable && (enPesos ? !amount : !montoMoneda)) return toast('Falta el monto');
     if (tipo === 'compartido' && !ids.length) return toast('Elige con quién lo compartes');
     if (tipo === 'cobro' && !persona) return toast('Elige a quién le cobras');
     if (tipo === 'compartido' && !variable && !rsp.ok) return toast('Revisa cómo se reparte el monto');
@@ -137,6 +150,8 @@ export default function NuevoRecurrente() {
       tipo,
       montoTipo: variable ? 'variable' : 'fijo',
       monto: variable ? editing?.monto ?? 0 : amount,
+      moneda: enPesos ? undefined : (moneda as CodigoMoneda),
+      montoMoneda: enPesos ? undefined : montoMoneda,
       frecuencia,
       inicio,
       fin: finOn ? fin : undefined,
@@ -200,17 +215,53 @@ export default function NuevoRecurrente() {
             </button>
           </div>
           {!variable ? (
-            <label style={{ display: 'flex', alignItems: 'center', gap: 4, height: 60, marginTop: 10, padding: '0 18px', borderRadius: 30, border: '2px solid var(--ink)', fontSize: 30, fontWeight: 800, letterSpacing: -1 }}>
-              <span>$</span>
-              <input
-                value={show(amt)}
-                onChange={(e) => setAmt(e.target.value.replace(/\D/g, '').slice(0, 9))}
-                inputMode="numeric"
-                placeholder="0"
-                aria-label="Monto"
-                style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', fontSize: 30, fontWeight: 800, letterSpacing: -1, padding: 0 }}
-              />
-            </label>
+            <>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 4, height: 60, marginTop: 10, padding: '0 18px', borderRadius: 30, border: '2px solid var(--ink)', fontSize: 30, fontWeight: 800, letterSpacing: -1 }}>
+                <span style={{ flex: 'none' }}>{simboloMoneda(moneda)}</span>
+                {moneda === 'CLP' ? (
+                  <input
+                    value={show(amt)}
+                    onChange={(e) => setAmt(e.target.value.replace(/\D/g, '').slice(0, 9))}
+                    inputMode="numeric"
+                    placeholder="0"
+                    aria-label="Monto"
+                    style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', fontSize: 30, fontWeight: 800, letterSpacing: -1, padding: 0 }}
+                  />
+                ) : (
+                  <input
+                    value={amtMon}
+                    onChange={(e) => setAmtMon(e.target.value.replace(/[^\d,.]/g, '').slice(0, 10))}
+                    inputMode="decimal"
+                    placeholder="0"
+                    aria-label={`Monto en ${nombreMoneda(moneda)}`}
+                    style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', fontSize: 30, fontWeight: 800, letterSpacing: -1, padding: 0 }}
+                  />
+                )}
+              </label>
+              <div style={{ display: 'flex', gap: 6, marginTop: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                {(['CLP', ...MONEDAS] as const).map((c) => (
+                  <button
+                    key={c}
+                    className="pill h36"
+                    style={{ padding: '0 12px', fontSize: 13 }}
+                    aria-pressed={moneda === c}
+                    onClick={() => {
+                      setMoneda(c);
+                      if (c !== 'CLP') void actualizarIndicadores();
+                    }}
+                  >
+                    {c === 'CLP' ? 'Pesos' : c === 'USD' ? 'US$' : c === 'EUR' ? '€' : 'UF'}
+                  </button>
+                ))}
+              </div>
+              {moneda !== 'CLP' && (
+                <div className="t-meta" style={{ marginTop: 8, padding: '0 4px', lineHeight: 1.35 }}>
+                  {ind
+                    ? `${montoMoneda ? `${fmtMoneda(moneda, montoMoneda)} son ${fmt(amount)} hoy. ` : ''}Cada vez que toque, se pasa a pesos con el valor de ese día.`
+                    : `Sin el valor del ${nombreMoneda(moneda)} por ahora: cuando toque, se convierte con el valor del día o te pregunto el monto.`}
+                </div>
+              )}
+            </>
           ) : (
             <div style={{ marginTop: 10, fontSize: 15, fontWeight: 600, color: 'var(--muted)', padding: '0 4px' }}>Cada vez que toque, te pregunto cuánto llegó.</div>
           )}

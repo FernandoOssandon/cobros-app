@@ -2,6 +2,8 @@
 
 > Antes se llamaba **Me Debes**. Cambió de nombre en la 2.3 porque ya no es solo "quién me debe": son tus gastos, lo que te deben y dónde está tu plata. Por dentro se mantienen algunos nombres antiguos a propósito: la base de datos (`me-debes`), el formato de respaldo (`app: 'me-debes'`) y la carpeta del proyecto. Cambiarlos haría perder los datos guardados o dejaría de leer los respaldos.
 
+**Versión 2.5**: compras en cuotas, tendencias mes a mes, metas de ahorro, montos en UF/dólar/euro, planillas de ingresos y presupuestos, y pruebas automáticas en GitHub antes de publicar.
+
 **Versión 2.4**: presupuestos (semanal y por categoría), ingresos (sueldo fijo y sueltos, con "te quedan" del mes) y períodos de facturación por tarjeta en Resumen y Gastos. Detalle en [CHANGELOG.md](CHANGELOG.md).
 
 **Versión 2.3**: nueva marca **a mano.** (nombre, símbolo de igual, íconos y textos). No hay cambios en los datos.
@@ -41,7 +43,7 @@ Viven en `e2e/` y usan Playwright. Abren la app compilada, cargan `e2e/fixtures/
 El sitio de Netlify está conectado a este repo y `netlify.toml` define cómo compilar, así que **cada `git push` a `main` publica una versión nueva**.
 
 1. Sube el número en `package.json` (`"version"`); se muestra en Ajustes. Anota los cambios en `CHANGELOG.md`.
-2. `npm test`, `npm run e2e` y `git push`.
+2. `npm test`, `npm run e2e` y `git push`. GitHub Actions vuelve a correr todo (pestaña **Actions** del repo) y Netlify no publica si fallan las pruebas unitarias.
 3. En el teléfono aparece el aviso **"Hay una versión nueva · Actualizar"**: la app revisa cada hora y cada vez que vuelves a abrirla.
 
 **Los datos no se pierden al actualizar.** Viven en el teléfono (IndexedDB) asociados a la dirección del sitio, y cada cambio de estructura incluye una migración probada (`src/tests/migration.test.ts`). Solo se pierden si cambia la dirección del sitio, si se desinstala la app o si se borran los datos del navegador. Por eso existe el recordatorio de respaldo.
@@ -98,12 +100,13 @@ src/
   recurrentes.ts     Motor de recurrentes (generar, confirmar, saltar; también los ingresos fijos)
   ingresos.ts        Ingresos (y su depósito en la cuenta donde llegan) · presupuestos.ts: guardar y borrar
   periodo.ts         Período elegido (mes o tarjeta), compartido entre Resumen y Gastos
+  metas.ts           Metas de ahorro y aportes · indicadores.ts: UF, dólar y euro desde mindicador.cl
   hooks.ts           Consultas en vivo y tema claro/oscuro
-  lib/               Lógica pura: format, split, balance, resumen, periodos, presupuestos, ingresosMes, recurrence, search, messages, csv, contacts
+  lib/               Lógica pura: format, split, balance, resumen, periodos, presupuestos, ingresosMes, cuotas, monedas, metas, tendencias, recurrence, search, messages, csv, contacts
   nav.ts             Pestañas y pila de pantallas ("‹ {pantalla anterior}")
   screens/           Resumen, Gastos, NuevoGasto, GastoDetalle, Personas, Person, Pay, Collect, Recurrentes,
                      NuevoRecurrente, Grupos, Categorias, Medios, Onboarding, Ajustes, EditPerson, Archivadas,
-                     Plata, Cuenta, Correo, Presupuestos, Ingresos
+                     Plata, Cuenta, Correo, Presupuestos, Ingresos, Metas, Tendencias
   ui/                Kit (botones, chips, hojas), íconos, filas (gasto, tarjeta de medio, barra inferior),
                      hojas compartidas (por confirmar, nueva persona, categoría), toast y aviso de versión nueva
   tests/             Pruebas con Vitest
@@ -113,7 +116,7 @@ e2e/                 Pruebas de punta a punta con Playwright (y sus datos de eje
 ## Rutas
 
 Pestañas: `/` (Resumen) · `/gastos` · `/plata` (Mi plata) · `/personas` · `/recurrentes`
-Pantallas: `/gasto/nuevo[?p=id]` · `/gasto/:id[/editar]` · `/persona/:id[/editar|/pago|/cobro]` · `/recurrente/nuevo` · `/recurrente/:id` · `/grupos` · `/grupo/:id` · `/categorias` · `/medios` · `/medio/nuevo` · `/medio/:id` · `/ajustes` · `/bienvenida` · `/archivadas` · `/cuenta/nueva` · `/cuenta/:id[/editar]` · `/deposito/nuevo` · `/deposito/:id` · `/correo` · `/correo/conectar` · `/presupuestos` · `/presupuesto/nuevo` · `/presupuesto/:id` · `/ingresos` · `/ingreso/nuevo[?sueldo=1|?tipo=suelto&det=id]` · `/ingreso/:id` · `/ingreso/fijo/:id`
+Pantallas: `/gasto/nuevo[?p=id]` · `/gasto/:id[/editar]` · `/persona/:id[/editar|/pago|/cobro]` · `/recurrente/nuevo` · `/recurrente/:id` · `/grupos` · `/grupo/:id` · `/categorias` · `/medios` · `/medio/nuevo` · `/medio/:id` · `/ajustes` · `/bienvenida` · `/archivadas` · `/cuenta/nueva` · `/cuenta/:id[/editar]` · `/deposito/nuevo` · `/deposito/:id` · `/correo` · `/correo/conectar` · `/presupuestos` · `/presupuesto/nuevo` · `/presupuesto/:id` · `/ingresos` · `/ingreso/nuevo[?sueldo=1|?tipo=suelto&det=id]` · `/ingreso/:id` · `/ingreso/fijo/:id` · `/tendencias` · `/meta/nueva` · `/meta/:id[/editar]`
 
 ## Datos y respaldo
 

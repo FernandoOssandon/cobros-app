@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../db';
+import { imputar } from '../lib/cuotas';
 import { fmt, todayISO } from '../lib/format';
 import { avancePresupuesto } from '../lib/presupuestos';
 import { nombrePresupuesto } from './presupuesto';
@@ -11,7 +12,7 @@ import { useToast } from './toast';
 export function AvisosPresupuesto() {
   const toast = useToast();
   const nav = useNavigate();
-  const datos = useLiveQuery(async () => ({ ps: await db.presupuestos.toArray(), gs: await db.gastos.toArray(), cats: await db.categorias.toArray() }));
+  const datos = useLiveQuery(async () => ({ ps: await db.presupuestos.toArray(), gs: imputar(await db.gastos.toArray()), cats: await db.categorias.toArray() }));
   useEffect(() => {
     if (!datos?.ps.length) return;
     // Un respiro para no pisar el toast de "Gasto guardado" ni los de al abrir la app.

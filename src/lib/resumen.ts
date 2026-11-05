@@ -1,4 +1,5 @@
 // Resumen del mes: gasto real, lo que salió de cada medio de pago y cuánto de eso es de otros.
+import type { GastoImputado } from './cuotas';
 import type { Gasto, Medio, Movimiento } from '../db';
 import { estadosCargos, saldo } from './balance';
 import { sumarDias } from './recurrence';
@@ -75,10 +76,13 @@ export function resumenDe(mes: string, delMes: Gasto[], movimientos: Movimiento[
     const r = medioMap.get(key) ?? { medioId: key, total: 0, mio: 0, otrosCobrado: 0, otrosPendiente: 0 };
     r.total += g.total;
     r.mio += g.miParte;
-    for (const c of cargosDeGasto.get(g.id) ?? []) {
+    // Una cuota lleva su parte proporcional de lo que otros deben de la compra.
+    const cuota = (g as GastoImputado).cuota;
+    const factor = cuota ? g.total / cuota.totalCompra : 1;
+    for (const c of cargosDeGasto.get(cuota?.origenId ?? g.id) ?? []) {
       const pend = pendienteCargo.get(c.id) ?? c.monto;
-      r.otrosPendiente += pend;
-      r.otrosCobrado += c.monto - pend;
+      r.otrosPendiente += Math.round(pend * factor);
+      r.otrosCobrado += Math.round((c.monto - pend) * factor);
     }
     medioMap.set(key, r);
   }

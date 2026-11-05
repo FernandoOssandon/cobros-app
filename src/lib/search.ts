@@ -14,7 +14,7 @@ export interface FiltroGastos {
 /** Minúsculas y sin tildes, para que "matias" encuentre "Matías". */
 export const normalizar = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 
-export function filtrarGastos(gastos: Gasto[], f: FiltroGastos, personas: Persona[] = []): Gasto[] {
+export function filtrarGastos<G extends Gasto>(gastos: G[], f: FiltroGastos, personas: Persona[] = []): G[] {
   const q = f.texto ? normalizar(f.texto) : '';
   const nombres = new Map(personas.map((p) => [p.id, normalizar(p.nombre)]));
   return gastos
@@ -37,8 +37,8 @@ export function filtrarGastos(gastos: Gasto[], f: FiltroGastos, personas: Person
 }
 
 /** Agrupa por día para la lista del registro diario (más reciente primero). */
-export function agruparPorDia(gastos: Gasto[]): { fecha: string; gastos: Gasto[]; miTotal: number }[] {
-  const map = new Map<string, Gasto[]>();
+export function agruparPorDia<G extends Gasto>(gastos: G[]): { fecha: string; gastos: G[]; miTotal: number }[] {
+  const map = new Map<string, G[]>();
   for (const g of gastos) map.set(g.fecha, [...(map.get(g.fecha) ?? []), g]);
   return [...map.entries()]
     .sort((a, b) => b[0].localeCompare(a[0]))

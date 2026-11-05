@@ -30,8 +30,11 @@ import { ConectarGmail, Detectados } from './screens/Correo';
 import { PresupuestoForm, Presupuestos } from './screens/Presupuestos';
 import { IngresoForm, Ingresos } from './screens/Ingresos';
 import { AvisosPresupuesto } from './ui/avisos';
+import { MetaDetalle, MetaForm } from './screens/Metas';
+import Tendencias from './screens/Tendencias';
 import { renovarVencidos } from './ahorros';
 import { leerCorreo } from './correo';
+import { actualizarIndicadores } from './indicadores';
 
 export default function App() {
   const aj = useAjustes();
@@ -45,6 +48,7 @@ export default function App() {
             <RecurrentesAlDia />
             <CorreoAlDia />
             <AvisosPresupuesto />
+            <IndicadoresAlDia />
             <PrimerUso />
             <Routes>
               <Route path="/" element={<Tab><Resumen /></Tab>} />
@@ -83,6 +87,10 @@ export default function App() {
               <Route path="/ingreso/nuevo" element={<IngresoForm />} />
               <Route path="/ingreso/fijo/:rid" element={<IngresoForm />} />
               <Route path="/ingreso/:id" element={<IngresoForm />} />
+              <Route path="/meta/nueva" element={<MetaForm />} />
+              <Route path="/meta/:id" element={<MetaDetalle />} />
+              <Route path="/meta/:id/editar" element={<MetaForm />} />
+              <Route path="/tendencias" element={<Tendencias />} />
               <Route path="/bienvenida" element={<Onboarding />} />
               <Route path="/archivadas" element={<Archivadas />} />
               {/* Rutas de la 1.x */}
@@ -191,5 +199,24 @@ function CorreoAlDia() {
     document.addEventListener('visibilitychange', onVis);
     return () => document.removeEventListener('visibilitychange', onVis);
   }, [toast, nav]);
+  return null;
+}
+
+/** Trae la UF, el dólar y el euro del día (si hay monedas en uso), al abrir la app y al volver a ella. */
+function IndicadoresAlDia() {
+  useEffect(() => {
+    const run = async () => {
+      const [gastoEnMoneda, recEnMoneda, metaEnMoneda] = await Promise.all([
+        db.gastos.filter((g) => !!g.moneda).first(),
+        db.recurrentes.filter((r) => !!r.moneda).first(),
+        db.metas.filter((m) => !!m.moneda).first(),
+      ]);
+      if (gastoEnMoneda || recEnMoneda || metaEnMoneda) await actualizarIndicadores();
+    };
+    void run();
+    const onVis = () => document.visibilityState === 'visible' && void run();
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, []);
   return null;
 }

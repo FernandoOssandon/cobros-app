@@ -34,9 +34,9 @@ export const Switch = ({ on, onChange, label }: { on: boolean; onChange: (v: boo
   </button>
 );
 
-export const Keypad = ({ onKey, h = 44 }: { onKey: (k: string) => void; h?: number }) => (
+export const Keypad = ({ onKey, h = 44, decimal = false }: { onKey: (k: string) => void; h?: number; decimal?: boolean }) => (
   <div className="keypad">
-    {KEYS.map((k) => (
+    {(decimal ? KEYS.map((k) => (k === '00' ? ',' : k)) : KEYS).map((k) => (
       <button key={k} style={{ height: h }} onClick={() => onKey(k)} aria-label={k === '⌫' ? 'Borrar' : k}>
         {k}
       </button>

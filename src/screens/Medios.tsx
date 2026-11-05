@@ -29,7 +29,7 @@ export function Medios() {
       <h1 className="t-screen" style={{ margin: '18px 4px 16px' }}>medios de pago.</h1>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {activos.map((m) => {
-          const total = d.gastos.filter((g) => g.medioId === m.id && g.pagador === 'yo' && mesDe(g.fecha) === mes).reduce((s, g) => s + g.total, 0);
+          const total = d.imputados.filter((g) => g.medioId === m.id && g.pagador === 'yo' && mesDe(g.fecha) === mes).reduce((s, g) => s + g.total, 0);
           return (
             <button key={m.id} className="card" style={{ display: 'grid', gridTemplateColumns: '48px minmax(0,1fr) auto', gap: 12, alignItems: 'center' }} onClick={() => push(`/medio/${m.id}`)}>
               <MedioThumb medio={m} w={48} h={32} r={7} />

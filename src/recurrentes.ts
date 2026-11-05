@@ -8,7 +8,9 @@
 //
 // Monto fijo: se anota solo. Monto variable: queda "por confirmar" hasta que ingrese el monto real.
 // Los ids generados son deterministas (`<recurrente>@<fecha>`), así que generar dos veces no duplica nada.
-import { db, guardarGasto, now, uid, type Recurrente } from './db';
+import { db, guardarGasto, now, uid, type MontoMoneda, type Recurrente } from './db';
+import { actualizarIndicadores } from './indicadores';
+import { aPesos } from './lib/monedas';
 import { computeSplit, type SplitResult } from './lib/split';
 import { ocurrenciasEntre } from './lib/recurrence';
 import { todayISO } from './lib/format';
@@ -50,7 +52,7 @@ const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', '
 export const mesNombre = (fecha: string) => MESES[Number(fecha.slice(5, 7)) - 1];
 
 /** Anota una ocurrencia con el monto dado. `descripcion` reemplaza al nombre (ej. "Luz de noviembre"). */
-export async function materializar(r: Recurrente, fecha: string, monto: number, descripcion = r.nombre) {
+export async function materializar(r: Recurrente, fecha: string, monto: number, descripcion = r.nombre, moneda?: MontoMoneda) {
   const id = idOcurrencia(r.id, fecha);
   if (r.tipo === 'ingreso') {
     if (monto <= 0) return;
@@ -62,7 +64,7 @@ export async function materializar(r: Recurrente, fecha: string, monto: number, 
     await db.movimientos.put({ id, personaId: r.personaId, tipo: 'cargo', detalle: descripcion, monto, fecha, recurrenteId: r.id, creado: now() });
     return;
   }
-  const comun = { descripcion, fecha, medioId: r.medioId, categoriaId: r.categoriaId, recurrenteId: r.id, exactos: {}, partes: {}, misPartes: 1 };
+  const comun = { descripcion, fecha, medioId: r.medioId, categoriaId: r.categoriaId, recurrenteId: r.id, exactos: {}, partes: {}, misPartes: 1, moneda };
   if (r.tipo === 'mio') {
     await guardarGasto({ ...comun, modo: 'solo', yoIncluido: true }, { amount: monto, rows: [], mine: monto, remaining: 0, ok: true }, undefined, id);
     return;
@@ -95,17 +97,26 @@ export async function generarRecurrentes(hoy = todayISO()): Promise<ResultadoGen
   const res: ResultadoGeneracion = { anotados: 0, porConfirmar: 0, atrasados: 0 };
   const mesActual = hoy.slice(0, 7);
   const lista = (await db.recurrentes.toArray()).filter((r) => r.activo);
+  // Los que van en UF o dólares necesitan el valor del día (si no hay conexión, se usa el último guardado).
+  const indicadores = lista.some((r) => r.moneda) ? (await actualizarIndicadores()) ?? (await db.ajustes.get('main'))?.indicadores : undefined;
   for (const r of lista) {
     const fechas = ocurrenciasEntre(r.frecuencia, r.inicio, r.generadoHasta, hoy, r.fin);
     if (!fechas.length) continue;
     for (const fecha of fechas) {
       const pid = idOcurrencia(r.id, fecha);
-      if (r.montoTipo === 'variable') {
+      const ind = r.moneda ? indicadores?.[r.moneda] : undefined;
+      // En otra moneda y sin valor conocido: queda por confirmar, igual que un variable.
+      if (r.montoTipo === 'variable' || (r.moneda && !ind)) {
         await db.pendientes.put({ id: pid, recurrenteId: r.id, fecha, tipo: 'confirmar', creado: now() });
         res.porConfirmar++;
       } else if (fecha.slice(0, 7) < mesActual) {
         await db.pendientes.put({ id: pid, recurrenteId: r.id, fecha, tipo: 'anotar', creado: now() });
         res.atrasados++;
+      } else if (r.moneda && ind && r.montoMoneda) {
+        const monto = aPesos(r.montoMoneda, ind.valor);
+        await materializar(r, fecha, monto, r.nombre, { codigo: r.moneda, monto: r.montoMoneda, valor: ind.valor, fecha: ind.fecha });
+        await db.recurrentes.update(r.id, { monto });
+        res.anotados++;
       } else {
         await materializar(r, fecha, r.monto);
         res.anotados++;

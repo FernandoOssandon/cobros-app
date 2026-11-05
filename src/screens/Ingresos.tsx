@@ -26,7 +26,7 @@ export function Ingresos() {
   const hoy = todayISO();
   const mes = hoy.slice(0, 7);
   const im = ingresosMes(mes, d.ingresos, d.recurrentes, d.pendientes, hoy);
-  const gastoReal = d.gastos.filter((g) => g.fecha.startsWith(mes)).reduce((s, g) => s + g.miParte, 0);
+  const gastoReal = d.imputados.filter((g) => g.fecha.startsWith(mes)).reduce((s, g) => s + g.miParte, 0);
   const quedan = im.total - gastoReal;
   const hay = im.fijos.length > 0 || d.ingresos.length > 0;
   const confirmP = confirmando ? d.pendientes.find((p) => p.id === confirmando) : undefined;

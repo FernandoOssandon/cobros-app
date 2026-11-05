@@ -3,7 +3,8 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { entregarArchivo, importarRespaldo, validarRespaldo, type Respaldo } from '../backup';
 import { borrarTodo, db, guardarAjustes } from '../db';
 import { isDark, useAjustes } from '../hooks';
-import { gastosCsv, movimientosCsv } from '../lib/csv';
+import { imputar } from '../lib/cuotas';
+import { gastosCsv, ingresosCsv, movimientosCsv, presupuestosCsv } from '../lib/csv';
 import { shortDate, todayISO } from '../lib/format';
 import { useNav } from '../nav';
 import { useRespaldar } from '../useRespaldo';
@@ -42,9 +43,19 @@ export default function Ajustes() {
         ? 'Todo vive en este teléfono. Último respaldo: hoy.'
         : `Todo vive en este teléfono. Último respaldo hace ${dias} ${dias === 1 ? 'día' : 'días'} (${shortDate(todayISO(new Date(aj.ultimoRespaldo!)))}).`;
 
-  const exportCsv = async (cual: 'deudas' | 'gastos') => {
-    const [ps, ms, gs, md, cs] = await Promise.all([db.personas.toArray(), db.movimientos.toArray(), db.gastos.toArray(), db.medios.toArray(), db.categorias.toArray()]);
-    const contenido = cual === 'deudas' ? movimientosCsv(ps, ms, gs) : gastosCsv(gs, ps, md, cs);
+  const exportCsv = async (cual: 'deudas' | 'gastos' | 'ingresos' | 'presupuestos') => {
+    const [ps, ms, gs, md, cs, ing, cu, pr] = await Promise.all([
+      db.personas.toArray(), db.movimientos.toArray(), db.gastos.toArray(), db.medios.toArray(), db.categorias.toArray(),
+      db.ingresos.toArray(), db.cuentas.toArray(), db.presupuestos.toArray(),
+    ]);
+    const contenido =
+      cual === 'deudas'
+        ? movimientosCsv(ps, ms, gs)
+        : cual === 'ingresos'
+          ? ingresosCsv(ing, cu)
+          : cual === 'presupuestos'
+            ? presupuestosCsv(pr, imputar(gs), cs, todayISO())
+            : gastosCsv(gs, ps, md, cs);
     if (await entregarArchivo(`a-mano-${cual}-${todayISO()}.csv`, contenido, 'text/csv;charset=utf-8')) toast('Planilla lista');
   };
   const onFile = async (f?: File) => {
@@ -120,6 +131,12 @@ export default function Ajustes() {
             </button>
             <button className="pill h36" onClick={() => exportCsv('deudas')}>
               Deudas
+            </button>
+            <button className="pill h36" onClick={() => exportCsv('ingresos')}>
+              Ingresos
+            </button>
+            <button className="pill h36" onClick={() => exportCsv('presupuestos')}>
+              Presupuestos
             </button>
           </div>
           <input ref={file} type="file" accept="application/json,.json" hidden onChange={(e) => onFile(e.target.files?.[0])} />

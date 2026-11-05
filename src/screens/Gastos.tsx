@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useDatos } from '../hooks';
 import { diaLabel, fmt, shortDate } from '../lib/format';
 import type { Medio } from '../db';
+import { idOrigen, type GastoImputado } from '../lib/cuotas';
 import { estadoCierre, gastosDelPeriodo, resumenTarjeta } from '../lib/periodos';
 import { agruparPorDia, filtrarGastos, type FiltroGastos } from '../lib/search';
 import { useNav } from '../nav';
@@ -26,11 +27,11 @@ export default function Gastos() {
   const { periodo } = usePeriodo(d?.medios ?? SIN_MEDIOS);
   if (!d) return <div className="scroll" />;
   const tarjeta = periodo.tipo === 'tarjeta' ? periodo : null;
-  const rt = tarjeta ? resumenTarjeta(tarjeta, d.gastos, d.movimientos) : null;
+  const rt = tarjeta ? resumenTarjeta(tarjeta, d.imputados, d.movimientos) : null;
   const medioTarjeta = tarjeta ? d.medio.get(tarjeta.medioId) : undefined;
   // La búsqueda mira todos los períodos (para encontrar algo de hace meses); sin texto, solo el período elegido.
   const buscando = q.trim().length > 0;
-  const base = buscando ? d.gastos : gastosDelPeriodo(periodo, d.gastos);
+  const base: GastoImputado[] = buscando ? d.gastos : gastosDelPeriodo(periodo, d.imputados);
 
   const val = (k: Clave) => params.get(k);
   const setVal = (k: Clave, v: string | null) => {
@@ -111,7 +112,7 @@ export default function Gastos() {
             <div className="list">
               <div className="inner">
                 {dia.gastos.map((g) => (
-                  <GastoRow key={g.id} g={g} d={d} onClick={() => push(`/gasto/${g.id}`)} />
+                  <GastoRow key={g.id} g={g} d={d} onClick={() => push(`/gasto/${idOrigen(g)}`)} />
                 ))}
               </div>
             </div>

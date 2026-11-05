@@ -16,7 +16,7 @@ export function Presupuestos() {
   const d = useDatos();
   const { push, back, backLabel } = useNav();
   if (!d) return <div className="scroll" />;
-  const avs = avances(d.presupuestos, d.gastos, todayISO()).sort((a, b) => a.presupuesto.orden - b.presupuesto.orden);
+  const avs = avances(d.presupuestos, d.imputados, todayISO()).sort((a, b) => a.presupuesto.orden - b.presupuesto.orden);
   return (
     <div className="scroll" style={{ padding: '4px 16px var(--safe-bottom)' }}>
       <div className="row-between">
@@ -127,8 +127,8 @@ export function PresupuestoForm() {
   };
   const igual = (p: Presupuesto) => p.id !== id && (tipo === 'semana' ? !p.categoriaId && p.periodo === 'semana' : !!cat && p.categoriaId === cat);
   const repetido = d.presupuestos.find(igual);
-  const llevas = avancePresupuesto({ ...borrador, monto: Math.max(1, monto) }, d.gastos, hoy).gastado;
-  const vista = monto && listo ? avancePresupuesto(borrador, d.gastos, hoy) : null;
+  const llevas = avancePresupuesto({ ...borrador, monto: Math.max(1, monto) }, d.imputados, hoy).gastado;
+  const vista = monto && listo ? avancePresupuesto(borrador, d.imputados, hoy) : null;
   const referencia =
     tipo === 'semana'
       ? `Esta semana llevas ${fmt(llevas)}`
@@ -140,7 +140,7 @@ export function PresupuestoForm() {
     if (!listo) return toast('Elige una categoría');
     if (!monto) return toast('Falta el límite');
     // Si ya cruzó un umbral al guardar, no avisar de nuevo por eso mismo.
-    const a = avancePresupuesto(borrador, d.gastos, hoy);
+    const a = avancePresupuesto(borrador, d.imputados, hoy);
     const avisado = a.estado === 'excedido' ? `${a.desde}:100` : a.pct >= 0.8 ? `${a.desde}:80` : undefined;
     await db.transaction('rw', db.presupuestos, async () => {
       for (const p of d.presupuestos.filter(igual)) await borrarPresupuesto(p.id);
