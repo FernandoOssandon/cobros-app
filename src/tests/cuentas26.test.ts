@@ -83,3 +83,15 @@ describe('tarjetas de crédito: cupo, usado y por pagar', () => {
   });
 });
 
+
+describe('respaldo con el efectivo cambiado de tipo', () => {
+  it('importa aunque medio-efectivo sea ahora un débito', async () => {
+    await borrarTodo();
+    const r = await construirRespaldo();
+    r.medios = r.medios.map((m) => (m.id === 'medio-efectivo' ? { ...m, tipo: 'debito' as const, nombre: 'Débito Santander' } : m));
+    await importarRespaldo(validarRespaldo(JSON.parse(JSON.stringify(r))));
+    const medios = await db.medios.toArray();
+    expect(medios.find((m) => m.id === 'medio-efectivo')?.tipo).toBe('debito');
+    expect(medios.filter((m) => m.tipo === 'efectivo')).toHaveLength(1);
+  });
+});

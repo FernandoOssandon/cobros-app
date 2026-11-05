@@ -3,7 +3,7 @@
 // v4 (app 2.2–2.3), Mi plata y los cobros detectados en el correo. También acepta v2 a v6 y los convierte.
 // La conexión con el correo (con su clave) no viaja en el respaldo: se vuelve a conectar en el teléfono.
 import {
-  AJUSTES_DEFAULT, CAT_COLORS, CATEGORIAS_DEFAULT, ICONOS_CATEGORIA, MEDIO_COLORS, MEDIO_EFECTIVO, db, now, guardarAjustes,
+  AJUSTES_DEFAULT, CAT_COLORS, CATEGORIAS_DEFAULT, ICONOS_CATEGORIA, MEDIO_COLORS, MEDIO_EFECTIVO, db, now, guardarAjustes, uid,
   type Ajustes, type Categoria, type Cobro, type Gasto, type Grupo, type Medio,
   type Movimiento, type Pendiente, type Persona, type Recurrente, type Cuenta, type MovAhorro, type Detectado, type Ingreso, type Presupuesto, type Meta, type PagoTarjeta,
 } from './db';
@@ -110,7 +110,11 @@ function normalizar(r: Respaldo): Respaldo {
       return { ...c, icono, color: c.color ?? d?.color ?? CAT_COLORS[i % CAT_COLORS.length] };
     });
   let medios = r.medios.map((m) => (typeof m.color === 'number' ? { ...m, color: MEDIO_COLORS[(m.color as number) % MEDIO_COLORS.length] } : m));
-  if (!medios.some((m) => m.tipo === 'efectivo')) medios = [{ ...MEDIO_EFECTIVO, creado: now() }, ...medios];
+  if (!medios.some((m) => m.tipo === 'efectivo')) {
+    // El id del efectivo puede estar ocupado por un medio que se cambió de tipo (p. ej. a débito).
+    const id = medios.some((m) => m.id === MEDIO_EFECTIVO.id) ? `${MEDIO_EFECTIVO.id}-${uid()}` : MEDIO_EFECTIVO.id;
+    medios = [{ ...MEDIO_EFECTIVO, id, creado: now() }, ...medios];
+  }
   const gastos = r.gastos.map((g) =>
     g.montos
       ? g
