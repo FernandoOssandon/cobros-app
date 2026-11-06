@@ -60,7 +60,7 @@ export const tipoPorNombre = (nombre: string): Ingreso['tipo'] => (/sueldo|remun
 
 /** Cuentas donde puede llegar la plata: cuentas vista y remuneradas, más el efectivo. */
 export function cuentasDestino(cuentas: Cuenta[]): { id: string; nombre: string }[] {
-  const lista = cuentas.filter((c) => !c.archivada && (c.tipo === 'vista' || c.tipo === 'remunerada'));
+  const lista = cuentas.filter((c) => !c.archivada && !c.moneda && (c.tipo === 'vista' || c.tipo === 'remunerada'));
   const orden = (c: Cuenta) => (c.tipo === 'vista' ? 0 : 1);
   return [...lista.sort((a, b) => orden(a) - orden(b) || a.orden - b.orden), { id: ID_EFECTIVO, nombre: 'Efectivo' } as Cuenta].map((c) => ({ id: c.id, nombre: c.nombre }));
 }

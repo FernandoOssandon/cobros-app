@@ -54,10 +54,11 @@ test('ingresos y presupuestos en el Resumen', async ({ page }) => {
 
 test('nuevo presupuesto por categoría reemplaza al que ya había', async ({ page }) => {
   await page.goto('#/presupuesto/nuevo');
-  await page.getByText('Por categoría').click();
+  await page.getByText('Algunas categorías').click();
   await page.getByRole('button', { name: 'Salidas', exact: true }).click();
-  await expect(page.getByText('Salidas ya tiene un tope de $40.000. Si guardas, lo reemplazas.')).toBeVisible();
-  await page.getByLabel('Límite').fill('60000');
+  await page.getByRole('button', { name: 'Mes', exact: true }).click();
+  await expect(page.getByText('Ya tienes «Salidas» con lo mismo y por mes ($40.000). Si guardas, lo reemplazas.')).toBeVisible();
+  await page.getByRole('textbox', { name: 'Límite' }).fill('60000');
   await expect(page.getByText('Así quedaría hoy')).toBeVisible();
   await page.getByRole('button', { name: 'Guardar presupuesto' }).click();
   await expect(page.getByText('Presupuesto guardado · $60.000 al mes')).toBeVisible();

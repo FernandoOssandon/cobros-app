@@ -42,10 +42,24 @@ export async function guardarCuenta(c: CuentaDraft, saldoInicial?: number, fecha
   return id;
 }
 
+/**
+ * Cambia la moneda de una cuenta (ej. Meli Dólar que estaba en pesos): sus movimientos se pasan con el valor de hoy.
+ * `valor` = pesos por unidad de la moneda (la de destino o la de origen).
+ */
+export async function cambiarMonedaCuenta(id: string, moneda: Cuenta['moneda'], valor: number) {
+  await db.transaction('rw', db.cuentas, db.movAhorro, async () => {
+    const c = await db.cuentas.get(id);
+    if (!c || c.moneda === moneda || valor <= 0) return;
+    const convertir = (n: number) => (moneda ? Math.round((n / valor) * 100) / 100 : Math.round(n * valor));
+    for (const m of await db.movAhorro.where('cuentaId').equals(id).toArray()) await db.movAhorro.update(m.id, { monto: convertir(m.monto) });
+    await db.cuentas.update(id, { moneda });
+  });
+}
+
 /** Registra un depósito, un retiro o un cuadre (saldo real). */
 export async function registrarMovAhorro(cuentaId: string, tipo: MovAhorro['tipo'], monto: number, fecha = todayISO(), nota?: string, traspasoId?: string) {
   const id = uid();
-  await db.movAhorro.add({ id, cuentaId, tipo, monto: Math.max(0, Math.round(monto)), fecha, nota, traspasoId, creado: marca() });
+  await db.movAhorro.add({ id, cuentaId, tipo, monto: Math.max(0, Math.round(monto * 100) / 100), fecha, nota, traspasoId, creado: marca() });
   return id;
 }
 

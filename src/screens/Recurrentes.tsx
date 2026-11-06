@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import type { Recurrente } from '../db';
+import { guardarAjustes, type Recurrente } from '../db';
 import { useAjustes, useDatos } from '../hooks';
 import { fmt, juntarY, shortDate, todayISO } from '../lib/format';
 import { aPesos, fmtMoneda } from '../lib/monedas';
 import { describirFrecuencia, montoMensual, proxima } from '../lib/recurrence';
 import { useNav } from '../nav';
-import { anotarAtrasados, mesNombre, repartoRecurrente } from '../recurrentes';
+import { anotarAtrasados, guardarRecurrente, mesNombre, repartoRecurrente } from '../recurrentes';
+import { sugerirRecurrentes } from '../lib/sugerencias';
 import { Icon } from '../ui/icons';
 import { Avatar, CatIcon, EmptyState } from '../ui/kit';
 import { PorConfirmarSheet } from '../ui/sheets';
@@ -66,6 +67,7 @@ export default function Recurrentes() {
         </button>
       </div>
       <div className="scroll" style={{ padding: '0 16px 96px' }}>
+        <Sugeridos />
         {recs.length > 0 ? (
           <>
             <div style={{ padding: '18px 4px 0' }}>
@@ -203,5 +205,76 @@ export default function Recurrentes() {
       </div>
       {confirmP && confirmR && <PorConfirmarSheet p={confirmP} r={confirmR} onClose={() => setConfirmando(null)} />}
     </>
+  );
+}
+
+/** "¿Se repiten?": gastos que aparecen todos los meses y todavía no son recurrentes. */
+function Sugeridos() {
+  const d = useDatos();
+  const aj = useAjustes();
+  const toast = useToast();
+  if (!d || !aj.cargado) return null;
+  const sugs = sugerirRecurrentes(d.gastos, d.recurrentes, aj.sugerenciasDescartadas, todayISO());
+  if (!sugs.length) return null;
+  return (
+    <div style={{ paddingTop: 14 }}>
+      <h2 className="t-section" style={{ paddingTop: 8 }}>¿se repiten?</h2>
+      <p className="t-meta" style={{ padding: '0 4px 10px', marginTop: -6, lineHeight: 1.35 }}>
+        Los anotaste los últimos meses cerca del mismo día. Como recurrentes se anotan solos.
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {sugs.map((s) => {
+          const cat = s.categoriaId ? d.categoria.get(s.categoriaId) : undefined;
+          const medio = s.medioId ? d.medio.get(s.medioId) : undefined;
+          return (
+            <div key={s.clave} className="det-card" data-testid="sugerido">
+              <div style={{ display: 'grid', gridTemplateColumns: '40px minmax(0,1fr) auto', gap: 12, alignItems: 'center' }}>
+                <CatIcon cat={cat} />
+                <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                  <span style={{ fontSize: 17, fontWeight: 800, lineHeight: 1.2, overflowWrap: 'anywhere' }}>{s.nombre}</span>
+                  <span className="t-meta">
+                    {s.variable ? 'Variable · ' : ''}todos los meses el {s.dia}
+                    {medio ? ` · ${medio.nombre}` : ''}
+                  </span>
+                </span>
+                <span style={{ fontSize: 18, fontWeight: 800 }}>{fmt(s.monto)}</span>
+              </div>
+              <span className="t-meta">Anotado el {juntarY(s.fechas.map((f) => shortDate(f)))}.</span>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <button
+                  className="det-prim"
+                  onClick={async () => {
+                    await guardarRecurrente({
+                      nombre: s.nombre,
+                      tipo: 'mio',
+                      montoTipo: s.variable ? 'variable' : 'fijo',
+                      monto: s.monto,
+                      frecuencia: { unidad: 'mes', cada: 1, dia: s.dia },
+                      inicio: s.inicio,
+                      medioId: s.medioId,
+                      categoriaId: s.categoriaId,
+                    });
+                    toast(`${s.nombre} es recurrente · ${s.variable ? 'te preguntará el monto' : 'se anota solo'} desde el ${shortDate(s.inicio)}`);
+                  }}
+                >
+                  Hacerlo recurrente
+                </button>
+                <button
+                  className="btn-text"
+                  style={{ marginLeft: 'auto', height: 42, padding: '0 6px', fontSize: 15 }}
+                  onClick={async () => {
+                    const antes = aj.sugerenciasDescartadas ?? [];
+                    await guardarAjustes({ sugerenciasDescartadas: [...antes, s.clave] });
+                    toast('Listo, no lo sugiero más', { label: 'Deshacer', run: () => guardarAjustes({ sugerenciasDescartadas: antes }) });
+                  }}
+                >
+                  No es mensual
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }

@@ -29,7 +29,7 @@ describe('migración de la base v1 → v3', () => {
     // 2) Se abre con el código nuevo (corre la migración).
     const { db, CATEGORIAS_DEFAULT } = await import('../db');
     await db.open();
-    expect(db.verno).toBe(9);
+    expect(db.verno).toBe(10);
     expect(db.tables.map((t) => t.name)).not.toContain('cargos');
     // v5: tablas nuevas de Mi plata, vacías
     expect(await db.cuentas.count()).toBe(0);

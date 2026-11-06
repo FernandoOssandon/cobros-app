@@ -26,7 +26,8 @@ export function flujosCuentas(f: FuentesFlujo): MovAhorro[] {
     const prev = inicio.get(m.cuentaId);
     if (!prev || byDate(m, prev) < 0) inicio.set(m.cuentaId, m);
   }
-  const validas = new Set(f.cuentas.filter((c) => c.tipo !== 'dap').map((c) => c.id));
+  // Gastos, pagos e ingresos van en pesos: no mueven cuentas en dólares o euros.
+  const validas = new Set(f.cuentas.filter((c) => c.tipo !== 'dap' && !c.moneda).map((c) => c.id));
   const cuentaDeMedio = new Map(f.medios.filter((m) => m.cuentaId && m.tipo !== 'credito').map((m) => [m.id, m.cuentaId!]));
   const nombreMedio = new Map(f.medios.map((m) => [m.id, m.nombre]));
   const persona = new Map((f.personas ?? []).map((p) => [p.id, p.nombre.split(' ')[0]]));

@@ -6,9 +6,16 @@
 //   Es una estimación: cuadrar de vez en cuando con el saldo que muestra la app del banco la corrige.
 import type { Cuenta, DatosDap, Gasto, Medio, MovAhorro, Movimiento, Persona } from '../db';
 import { byDate, saldo as saldoPersona } from './balance';
-import { daysBetween, todayISO } from './format';
+import { daysBetween, fmt, todayISO } from './format';
+import { aPesos, fmtMoneda, type Indicadores } from './monedas';
 import { sumarDias } from './recurrence';
 import { periodoFacturacion } from './resumen';
+
+/** Redondeo de los montos de una cuenta: al peso, o al centavo si es en dólares o euros. */
+export const redondearCuenta = (c: Pick<Cuenta, 'moneda'>, n: number) => (c.moneda ? Math.round(n * 100) / 100 : Math.round(n));
+
+/** "$100.959" o "US$ 9,36". */
+export const fmtCuenta = (c: Pick<Cuenta, 'moneda'>, n: number) => (c.moneda ? fmtMoneda(c.moneda, n) : fmt(n));
 
 /** Tasa diaria equivalente (compuesta) a partir de la tasa de la cuenta. */
 export function tasaDiaria(c: Pick<Cuenta, 'tasa' | 'tasaUnidad'>): number {
@@ -57,7 +64,7 @@ export function valorDap(d: DatosDap, fecha: string): number {
 /** Saldo de cualquier cuenta en una fecha, redondeado al peso. Un DAP ya cobrado vale 0 (la plata se movió). */
 export function saldoCuenta(c: Cuenta, movs: MovAhorro[], fecha = todayISO()): number {
   if (c.tipo === 'dap') return c.dap && c.dap.estado === 'vigente' ? Math.round(valorDap(c.dap, fecha)) : 0;
-  return Math.round(saldoExacto(c, movs, fecha));
+  return redondearCuenta(c, saldoExacto(c, movs, fecha));
 }
 
 /**
@@ -76,7 +83,7 @@ export function rendimiento(c: Cuenta, movs: MovAhorro[], desde: string, hasta: 
   const base = desde < inicio ? inicio : desde;
   const enRango = ord.filter((m) => m.fecha > base && m.fecha <= hasta);
   const aportes = enRango.reduce((s, m) => s + (m.tipo === 'deposito' ? m.monto : m.tipo === 'retiro' ? -m.monto : 0), 0);
-  return Math.round(saldoExacto(c, ord, hasta) - saldoExacto(c, ord, base) - aportes);
+  return redondearCuenta(c, saldoExacto(c, ord, hasta) - saldoExacto(c, ord, base) - aportes);
 }
 
 /** Último día del mes anterior a `fecha`. */
@@ -84,7 +91,12 @@ const finMesAnterior = (fecha: string) => sumarDias(`${fecha.slice(0, 7)}-01`, -
 
 export interface ResumenCuenta {
   cuenta: Cuenta;
+  /** En la moneda de la cuenta. */
   saldo: number;
+  /** En pesos: igual al saldo, o convertido con el valor del día si la cuenta es en dólares o euros (0 si no se conoce el valor). */
+  saldoPesos: number;
+  /** Cuenta en otra moneda: pesos por unidad usados. */
+  valorMoneda?: number;
   /** Rendimiento estimado desde el 1 del mes. */
   ganadoMes: number;
   /** Rendimiento desde el primer registro (o desde el inicio del DAP). */
@@ -97,14 +109,18 @@ export interface ResumenCuenta {
   diasParaVencer?: number;
 }
 
-export function resumenCuenta(c: Cuenta, todos: MovAhorro[], hoy = todayISO()): ResumenCuenta {
+export function resumenCuenta(c: Cuenta, todos: MovAhorro[], hoy = todayISO(), indicadores?: Indicadores): ResumenCuenta {
   const movs = todos.filter((m) => m.cuentaId === c.id);
   const cuadres = ordenar(movs).filter((m) => m.tipo === 'cuadre' && m.fecha <= hoy);
   const ultimoCuadre = cuadres[cuadres.length - 1];
   const primera = c.tipo === 'dap' ? c.dap?.inicio : ordenar(movs)[0]?.fecha;
+  const saldo = saldoCuenta(c, movs, hoy);
+  const valorMoneda = c.moneda ? indicadores?.[c.moneda]?.valor : undefined;
   const r: ResumenCuenta = {
     cuenta: c,
-    saldo: saldoCuenta(c, movs, hoy),
+    saldo,
+    saldoPesos: c.moneda ? (valorMoneda ? aPesos(saldo, valorMoneda) : 0) : saldo,
+    valorMoneda,
     ganadoMes: rendimiento(c, movs, finMesAnterior(hoy), hoy),
     ganadoTotal: primera ? rendimiento(c, movs, primera, hoy) : 0,
     ultimoCuadre,
@@ -165,11 +181,12 @@ export interface Patrimonio {
 }
 
 export function patrimonio(
-  d: { cuentas: Cuenta[]; movAhorro: MovAhorro[]; personas: Persona[]; movimientos: Movimiento[]; gastos: Gasto[]; medios: Medio[]; usadoTarjetas?: Map<string, number> },
+  d: { cuentas: Cuenta[]; movAhorro: MovAhorro[]; personas: Persona[]; movimientos: Movimiento[]; gastos: Gasto[]; medios: Medio[]; usadoTarjetas?: Map<string, number>; indicadores?: Indicadores },
   hoy = todayISO(),
 ): Patrimonio {
-  const cuentas = d.cuentas.filter((c) => !c.archivada).map((c) => resumenCuenta(c, d.movAhorro, hoy));
-  const suma = (...ts: Cuenta['tipo'][]) => cuentas.filter((r) => ts.includes(r.cuenta.tipo)).reduce((s, r) => s + r.saldo, 0);
+  const cuentas = d.cuentas.filter((c) => !c.archivada).map((c) => resumenCuenta(c, d.movAhorro, hoy, d.indicadores));
+  // Las cuentas en dólares o euros suman en pesos, con el valor del día.
+  const suma = (...ts: Cuenta['tipo'][]) => cuentas.filter((r) => ts.includes(r.cuenta.tipo)).reduce((s, r) => s + r.saldoPesos, 0);
   // Los depósitos a plazo suman su capital; los intereses se ven en "al vencer recibes".
   const daps = cuentas.filter((r) => r.cuenta.tipo === 'dap' && r.cuenta.dap?.estado === 'vigente').reduce((s, r) => s + (r.cuenta.dap?.monto ?? 0), 0);
   let teDeben = 0;
@@ -235,7 +252,7 @@ export function movimientosCuenta(c: Cuenta, todos: MovAhorro[], hoy = todayISO(
     else if (i === 0) filas.push({ id: m.id, fecha: m.fecha, label: 'Saldo inicial', monto: m.monto, tipo: 'inicial' });
     else {
       const antes = saldoExacto(c, ord.slice(0, i), m.fecha);
-      const dif = Math.round(m.monto - antes);
+      const dif = redondearCuenta(c, m.monto - antes);
       if (dif) filas.push({ id: m.id, fecha: m.fecha, label: dif > 0 && c.tipo === 'remunerada' ? 'Ajuste al cuadrar · intereses' : 'Ajuste al cuadrar', monto: dif, tipo: 'ajuste' });
     }
   });
@@ -254,7 +271,7 @@ export function movimientosCuenta(c: Cuenta, todos: MovAhorro[], hoy = todayISO(
         if (f < ord[0].fecha) continue;
         interes += saldoExacto(c, ord, f) * r;
       }
-      if (Math.round(interes)) filas.push({ fecha: primero, label: `Intereses de ${MESES_LARGOS[m - 1]}`, monto: Math.round(interes), tipo: 'interes' });
+      if (redondearCuenta(c, interes)) filas.push({ fecha: primero, label: `Intereses de ${MESES_LARGOS[m - 1]}`, monto: redondearCuenta(c, interes), tipo: 'interes' });
       mes = siguiente;
     }
   }

@@ -174,7 +174,7 @@ export function MedioForm() {
             <div className="t-label">{tipo === 'credito' ? 'Se paga desde' : tipo === 'efectivo' ? 'Es la plata de' : 'Sale de la cuenta'}</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {d.cuentas
-                .filter((c) => !c.archivada && c.tipo !== 'dap')
+                .filter((c) => !c.archivada && c.tipo !== 'dap' && !c.moneda)
                 .map((c) => (
                   <button key={c.id} className="pill h38" aria-pressed={cuentaId === c.id} onClick={() => setCuentaId(c.id)}>
                     {c.nombre}

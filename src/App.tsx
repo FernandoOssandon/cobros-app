@@ -30,6 +30,7 @@ import { ConectarGmail, Detectados } from './screens/Correo';
 import { PresupuestoForm, Presupuestos } from './screens/Presupuestos';
 import { IngresoForm, Ingresos } from './screens/Ingresos';
 import { AvisosPresupuesto } from './ui/avisos';
+import { RespaldoAutomatico } from './ui/drive';
 import { MetaDetalle, MetaForm } from './screens/Metas';
 import Tendencias from './screens/Tendencias';
 import Importar from './screens/Importar';
@@ -50,6 +51,7 @@ export default function App() {
             <CorreoAlDia />
             <AvisosPresupuesto />
             <IndicadoresAlDia />
+            <RespaldoAutomatico />
             <PrimerUso />
             <Routes>
               <Route path="/" element={<Tab><Resumen /></Tab>} />
@@ -208,12 +210,13 @@ function CorreoAlDia() {
 function IndicadoresAlDia() {
   useEffect(() => {
     const run = async () => {
-      const [gastoEnMoneda, recEnMoneda, metaEnMoneda] = await Promise.all([
+      const [gastoEnMoneda, recEnMoneda, metaEnMoneda, cuentaEnMoneda] = await Promise.all([
         db.gastos.filter((g) => !!g.moneda).first(),
         db.recurrentes.filter((r) => !!r.moneda).first(),
         db.metas.filter((m) => !!m.moneda).first(),
+        db.cuentas.filter((c) => !!c.moneda && !c.archivada).first(),
       ]);
-      if (gastoEnMoneda || recEnMoneda || metaEnMoneda) await actualizarIndicadores();
+      if (gastoEnMoneda || recEnMoneda || metaEnMoneda || cuentaEnMoneda) await actualizarIndicadores();
     };
     void run();
     const onVis = () => document.visibilityState === 'visible' && void run();

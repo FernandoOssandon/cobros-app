@@ -1,15 +1,15 @@
-// Presupuestos: un total semanal y topes mensuales por categoría.
+// Presupuestos: varios a la vez, cada uno con todo tu gasto o con una o varias categorías, por semana o por mes.
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { db, type Presupuesto } from '../db';
 import { useDatos } from '../hooks';
 import { dg, fmt, MESES_LARGOS, show, todayISO } from '../lib/format';
-import { avancePresupuesto, avances, type AvancePresupuesto } from '../lib/presupuestos';
+import { avancePresupuesto, avances, categoriasDe, type AvancePresupuesto } from '../lib/presupuestos';
 import { useNav } from '../nav';
 import { borrarPresupuesto, guardarPresupuesto } from '../presupuestos';
 import { Icon } from '../ui/icons';
-import { BackButton, CatChip, Switch, TaskHeader } from '../ui/kit';
-import { BarraPresupuesto, ChipEstado, IconoPresupuesto, LineasPresupuesto, lineasPresupuesto, nombrePresupuesto, subPresupuesto } from '../ui/presupuesto';
+import { BackButton, CatChip, Pill, Switch, TaskHeader } from '../ui/kit';
+import { BarraPresupuesto, categoriasPresupuesto, ChipEstado, IconoPresupuesto, LineasPresupuesto, lineasPresupuesto, nombreAuto, nombrePresupuesto, subPresupuesto } from '../ui/presupuesto';
 import { useToast } from '../ui/toast';
 
 export function Presupuestos() {
@@ -47,7 +47,7 @@ export function Presupuestos() {
             <br />
             límites.
           </div>
-          <p className="t-body-muted">Ponle tope a la semana completa o a una categoría, como Salidas o Supermercado. Te aviso al 80 % y si te pasas.</p>
+          <p className="t-body-muted">Ponle tope a todo lo que gastas o a una o varias categorías, por semana o por mes. Puedes tener varios. Te aviso al 80 % y si te pasas.</p>
           <button className="cta" style={{ marginTop: 26 }} onClick={() => push('/presupuesto/nuevo')}>
             Crear presupuesto
           </button>
@@ -60,15 +60,15 @@ export function Presupuestos() {
 function TarjetaPresupuesto({ a, onClick }: { a: AvancePresupuesto; onClick: () => void }) {
   const d = useDatos();
   const p = a.presupuesto;
-  const cat = p.categoriaId ? d?.categoria.get(p.categoriaId) : undefined;
+  const cats = d ? categoriasPresupuesto(p, d.categoria) : [];
   const l = lineasPresupuesto(a);
   return (
-    <button className="card" onClick={onClick} style={{ display: 'flex', flexDirection: 'column', gap: 12 }} aria-label={`Presupuesto ${nombrePresupuesto(p, cat)}`}>
+    <button className="card" onClick={onClick} style={{ display: 'flex', flexDirection: 'column', gap: 12 }} aria-label={`Presupuesto ${nombrePresupuesto(p, cats)}`}>
       <span style={{ display: 'grid', gridTemplateColumns: '40px minmax(0,1fr) auto', gap: 12, alignItems: 'center', width: '100%' }}>
-        <IconoPresupuesto p={p} cat={cat} />
+        <IconoPresupuesto p={p} cats={cats} />
         <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-          <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: -0.3 }}>{nombrePresupuesto(p, cat)}</span>
-          <span className="ellipsis" style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)' }}>{subPresupuesto(a, cat)}</span>
+          <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: -0.3 }}>{nombrePresupuesto(p, cats)}</span>
+          <span className="ellipsis" style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)' }}>{subPresupuesto(a, cats)}</span>
         </span>
         <ChipEstado a={a} />
       </span>
@@ -83,28 +83,36 @@ function TarjetaPresupuesto({ a, onClick }: { a: AvancePresupuesto; onClick: () 
   );
 }
 
-type Tipo = 'semana' | 'categoria';
+type Alcance = 'todo' | 'categorias';
 
-const TIPOS: [Tipo, string, string][] = [
-  ['semana', 'Total semanal', 'Todo lo que gastas de lunes a domingo.'],
-  ['categoria', 'Por categoría', 'Un tope mensual para Salidas, Supermercado o la que elijas.'],
+const ALCANCES: [Alcance, string, string][] = [
+  ['todo', 'Todo lo que gastas', 'Tu gasto completo del período.'],
+  ['categorias', 'Algunas categorías', 'Una o varias juntas: Salidas, o Comida y Salidas.'],
 ];
+
+/** Mismas categorías (sin importar el orden). */
+const mismas = (a: string[], b: string[]) => a.length === b.length && a.every((x) => b.includes(x));
 
 export function PresupuestoForm() {
   const { id } = useParams();
   const d = useDatos();
   const { back } = useNav();
   const toast = useToast();
-  const [tipo, setTipo] = useState<Tipo>('semana');
-  const [cat, setCat] = useState<string | null>(null);
+  const [alcance, setAlcance] = useState<Alcance>('todo');
+  const [cats, setCats] = useState<string[]>([]);
+  const [periodo, setPeriodo] = useState<Presupuesto['periodo']>('semana');
+  const [nombre, setNombre] = useState('');
   const [amt, setAmt] = useState('');
   const [avisar, setAvisar] = useState(true);
   const editing = id ? d?.presupuestos.find((p) => p.id === id) : undefined;
 
   useEffect(() => {
     if (!editing) return;
-    setTipo(editing.categoriaId ? 'categoria' : 'semana');
-    setCat(editing.categoriaId ?? null);
+    const c = categoriasDe(editing);
+    setAlcance(c.length ? 'categorias' : 'todo');
+    setCats(c);
+    setPeriodo(editing.periodo);
+    setNombre(editing.categoriaId && !editing.categoriaIds?.length ? '' : editing.nombre);
     setAmt(String(editing.monto));
     setAvisar(editing.avisar !== false);
   }, [editing]);
@@ -112,41 +120,41 @@ export function PresupuestoForm() {
   if (!d) return <div className="screen" />;
   const hoy = todayISO();
   const monto = dg(amt);
-  const listo = tipo === 'semana' || !!cat;
-  const categoria = cat ? d.categoria.get(cat) : undefined;
+  const elegidas = alcance === 'categorias' ? cats : [];
+  const listo = alcance === 'todo' || cats.length > 0;
+  const catsObj = categoriasPresupuesto({ categoriaIds: elegidas }, d.categoria);
+  const auto = nombreAuto({ periodo }, catsObj);
   const borrador: Presupuesto = {
     id: id ?? 'nuevo',
-    nombre: tipo === 'semana' ? 'Total semanal' : categoria?.nombre ?? '',
-    periodo: tipo === 'semana' ? 'semana' : 'mes',
+    nombre: nombre.trim(),
+    periodo,
     monto,
-    categoriaId: tipo === 'categoria' ? cat ?? undefined : undefined,
+    categoriaIds: elegidas.length ? elegidas : undefined,
     avisar,
     archivado: false,
     orden: editing?.orden ?? 0,
     creado: '',
   };
-  const igual = (p: Presupuesto) => p.id !== id && (tipo === 'semana' ? !p.categoriaId && p.periodo === 'semana' : !!cat && p.categoriaId === cat);
+  // Otro presupuesto con el mismo período y las mismas categorías: se reemplaza (no tiene sentido tener dos).
+  const igual = (p: Presupuesto) => p.id !== id && p.periodo === periodo && mismas(categoriasDe(p), elegidas);
   const repetido = d.presupuestos.find(igual);
   const llevas = avancePresupuesto({ ...borrador, monto: Math.max(1, monto) }, d.imputados, hoy).gastado;
   const vista = monto && listo ? avancePresupuesto(borrador, d.imputados, hoy) : null;
-  const referencia =
-    tipo === 'semana'
-      ? `Esta semana llevas ${fmt(llevas)}`
-      : categoria
-        ? `En ${MESES_LARGOS[Number(hoy.slice(5, 7)) - 1]} llevas ${fmt(llevas)} en ${categoria.nombre}`
-        : 'Elige una categoría para ver cuánto llevas.';
+  const cuando = periodo === 'semana' ? 'Esta semana' : `En ${MESES_LARGOS[Number(hoy.slice(5, 7)) - 1]}`;
+  const referencia = !listo ? 'Elige al menos una categoría para ver cuánto llevas.' : `${cuando} llevas ${fmt(llevas)}${elegidas.length ? ` en ${auto}` : ''}`;
+  const toggle = (c: string) => setCats((xs) => (xs.includes(c) ? xs.filter((x) => x !== c) : [...xs, c]));
 
   const guardar = async () => {
-    if (!listo) return toast('Elige una categoría');
+    if (!listo) return toast('Elige al menos una categoría');
     if (!monto) return toast('Falta el límite');
     // Si ya cruzó un umbral al guardar, no avisar de nuevo por eso mismo.
     const a = avancePresupuesto(borrador, d.imputados, hoy);
     const avisado = a.estado === 'excedido' ? `${a.desde}:100` : a.pct >= 0.8 ? `${a.desde}:80` : undefined;
     await db.transaction('rw', db.presupuestos, async () => {
       for (const p of d.presupuestos.filter(igual)) await borrarPresupuesto(p.id);
-      await guardarPresupuesto({ id, nombre: borrador.nombre, periodo: borrador.periodo, monto, categoriaId: borrador.categoriaId, avisar, avisado });
+      await guardarPresupuesto({ id, nombre: borrador.nombre, periodo, monto, categoriaIds: borrador.categoriaIds, categoriaId: undefined, avisar, avisado });
     });
-    toast(id ? 'Presupuesto actualizado' : `Presupuesto guardado · ${fmt(monto)} ${tipo === 'semana' ? 'a la semana' : 'al mes'}`);
+    toast(id ? 'Presupuesto actualizado' : `Presupuesto guardado · ${fmt(monto)} ${periodo === 'semana' ? 'a la semana' : 'al mes'}`);
     back('/presupuestos');
   };
 
@@ -155,14 +163,14 @@ export function PresupuestoForm() {
       <TaskHeader title={id ? 'editar presupuesto.' : 'nuevo presupuesto.'} onClose={() => back('/presupuestos')} />
       <div className="scroll" style={{ padding: '14px 16px 16px', display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div>
-          <div className="t-label">Tipo</div>
+          <div className="t-label">Qué cuenta</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {TIPOS.map(([k, l, ds]) => (
+            {ALCANCES.map(([k, l, ds]) => (
               <button
                 key={k}
-                aria-pressed={tipo === k}
-                onClick={() => setTipo(k)}
-                style={{ border: `2px solid ${tipo === k ? 'var(--ink)' : 'var(--track)'}`, borderRadius: 22, background: tipo === k ? 'var(--ink)' : 'transparent', color: tipo === k ? 'var(--bg)' : 'var(--ink)', padding: '12px 16px', textAlign: 'left' }}
+                aria-pressed={alcance === k}
+                onClick={() => setAlcance(k)}
+                style={{ border: `2px solid ${alcance === k ? 'var(--ink)' : 'var(--track)'}`, borderRadius: 22, background: alcance === k ? 'var(--ink)' : 'transparent', color: alcance === k ? 'var(--bg)' : 'var(--ink)', padding: '12px 16px', textAlign: 'left' }}
               >
                 <span style={{ display: 'block', fontSize: 17, fontWeight: 800 }}>{l}</span>
                 <span style={{ display: 'block', fontSize: 13, fontWeight: 500, opacity: 0.75, marginTop: 2 }}>{ds}</span>
@@ -170,30 +178,44 @@ export function PresupuestoForm() {
             ))}
           </div>
         </div>
-        {tipo === 'categoria' && (
+        {alcance === 'categorias' && (
           <div>
-            <div className="t-label">Categoría</div>
-            <div className="hscroll">
+            <div className="t-label">Categorías {cats.length > 1 ? `· ${cats.length}` : ''}</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {d.categorias
-                .filter((c) => !c.archivada || c.id === cat)
+                .filter((c) => !c.archivada || cats.includes(c.id))
                 .map((c) => (
-                  <CatChip key={c.id} cat={c} on={cat === c.id} onClick={() => setCat(c.id)} />
+                  <CatChip key={c.id} cat={c} on={cats.includes(c.id)} onClick={() => toggle(c.id)} />
                 ))}
             </div>
           </div>
         )}
         <div>
+          <div className="t-label">Cada</div>
+          <div className="seg">
+            <Pill on={periodo === 'semana'} onClick={() => setPeriodo('semana')} className="grow">
+              Semana
+            </Pill>
+            <Pill on={periodo === 'mes'} onClick={() => setPeriodo('mes')} className="grow">
+              Mes
+            </Pill>
+          </div>
+        </div>
+        <div>
           <div className="t-label">Límite</div>
           <label className="amt-line" style={{ color: amt ? 'var(--ink)' : 'var(--muted)' }}>
             <span>$</span>
             <input value={show(amt)} onChange={(e) => setAmt(e.target.value.replace(/\D/g, '').slice(0, 9))} inputMode="numeric" placeholder="0" aria-label="Límite" />
-            <span style={{ flex: 'none', fontSize: 16, fontWeight: 700, letterSpacing: 0, color: 'var(--muted)' }}>{tipo === 'semana' ? 'a la semana' : 'al mes'}</span>
+            <span style={{ flex: 'none', fontSize: 16, fontWeight: 700, letterSpacing: 0, color: 'var(--muted)' }}>{periodo === 'semana' ? 'a la semana' : 'al mes'}</span>
           </label>
+        </div>
+        <div>
+          <div className="t-label">Nombre (opcional)</div>
+          <input className="input-big" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder={auto} maxLength={40} aria-label="Nombre del presupuesto" />
         </div>
         {repetido && (
           <div style={{ borderRadius: 16, background: 'var(--soft)', padding: '12px 14px', fontSize: 14, fontWeight: 700, color: 'var(--owe)', lineHeight: 1.35 }}>
-            {tipo === 'semana' ? 'Ya tienes un total semanal de ' : `${categoria?.nombre ?? 'Esa categoría'} ya tiene un tope de `}
-            {fmt(repetido.monto)}. Si guardas, lo reemplazas.
+            Ya tienes «{nombrePresupuesto(repetido, categoriasPresupuesto(repetido, d.categoria))}» con lo mismo y {periodo === 'semana' ? 'por semana' : 'por mes'} ({fmt(repetido.monto)}). Si guardas, lo reemplazas.
           </div>
         )}
         <div style={{ borderRadius: 24, background: 'var(--surface)', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>

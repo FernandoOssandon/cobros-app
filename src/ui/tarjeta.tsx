@@ -66,7 +66,7 @@ export function PagarTarjetaSheet({ m, d, onClose }: { m: Medio; d: Datos; onClo
   const hoy = todayISO();
   const u = usoTarjeta(m, d.gastos, d.pagosTarjeta, hoy);
   const pp = porPagar(m, d.imputados, d.movimientos, d.pagosTarjeta, hoy);
-  const cuentas = d.cuentas.filter((c) => !c.archivada && c.tipo !== 'dap');
+  const cuentas = d.cuentas.filter((c) => !c.archivada && c.tipo !== 'dap' && !c.moneda);
   const [amt, setAmt] = useState(pp && pp.queda > 0 ? String(pp.queda) : '');
   const [cuenta, setCuenta] = useState<string | null>(m.cuentaId && cuentas.some((c) => c.id === m.cuentaId) ? m.cuentaId : null);
   const [fecha, setFecha] = useState<Fecha>('hoy');

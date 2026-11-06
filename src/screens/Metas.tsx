@@ -248,7 +248,7 @@ export function MetaForm() {
   const montoMoneda = leerDecimal(amtMon);
   const ind = enPesos ? undefined : aj.indicadores?.[moneda];
   const monto = enPesos ? dg(amt) : ind ? aPesos(montoMoneda, ind.valor) : editing?.monto ?? 0;
-  const cuentas = d.cuentas.filter((c) => !c.archivada && c.tipo !== 'dap');
+  const cuentas = d.cuentas.filter((c) => !c.archivada && c.tipo !== 'dap' && !c.moneda);
   const nombreCuenta = cuenta ? cuentas.find((c) => c.id === cuenta)?.nombre : undefined;
   const ok = !!nombre.trim() && (enPesos ? monto > 0 : montoMoneda > 0);
   const vista =

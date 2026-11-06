@@ -65,7 +65,8 @@ export async function construirRespaldo(): Promise<Respaldo> {
     db.medios.toArray(), db.categorias.toArray(), db.grupos.toArray(), db.recurrentes.toArray(),
     db.pendientes.toArray(), db.fotos.toArray(), db.cuentas.toArray(), db.movAhorro.toArray(), db.detectados.toArray(), db.ingresos.toArray(), db.presupuestos.toArray(), db.metas.toArray(), db.pagosTarjeta.toArray(), db.importados.toArray(), db.ajustes.get('main'),
   ]);
-  const { correo: _sinCorreo, ...aj } = { ...AJUSTES_DEFAULT, ...ajustes };
+  // La conexión con el correo (con su clave) y la de Drive son de este teléfono: no viajan en el respaldo.
+  const { correo: _sinCorreo, drive: _sinDrive, ...aj } = { ...AJUSTES_DEFAULT, ...ajustes };
   return {
     app: 'me-debes', version: 8, exportado: now(),
     personas, gastos, movimientos, cobros, medios, categorias, grupos, recurrentes, pendientes,
@@ -122,7 +123,9 @@ function normalizar(r: Respaldo): Respaldo {
       : { ...g, montos: Object.fromEntries(r.movimientos.filter((m) => m.gastoId === g.id && m.tipo === 'cargo').map((m) => [m.personaId, m.monto])) },
   );
   const pendientes = r.pendientes.map((p) => ({ ...p, tipo: p.tipo ?? ('confirmar' as const) }));
-  return { ...r, categorias, medios, gastos, pendientes, ajustes: { ...AJUSTES_DEFAULT, ...r.ajustes, onboardingHecho: r.ajustes?.onboardingHecho ?? true } };
+  // Hasta la 2.7 un presupuesto tenía una sola categoría (y su nombre era el de la categoría).
+  const presupuestos = r.presupuestos.map(({ categoriaId, ...p }) => (categoriaId && !p.categoriaIds ? { ...p, categoriaIds: [categoriaId], nombre: '' } : p));
+  return { ...r, categorias, medios, gastos, pendientes, presupuestos, ajustes: { ...AJUSTES_DEFAULT, ...r.ajustes, onboardingHecho: r.ajustes?.onboardingHecho ?? true } };
 }
 
 /** Respaldo v2 (cargos) → v3 (gastos). */
@@ -147,7 +150,9 @@ function convertirV2(r: Record<string, unknown>): Respaldo {
 export async function importarRespaldo(r: Respaldo) {
   const tablas = [db.personas, db.gastos, db.movimientos, db.cobros, db.medios, db.categorias, db.grupos, db.recurrentes, db.pendientes, db.fotos, db.cuentas, db.movAhorro, db.detectados, db.ingresos, db.presupuestos, db.metas, db.pagosTarjeta, db.importados, db.ajustes];
   await db.transaction('rw', tablas, async () => {
-    const correo = (await db.ajustes.get('main'))?.correo;
+    const actuales = await db.ajustes.get('main');
+    const correo = actuales?.correo;
+    const drive = actuales?.drive;
     await Promise.all(
       [db.personas, db.gastos, db.movimientos, db.cobros, db.medios, db.grupos, db.recurrentes, db.pendientes, db.fotos, db.cuentas, db.movAhorro, db.detectados, db.ingresos, db.presupuestos, db.metas, db.pagosTarjeta, db.importados].map((t) => t.clear()),
     );
@@ -172,7 +177,7 @@ export async function importarRespaldo(r: Respaldo) {
     await db.metas.bulkAdd(r.metas);
     await db.pagosTarjeta.bulkAdd(r.pagosTarjeta);
     await db.importados.bulkAdd(r.importados);
-    if (r.ajustes) await db.ajustes.put({ ...AJUSTES_DEFAULT, ...r.ajustes, correo: correo ?? undefined, id: 'main' });
+    if (r.ajustes) await db.ajustes.put({ ...AJUSTES_DEFAULT, ...r.ajustes, correo: correo ?? undefined, drive: drive ?? undefined, id: 'main' });
   });
 }
 

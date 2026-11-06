@@ -1,10 +1,12 @@
 // Detalle de una cuenta de ahorro, formulario de cuenta y formulario de depósito a plazo.
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useParams, useSearchParams } from 'react-router-dom';
-import { guardarCuenta, quitarCuenta } from '../ahorros';
+import { cambiarMonedaCuenta, guardarCuenta, quitarCuenta } from '../ahorros';
+import { actualizarIndicadores } from '../indicadores';
 import { AVATAR_COLORS, db, type Cuenta, type TipoCuenta } from '../db';
-import { useDatos } from '../hooks';
-import { alVencerDap, anualDesde30, historialCuenta, movimientosCuenta, resumenCuenta } from '../lib/ahorro';
+import { useAjustes, useDatos } from '../hooks';
+import { alVencerDap, anualDesde30, fmtCuenta, historialCuenta, movimientosCuenta, resumenCuenta } from '../lib/ahorro';
+import { leerDecimal, nombreMoneda } from '../lib/monedas';
 import { dateLabel, dg, diaLabel, fmt, MESES_LARGOS, show, todayISO } from '../lib/format';
 import { sumarDias } from '../lib/recurrence';
 import { useNav } from '../nav';
@@ -19,6 +21,7 @@ import { CuentaIni, cuadradoLbl, fechaConDia, fechaLarga, Ganado, MovSheet, pct,
 export function CuentaDetalle() {
   const { id = '' } = useParams();
   const d = useDatos();
+  const aj = useAjustes();
   const { push, back, backLabel } = useNav();
   const [mov, setMov] = useState<MovPedido | null>(null);
   const [borrarMov, setBorrarMov] = useState<string | null>(null);
@@ -35,7 +38,7 @@ export function CuentaDetalle() {
     );
   }
   const hoy = todayISO();
-  const r = resumenCuenta(c, d.movCuentas, hoy);
+  const r = resumenCuenta(c, d.movCuentas, hoy, aj.indicadores);
   const filas = movimientosCuenta(c, d.movCuentas, hoy);
   const serie = historialCuenta(c, d.movCuentas, hoy);
   const conTasa = !!c.tasa && (c.tipo === 'remunerada' || c.tipo === 'inversion');
@@ -81,14 +84,19 @@ export function CuentaDetalle() {
         {TIPO_CUENTA[c.tipo]}
         {conTasa ? ` · ${pct(c.tasa!)}% ${c.tasaUnidad === 'mensual' ? 'mensual' : 'anual'}` : ''}
       </div>
-      <div className="t-hero-58" style={{ marginTop: 20 }}>{fmt(r.saldo)}</div>
+      <div className="t-hero-58" style={{ marginTop: 20 }}>{fmtCuenta(c, r.saldo)}</div>
+      {c.moneda && (
+        <div style={{ fontSize: 16, fontWeight: 700, marginTop: 6 }}>
+          {r.valorMoneda ? `≈ ${fmt(r.saldoPesos)} · ${nombreMoneda(c.moneda)} a ${fmt(Math.round(r.valorMoneda))}` : `Sin el valor del ${nombreMoneda(c.moneda)} todavía: abre la app con conexión.`}
+        </div>
+      )}
       <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--muted)', marginTop: 8 }}>
         {conTasa ? 'Saldo estimado' : 'Saldo'} · {cuadradoLbl(r.diasDesdeCuadre)}
       </div>
       {conTasa && (
         <div style={{ display: 'flex', marginTop: 12 }}>
           <span className="pill-pos" style={r.ganadoMes < 0 ? { borderColor: 'var(--owe)', color: 'var(--owe)' } : undefined}>
-            <Ganado v={r.ganadoMes} />
+            <Ganado v={r.ganadoMes} c={c} />
           </span>
         </div>
       )}
@@ -98,10 +106,10 @@ export function CuentaDetalle() {
             <span>Saldo, {serie.length >= 6 ? 'últimos 6 meses' : serie.length === 2 ? 'desde que la anotaste' : `últimos ${serie.length} meses`}</span>
             <span>
               {crecio >= 0 ? '+' : ''}
-              {fmt(crecio)} desde {desde}
+              {fmtCuenta(c, crecio)} desde {desde}
             </span>
           </div>
-          <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', maxWidth: '100%' }} role="img" aria-label={`Saldo: ${serie.map((p) => `${p.label} ${fmt(p.saldo)}`).join(', ')}`}>
+          <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', maxWidth: '100%' }} role="img" aria-label={`Saldo: ${serie.map((p) => `${p.label} ${fmtCuenta(c, p.saldo)}`).join(', ')}`}>
             <path d={grafico.area} fill="var(--pos)" fillOpacity={0.14} />
             <path d={grafico.line} fill="none" stroke="var(--pos)" strokeWidth={3} strokeLinejoin="round" strokeLinecap="round" />
             <circle cx={grafico.x} cy={grafico.y} r={6} fill="var(--surface)" stroke="var(--pos)" strokeWidth={3} />
@@ -161,7 +169,7 @@ export function CuentaDetalle() {
                   </span>
                   <span style={{ fontSize: 16, fontWeight: 800, color: f.monto > 0 ? 'var(--pos)' : 'var(--ink)' }}>
                     {f.monto > 0 ? '+' : ''}
-                    {fmt(f.monto)}
+                    {fmtCuenta(c, f.monto)}
                   </span>
                 </>
               );
@@ -229,6 +237,8 @@ export function CuentaForm() {
   const { back, navigate } = useNav();
   const toast = useToast();
   const editing = id ? d?.cuentas.find((c) => c.id === id) : undefined;
+  const aj = useAjustes();
+  const [moneda, setMoneda] = useState<Cuenta['moneda']>(undefined);
   const [nombre, setNombre] = useState('');
   const [tipo, setTipo] = useState<TipoCuenta>((params.get('tipo') as TipoCuenta) || 'remunerada');
   const [tasa, setTasa] = useState('');
@@ -242,6 +252,7 @@ export function CuentaForm() {
     if (!editing || loaded.current) return;
     loaded.current = true;
     setNombre(editing.nombre);
+    setMoneda(editing.moneda);
     setTipo(editing.tipo);
     setTasa(editing.tasa ? String(editing.tasa).replace('.', ',') : '');
     setUnidad(editing.tasaUnidad ?? 'anual');
@@ -250,12 +261,18 @@ export function CuentaForm() {
 
   const conTasa = tipo === 'remunerada' || tipo === 'inversion';
   const tasaNum = parseFloat(tasa.replace(',', '.')) || 0;
+  // Al cambiar la moneda de una cuenta que ya tiene saldo, se convierte con el valor de hoy.
+  const cambiaMoneda = !!editing && editing.moneda !== moneda;
+  const codigoValor = moneda ?? editing?.moneda;
+  const valorHoy = codigoValor ? aj.indicadores?.[codigoValor]?.valor : undefined;
   const guardar = async () => {
     if (!nombre.trim()) return toast('Ponle nombre');
+    if (cambiaMoneda && !valorHoy) return toast('Falta el valor del día: abre la app con conexión e intenta de nuevo');
     const nueva = await guardarCuenta(
-      { id: editing?.id, nombre, tipo, color, tasa: conTasa && tasaNum ? tasaNum : undefined, tasaUnidad: conTasa && tasaNum ? unidad : undefined },
-      editing ? undefined : dg(saldo),
+      { id: editing?.id, nombre, tipo, color, tasa: conTasa && tasaNum ? tasaNum : undefined, tasaUnidad: conTasa && tasaNum ? unidad : undefined, moneda: editing ? editing.moneda : moneda },
+      editing ? undefined : moneda ? leerDecimal(saldo) : dg(saldo),
     );
+    if (cambiaMoneda && editing) await cambiarMonedaCuenta(editing.id, moneda, valorHoy!);
     toast(editing ? 'Cuenta actualizada' : `${nombre.trim()} agregada`);
     if (editing) back(`/cuenta/${nueva}`);
     else navigate(`/cuenta/${nueva}`, { replace: true, state: { from: 'Mi plata' } });
@@ -306,6 +323,35 @@ export function CuentaForm() {
             ))}
           </div>
         </div>
+        {tipo !== 'efectivo' && (
+          <div>
+            <div className="t-label">Moneda</div>
+            <div className="seg">
+              {([[undefined, 'Pesos'], ['USD', 'Dólares'], ['EUR', 'Euros']] as const).map(([m, l]) => (
+                <button
+                  key={l}
+                  className="pill h38 grow"
+                  aria-pressed={moneda === m}
+                  onClick={() => {
+                    setMoneda(m);
+                    // El valor del día hace falta para mostrarla en pesos (y para convertir una cuenta que ya existe).
+                    if (m) void actualizarIndicadores();
+                  }}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
+            {moneda && <div className="t-meta" style={{ padding: '6px 4px 0', lineHeight: 1.35 }}>El saldo va en {moneda === 'USD' ? 'dólares' : 'euros'}; en tu patrimonio suma en pesos con el valor del día.</div>}
+            {cambiaMoneda && (
+              <div style={{ marginTop: 8, borderRadius: 16, background: 'var(--soft)', padding: '10px 12px', fontSize: 14, fontWeight: 700, color: 'var(--owe)', lineHeight: 1.35 }}>
+                {valorHoy
+                  ? `Su saldo y movimientos se pasan con el ${nombreMoneda(codigoValor!)} de hoy (${fmt(Math.round(valorHoy))}). Después cuádrala con lo que diga tu app.`
+                  : 'Falta el valor del día para convertir: abre la app con conexión.'}
+              </div>
+            )}
+          </div>
+        )}
         {conTasa && (
           <div>
             <div className="t-label">Tasa</div>
@@ -327,8 +373,12 @@ export function CuentaForm() {
           <div>
             <div className="t-label">Saldo hoy</div>
             <label className="amt-line" style={{ color: saldo ? 'var(--ink)' : 'var(--muted)' }}>
-              <span>$</span>
-              <input value={show(saldo)} onChange={(e) => setSaldo(e.target.value.replace(/\D/g, '').slice(0, 10))} inputMode="numeric" placeholder="0" aria-label="Saldo hoy" />
+              <span>{moneda === 'USD' ? 'US$' : moneda === 'EUR' ? '€' : '$'}</span>
+              {moneda ? (
+                <input value={saldo} onChange={(e) => setSaldo(e.target.value.replace(/[^0-9,]/g, '').slice(0, 12))} inputMode="decimal" placeholder="0" aria-label="Saldo hoy" />
+              ) : (
+                <input value={show(saldo)} onChange={(e) => setSaldo(e.target.value.replace(/\D/g, '').slice(0, 10))} inputMode="numeric" placeholder="0" aria-label="Saldo hoy" />
+              )}
             </label>
           </div>
         ) : (

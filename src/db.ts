@@ -258,6 +258,11 @@ export interface Cuenta {
   /** Rentabilidad en % (remunerada o inversión). */
   tasa?: number;
   tasaUnidad?: 'anual' | 'mensual';
+  /**
+   * Cuenta en otra moneda (ej. Meli Dólar): sus saldos y movimientos van en esa moneda, con decimales.
+   * En el patrimonio se pasa a pesos con el valor del día. No se liga con gastos, pagos ni ingresos (que van en pesos).
+   */
+  moneda?: 'USD' | 'EUR';
   dap?: DatosDap;
   archivada: boolean;
   orden: number;
@@ -365,13 +370,18 @@ export interface Ingreso {
 /**
  * Límite de gasto:
  * - 'semana': lunes a domingo; 'mes': mes calendario.
- * - Sin categoría: cuenta todo tu gasto real (tu parte de cada gasto). Con categoría: solo esa.
+ * - Sin categorías: cuenta todo tu gasto real (tu parte de cada gasto). Con categorías: solo esas (una o varias).
+ * Puede haber varios presupuestos a la vez (ej. "Salidas y comida" semanal y "Casa" mensual).
  */
 export interface Presupuesto {
   id: string;
+  /** Nombre propio (ej. "Salidas y comida"). Vacío: se arma con las categorías o "Total semanal/mensual". */
   nombre: string;
   periodo: 'semana' | 'mes';
   monto: number;
+  /** Categorías que cuenta. Vacío o sin definir: todas. */
+  categoriaIds?: string[];
+  /** Hasta la 2.7: una sola categoría. Se convierte a `categoriaIds` (ver `categoriasDe`). */
   categoriaId?: string;
   /** Avisar al cruzar el 80 % y al pasar el 100 % (una vez por período). */
   avisar?: boolean;
@@ -476,6 +486,21 @@ export interface Ajustes {
   indicadores?: Indicadores;
   /** A qué cuenta o tarjeta de la app corresponde cada cartola (clave del archivo → id). */
   importar?: Record<string, string>;
+  /** Recurrentes sugeridos que dijiste que no (por la descripción sin números). */
+  sugerenciasDescartadas?: string[];
+  /** Respaldo automático en Google Drive (si está conectado). */
+  drive?: ConfigDrive;
+}
+
+export interface ConfigDrive {
+  /** ID de cliente OAuth de Google (si no viene en la compilación). */
+  clientId?: string;
+  /** Correo de la cuenta conectada. */
+  email?: string;
+  /** Carpeta "a mano · respaldos" en tu Drive. */
+  carpetaId?: string;
+  /** Marca de tiempo ISO del último respaldo subido. */
+  ultimaSubida?: string;
 }
 
 export const AJUSTES_DEFAULT: Ajustes = {
@@ -526,6 +551,33 @@ type DB = Dexie & {
 
 // El nombre de la base viene de cuando la app se llamaba Me Debes. NO cambiarlo: los datos guardados están ahí.
 export const db = new Dexie('me-debes') as DB;
+
+/**
+ * Avisa cada vez que cambian tus datos (cualquier tabla menos los ajustes), para el respaldo automático en Drive.
+ * Escucha: `cambiosDatos.addEventListener('cambio', …)`.
+ */
+export const cambiosDatos = new EventTarget();
+db.use({
+  stack: 'dbcore',
+  name: 'avisoCambios',
+  create(down) {
+    return {
+      ...down,
+      table(nombre) {
+        const t = down.table(nombre);
+        if (nombre === 'ajustes') return t;
+        return {
+          ...t,
+          mutate: (req) =>
+            t.mutate(req).then((res) => {
+              cambiosDatos.dispatchEvent(new Event('cambio'));
+              return res;
+            }),
+        };
+      },
+    };
+  },
+});
 
 // v1: primera versión publicada (cargos compartidos).
 db.version(1).stores({
@@ -586,6 +638,23 @@ db.version(9).stores({
   movAhorro: 'id, cuentaId, fecha, traspasoId',
   importados: 'id, destinoId, clave, fecha',
 });
+
+// v10 (app 3.0): presupuestos con varias categorías. La categoría única pasa a ser una lista de una.
+db.version(10)
+  .stores({})
+  .upgrade((tx) =>
+    tx
+      .table('presupuestos')
+      .toCollection()
+      .modify((p: Presupuesto) => {
+        if (p.categoriaId && !p.categoriaIds) {
+          p.categoriaIds = [p.categoriaId];
+          // El nombre era el de la categoría: queda vacío para que siga el nombre actual de la categoría.
+          p.nombre = '';
+        }
+        delete p.categoriaId;
+      }),
+  );
 
 /** Migración v3 → v4. Exportada para poder probarla. */
 export async function migrarV3aV4(tx: Transaction) {

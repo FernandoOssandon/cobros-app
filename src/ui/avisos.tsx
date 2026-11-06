@@ -6,7 +6,7 @@ import { db } from '../db';
 import { imputar } from '../lib/cuotas';
 import { fmt, todayISO } from '../lib/format';
 import { avancePresupuesto } from '../lib/presupuestos';
-import { nombrePresupuesto } from './presupuesto';
+import { categoriasPresupuesto, nombrePresupuesto } from './presupuesto';
 import { useToast } from './toast';
 
 export function AvisosPresupuesto() {
@@ -26,7 +26,7 @@ export function AvisosPresupuesto() {
         const [desde, previo] = (p.avisado ?? '').split(':');
         if (desde === a.desde && Number(previo) >= nivel) continue;
         await db.presupuestos.update(p.id, { avisado: `${a.desde}:${nivel}` });
-        const nombre = nombrePresupuesto(p, datos.cats.find((c) => c.id === p.categoriaId));
+        const nombre = nombrePresupuesto(p, categoriasPresupuesto(p, datos.cats));
         toast(nivel === 100 ? `Te pasaste en ${nombre} · ${fmt(-a.restante)} de más` : `${nombre} va en el ${Math.round(a.pct * 100)} % · te quedan ${fmt(a.restante)}`, {
           label: 'Ver',
           run: () => nav('/presupuestos', { state: { from: 'Volver' } }),

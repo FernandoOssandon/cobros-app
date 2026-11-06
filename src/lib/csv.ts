@@ -1,6 +1,7 @@
 // Exportación a CSV pensada para Excel en español (separador ";" y BOM UTF-8).
 import type { Categoria, Cuenta, Gasto, Ingreso, Medio, Movimiento, Persona, Presupuesto } from '../db';
-import { avancePresupuesto } from './presupuestos';
+import { avancePresupuesto, categoriasDe } from './presupuestos';
+import { juntarY } from './format';
 import { fmtMoneda } from './monedas';
 import { byDate } from './balance';
 
@@ -68,7 +69,9 @@ export function presupuestosCsv(presupuestos: Presupuesto[], gastos: Gasto[], ca
     .filter((p) => !p.archivado)
     .map((p) => {
       const a = avancePresupuesto(p, gastos, hoy);
-      const nombre = p.categoriaId ? cName.get(p.categoriaId) ?? p.nombre : p.periodo === 'semana' ? 'Total semanal' : 'Total mensual';
+      const cats = categoriasDe(p).map((id) => cName.get(id)).filter((n): n is string => !!n);
+      const auto = cats.length ? juntarY(cats) : p.periodo === 'semana' ? 'Total semanal' : 'Total mensual';
+      const nombre = p.categoriaId && !p.categoriaIds?.length ? cats[0] ?? p.nombre : p.nombre.trim() || auto;
       return [nombre, p.periodo === 'semana' ? 'Semanal' : 'Mensual', a.desde, a.hasta, p.monto, a.gastado, a.restante, Math.round(a.pct * 100), ESTADO[a.estado]];
     });
   return csv([header, ...rows]);

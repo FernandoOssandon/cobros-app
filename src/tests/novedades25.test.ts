@@ -175,7 +175,7 @@ describe('planillas', () => {
     expect(gastosCsv([gasto], [], [], []).split('\r\n')[1]).toContain(';6;US$ 650 a $923.08');
     const csvIng = ingresosCsv([{ id: 'i', descripcion: 'Sueldo', tipo: 'sueldo', monto: 1_450_000, fecha: '2026-11-20', cuentaId: 'rut', recurrenteId: 'r', creado: '' }], [{ id: 'rut', nombre: 'Cuenta RUT' } as Cuenta]);
     expect(csvIng.split('\r\n')[1]).toBe('2026-11-20;Sueldo;Fijo;1450000;Cuenta RUT');
-    const csvPres = presupuestosCsv([{ id: 'p', nombre: 'x', periodo: 'semana', monto: 50_000, archivado: false, orden: 1, creado: '' }], imputar([g({ fecha: '2026-11-04', miParte: 45_000 })]), [], '2026-11-05');
+    const csvPres = presupuestosCsv([{ id: 'p', nombre: '', periodo: 'semana', monto: 50_000, archivado: false, orden: 1, creado: '' }], imputar([g({ fecha: '2026-11-04', miParte: 45_000 })]), [], '2026-11-05');
     expect(csvPres.split('\r\n')[1]).toBe('Total semanal;Semanal;2026-11-02;2026-11-08;50000;45000;5000;90;Cerca del límite');
   });
 });

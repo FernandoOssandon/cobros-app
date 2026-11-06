@@ -56,7 +56,7 @@ export default function Pay() {
   }, []);
 
   if (!v || !d) return <div className="screen" />;
-  const cuentas = d.cuentas.filter((c) => !c.archivada && c.tipo !== 'dap' && c.tipo !== 'efectivo');
+  const cuentas = d.cuentas.filter((c) => !c.archivada && c.tipo !== 'dap' && c.tipo !== 'efectivo' && !c.moneda);
   // Por defecto: la del detectado (su medio), la última usada en un pago o la primera cuenta vista.
   const medioDet = det?.medioId ? d.medio.get(det.medioId) : undefined;
   const ultima = d.movimientos.filter((m) => m.cuentaId && (m.tipo === 'pago' || m.tipo === 'abono')).sort((a, b) => b.creado.localeCompare(a.creado))[0]?.cuentaId;

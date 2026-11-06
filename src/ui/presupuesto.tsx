@@ -1,7 +1,7 @@
 // Cómo se muestra un presupuesto: textos, colores, la barra con la marca del ritmo y las tarjetas.
 import type { Categoria, Presupuesto } from '../db';
-import { fmt, MESES_LARGOS, shortDate } from '../lib/format';
-import type { AvancePresupuesto, EstadoPresupuesto } from '../lib/presupuestos';
+import { fmt, juntarY, MESES_LARGOS, shortDate } from '../lib/format';
+import { categoriasDe, type AvancePresupuesto, type EstadoPresupuesto } from '../lib/presupuestos';
 import { Svg } from './icons';
 import { CatIcon } from './kit';
 
@@ -11,19 +11,46 @@ export const ESTADO_LABEL: Record<EstadoPresupuesto, string> = { bien: 'vas bien
 
 const dias = (n: number) => `${n} ${n === 1 ? 'día' : 'días'}`;
 
-export function nombrePresupuesto(p: Pick<Presupuesto, 'nombre' | 'periodo' | 'categoriaId'>, cat?: Categoria) {
-  if (p.categoriaId) return cat?.nombre ?? p.nombre;
-  return p.periodo === 'semana' ? 'Total semanal' : 'Total mensual';
+type PresupuestoNombre = Pick<Presupuesto, 'nombre' | 'periodo' | 'categoriaIds' | 'categoriaId'>;
+
+/** Las categorías del presupuesto, en el orden de la app (las que ya no existen se omiten). */
+export function categoriasPresupuesto(p: Pick<Presupuesto, 'categoriaIds' | 'categoriaId'>, categorias: Map<string, Categoria> | Categoria[]): Categoria[] {
+  const mapa = categorias instanceof Map ? categorias : new Map(categorias.map((c) => [c.id, c]));
+  return categoriasDe(p)
+    .map((id) => mapa.get(id))
+    .filter((c): c is Categoria => !!c)
+    .sort((a, b) => a.orden - b.orden);
 }
 
-/** "lun 23 – dom 29 nov · todos tus gastos" o "Mensual · noviembre". */
-export function subPresupuesto(a: AvancePresupuesto, cat?: Categoria) {
+/** Nombre automático: "Total semanal", "Salidas", "Salidas y Comida". */
+export function nombreAuto(p: Pick<Presupuesto, 'periodo'>, cats: Categoria[]) {
+  if (!cats.length) return p.periodo === 'semana' ? 'Total semanal' : 'Total mensual';
+  return juntarY(cats.map((c) => c.nombre));
+}
+
+/** El nombre propio, o el automático si no tiene. */
+export function nombrePresupuesto(p: PresupuestoNombre, cats: Categoria[]) {
+  // Hasta la 2.7 el nombre de un presupuesto por categoría era el de la categoría: manda el actual.
+  if (p.categoriaId && !p.categoriaIds?.length) return cats[0]?.nombre ?? p.nombre;
+  return p.nombre.trim() || nombreAuto(p, cats);
+}
+
+/** Qué cuenta: "todos tus gastos" o las categorías (si el nombre propio no las dice ya). */
+function queCuenta(p: PresupuestoNombre, cats: Categoria[]) {
+  if (!categoriasDe(p).length) return 'todos tus gastos';
+  const auto = nombreAuto(p, cats);
+  return nombrePresupuesto(p, cats) === auto ? '' : auto;
+}
+
+/** "lun 23 – dom 29 nov · todos tus gastos" o "Mensual · noviembre · Salidas y Comida". */
+export function subPresupuesto(a: AvancePresupuesto, cats: Categoria[]) {
   const p = a.presupuesto;
-  if (p.periodo === 'mes') return `Mensual · ${MESES_LARGOS[Number(a.desde.slice(5, 7)) - 1]}`;
+  const que = queCuenta(p, cats);
+  if (p.periodo === 'mes') return [`Mensual · ${MESES_LARGOS[Number(a.desde.slice(5, 7)) - 1]}`, categoriasDe(p).length ? que : ''].filter(Boolean).join(' · ');
   const [d1, m1] = shortDate(a.desde).split(' ');
   const fin = shortDate(a.hasta);
   const inicio = m1 === fin.split(' ')[1] ? d1 : `${d1} ${m1}`;
-  return `lun ${inicio} – dom ${fin} · ${p.categoriaId ? cat?.nombre ?? p.nombre : 'todos tus gastos'}`;
+  return [`lun ${inicio} – dom ${fin}`, que].filter(Boolean).join(' · ');
 }
 
 export function lineasPresupuesto(a: AvancePresupuesto) {
@@ -48,9 +75,22 @@ export function lineasPresupuesto(a: AvancePresupuesto) {
   };
 }
 
-/** Ícono: calendario para los totales, la categoría para los demás. */
-export function IconoPresupuesto({ p, cat, size = 40 }: { p: Pick<Presupuesto, 'categoriaId'>; cat?: Categoria; size?: number }) {
-  if (p.categoriaId) return <CatIcon cat={cat} size={size} />;
+/** Ícono: calendario para los totales, la categoría para uno de una, dos círculos encimados para varias. */
+export function IconoPresupuesto({ p, cats, size = 40 }: { p: Pick<Presupuesto, 'categoriaIds' | 'categoriaId'>; cats: Categoria[]; size?: number }) {
+  if (categoriasDe(p).length === 1 || (categoriasDe(p).length && cats.length === 1)) return <CatIcon cat={cats[0]} size={size} />;
+  if (categoriasDe(p).length) {
+    const chico = Math.round(size * 0.72);
+    return (
+      <span style={{ position: 'relative', width: size, height: size, display: 'block', flex: 'none' }} aria-hidden="true">
+        <span style={{ position: 'absolute', left: 0, top: 0 }}>
+          <CatIcon cat={cats[0]} size={chico} />
+        </span>
+        <span style={{ position: 'absolute', right: 0, bottom: 0, borderRadius: '50%', boxShadow: '0 0 0 2px var(--surface)' }}>
+          <CatIcon cat={cats[1]} size={chico} />
+        </span>
+      </span>
+    );
+  }
   return (
     <span className="cat-ic" style={{ width: size, height: size, background: 'var(--soft)', color: 'var(--ink)' }} aria-hidden="true">
       <Svg d={IC_CAL} size={Math.round(size / 2)} w={2} />

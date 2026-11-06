@@ -3,6 +3,10 @@ import type { Gasto, Ingreso, Presupuesto, Recurrente } from '../db';
 import { daysBetween, sumarMes, todayISO } from './format';
 import { ocurrenciasEntre, sumarDias } from './recurrence';
 
+/** Categorías que cuenta un presupuesto (vacío: todas). Lee también el formato de hasta la 2.7 (una sola). */
+export const categoriasDe = (p: Pick<Presupuesto, 'categoriaIds' | 'categoriaId'>): string[] =>
+  p.categoriaIds?.length ? p.categoriaIds : p.categoriaId ? [p.categoriaId] : [];
+
 /** Lunes de la semana de `fecha` (la semana va de lunes a domingo). */
 export function lunesDe(fecha: string): string {
   const [y, m, d] = fecha.split('-').map(Number);
@@ -52,8 +56,9 @@ export interface AvancePresupuesto {
 
 export function avancePresupuesto(p: Presupuesto, gastos: Gasto[], hoy = todayISO()): AvancePresupuesto {
   const { desde, hasta } = rangoPresupuesto(p.periodo, hoy);
+  const cats = categoriasDe(p);
   const gastado = gastos
-    .filter((g) => g.fecha >= desde && g.fecha <= hasta && (!p.categoriaId || g.categoriaId === p.categoriaId))
+    .filter((g) => g.fecha >= desde && g.fecha <= hasta && (!cats.length || (!!g.categoriaId && cats.includes(g.categoriaId))))
     .reduce((s, g) => s + g.miParte, 0);
   const diasTotales = daysBetween(desde, hasta) + 1;
   const diasTranscurridos = Math.min(diasTotales, Math.max(1, daysBetween(desde, hoy) + 1));

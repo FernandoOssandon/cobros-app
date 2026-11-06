@@ -15,10 +15,11 @@ import { elegirClavePeriodo, usePeriodo } from '../periodo';
 import { Logo } from '../ui/Logo';
 import { anotarAtrasados, mesNombre, repartoRecurrente } from '../recurrentes';
 import { useRespaldar } from '../useRespaldo';
+import { AvisoRespaldoDrive } from '../ui/drive';
 import { Icon } from '../ui/icons';
 import { PeriodoBar } from '../ui/periodo';
 import { CupoTarjeta, PagarTarjetaSheet } from '../ui/tarjeta';
-import { BarraPresupuesto, IconoPresupuesto, lineasPresupuesto, nombrePresupuesto } from '../ui/presupuesto';
+import { BarraPresupuesto, categoriasPresupuesto, IconoPresupuesto, lineasPresupuesto, nombrePresupuesto } from '../ui/presupuesto';
 import { GastoRow, MedioCard, tipoMedioLabel } from '../ui/rows';
 import { PorConfirmarSheet } from '../ui/sheets';
 import { useToast } from '../ui/toast';
@@ -83,7 +84,8 @@ export default function Resumen() {
   // Recordatorio de respaldo.
   const primer = [...d.gastos.map((g) => g.creado), ...d.personas.map((v) => v.p.creado)].sort()[0];
   const dias = diasSinRespaldo(aj, primer);
-  const verRespaldo = aj.recordarRespaldo && hayDatos && dias !== null && dias > 7;
+  // Con Drive conectado el respaldo es automático: el aviso es otro (cuando hay cambios sin subir).
+  const verRespaldo = !aj.drive && aj.recordarRespaldo && hayDatos && dias !== null && dias > 7;
 
   // Por confirmar y próximos pagos (solo en el mes en curso).
   const porConfirmar = d.pendientes.filter((p) => p.tipo === 'confirmar');
@@ -125,6 +127,8 @@ export default function Resumen() {
           </div>
         </div>
       )}
+
+      {esActual && <AvisoRespaldoDrive />}
 
       {esActual && verRespaldo && (
         <div className="banner-soft" style={{ marginTop: 14 }}>
@@ -357,7 +361,7 @@ function IngresosYPresupuestos({ d, mes, esActual, gastoReal }: { d: Datos; mes:
           <div className="list">
             <div className="inner">
               {riesgo.map((a) => {
-                const cat = a.presupuesto.categoriaId ? d.categoria.get(a.presupuesto.categoriaId) : undefined;
+                const cats = categoriasPresupuesto(a.presupuesto, d.categoria);
                 const l = lineasPresupuesto(a);
                 return (
                   <button
@@ -365,9 +369,9 @@ function IngresosYPresupuestos({ d, mes, esActual, gastoReal }: { d: Datos; mes:
                     onClick={() => push('/presupuestos')}
                     style={{ width: '100%', border: 'none', borderTop: '1px solid var(--line)', background: 'transparent', padding: 14, display: 'grid', gridTemplateColumns: '36px minmax(0,1fr) auto', gap: 12, alignItems: 'center', textAlign: 'left' }}
                   >
-                    <IconoPresupuesto p={a.presupuesto} cat={cat} size={36} />
+                    <IconoPresupuesto p={a.presupuesto} cats={cats} size={36} />
                     <span style={{ display: 'flex', flexDirection: 'column', gap: 7, minWidth: 0 }}>
-                      <span style={{ fontSize: 16, fontWeight: 700 }}>{nombrePresupuesto(a.presupuesto, cat)}</span>
+                      <span style={{ fontSize: 16, fontWeight: 700 }}>{nombrePresupuesto(a.presupuesto, cats)}</span>
                       <BarraPresupuesto a={a} alto={10} />
                       <span style={{ fontSize: 13, fontWeight: 700, color: l.color }}>{l.riesgo}</span>
                     </span>

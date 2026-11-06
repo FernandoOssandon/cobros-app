@@ -138,7 +138,7 @@ export default function Importar() {
     for (const id of ids) {
       if (!id) continue;
       if (cartola.tipo === 'cuenta') {
-        const c = d.cuentas.find((x) => x.id === id && !x.archivada && x.tipo !== 'dap' && x.tipo !== 'efectivo');
+        const c = d.cuentas.find((x) => x.id === id && !x.archivada && x.tipo !== 'dap' && x.tipo !== 'efectivo' && !x.moneda);
         if (c) return { tipo: 'cuenta', cuenta: c };
       } else {
         const m = d.medios.find((x) => x.id === id && x.tipo === 'credito' && !x.archivado);
@@ -329,7 +329,7 @@ function ElegirDestino({ cartola, d, actual, onElegir }: { cartola: Cartola; d: 
   const [creando, setCreando] = useState(false);
   const esCuenta = cartola.tipo === 'cuenta';
   const opciones = esCuenta
-    ? d.cuentas.filter((c) => !c.archivada && c.tipo !== 'dap' && c.tipo !== 'efectivo').map((c) => ({ id: c.id, nombre: c.nombre }))
+    ? d.cuentas.filter((c) => !c.archivada && c.tipo !== 'dap' && c.tipo !== 'efectivo' && !c.moneda).map((c) => ({ id: c.id, nombre: c.nombre }))
     : d.medios.filter((m) => m.tipo === 'credito' && !m.archivado).map((m) => ({ id: m.id, nombre: m.nombre }));
   const nueva = esCuenta ? `${cartola.titulo.replace(/\s+[\d-]+$/, '')} ${cartola.banco}` : 'CMR Falabella';
   const crear = async () => {
@@ -866,7 +866,7 @@ function EditarSheet({ x, dest, d, di, actual, onClose, onListo }: { x: ItemCart
   const monto = Math.abs(x.linea.monto);
   const debe = persona ? (di.saldoPersona.get(persona) ?? 0) : 0;
   const resto = tipo === 'pago' && debe > 0 && monto > debe ? monto - debe : undefined;
-  const cuentas = d.cuentas.filter((c) => !c.archivada && c.tipo !== 'dap' && (dest.tipo !== 'cuenta' || c.id !== dest.cuenta.id));
+  const cuentas = d.cuentas.filter((c) => !c.archivada && c.tipo !== 'dap' && !c.moneda && (dest.tipo !== 'cuenta' || c.id !== dest.cuenta.id));
   const credito = d.medios.filter((m) => m.tipo === 'credito' && !m.archivado);
 
   const listo = () => {

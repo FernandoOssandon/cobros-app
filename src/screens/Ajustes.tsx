@@ -12,6 +12,7 @@ import { Icon } from '../ui/icons';
 import { BackButton, ConfirmSheet, Switch } from '../ui/kit';
 import { useToast } from '../ui/toast';
 import { UpdateBanner } from '../ui/UpdatePrompt';
+import { SeccionDrive } from '../ui/drive';
 
 export default function Ajustes() {
   const { push, back, backLabel, navigate } = useNav();
@@ -36,8 +37,9 @@ export default function Ajustes() {
   const [bank, setBank] = useState<string | null>(null);
 
   const dias = aj.ultimoRespaldo ? Math.floor((Date.now() - new Date(aj.ultimoRespaldo).getTime()) / 86_400_000) : null;
-  const respaldoLabel =
-    dias === null
+  const respaldoLabel = aj.drive
+    ? 'Además del de Drive, puedes guardar o traer un archivo de respaldo.'
+    : dias === null
       ? 'Todo vive en este teléfono. Todavía no haces un respaldo.'
       : dias === 0
         ? 'Todo vive en este teléfono. Último respaldo: hoy.'
@@ -109,8 +111,9 @@ export default function Ajustes() {
         {fila('Ingresos', `${plu(stats?.fijos, 'fijo', 'fijos')} · ${plu(stats?.sueltos, 'suelto', 'sueltos')}`, '/ingresos')}
         {!!stats?.archivadas && fila('Personas archivadas', `${stats.archivadas} ${stats.archivadas === 1 ? 'persona' : 'personas'}`, '/archivadas')}
 
+        <SeccionDrive />
         <div style={{ padding: '16px 0', borderTop: '2px solid var(--ink)', display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div className="set-title">Respaldo</div>
+          <div className="set-title">{aj.drive ? 'Respaldo en archivo' : 'Respaldo'}</div>
           <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--muted)', lineHeight: 1.4 }}>{respaldoLabel}</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             <button className="cta" style={{ height: 50, fontSize: 15 }} onClick={respaldar}>

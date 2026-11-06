@@ -6,7 +6,8 @@ import { useState } from 'react';
 import { asegurarEfectivo, borrarMovAhorro, cobrarDap, cuadrar, ID_EFECTIVO, moverPlata } from '../ahorros';
 import { db, type Cuenta } from '../db';
 import { useAjustes, useDatos, type Datos } from '../hooks';
-import { alVencerDap, patrimonio, plazoDap, saldoCuenta } from '../lib/ahorro';
+import { alVencerDap, fmtCuenta, patrimonio, plazoDap, saldoCuenta } from '../lib/ahorro';
+import { leerDecimal, mostrarDecimal, teclaDecimal } from '../lib/monedas';
 import { dg, fmt, juntarY, pressKey, shortDate, show, todayISO } from '../lib/format';
 import { useNav } from '../nav';
 import { Icon } from '../ui/icons';
@@ -38,7 +39,7 @@ export const TIPO_CUENTA: Record<Cuenta['tipo'], string> = {
   dap: 'Depósito a plazo',
 };
 
-const vistas = (d: Datos) => d.cuentas.filter((c) => c.tipo === 'vista' && !c.archivada);
+const vistas = (d: Datos) => d.cuentas.filter((c) => c.tipo === 'vista' && !c.archivada && !c.moneda);
 
 // ---------- Pestaña ----------
 
@@ -52,7 +53,7 @@ export default function MiPlata() {
   if (!d) return <div className="scroll" />;
 
   const hoy = todayISO();
-  const p = patrimonio({ cuentas: d.cuentas, movAhorro: d.movCuentas, personas: d.personas.map((v) => v.p), movimientos: d.movimientos, gastos: d.imputados, medios: d.medios, usadoTarjetas: usadoTarjetas(d, hoy) }, hoy);
+  const p = patrimonio({ cuentas: d.cuentas, movAhorro: d.movCuentas, personas: d.personas.map((v) => v.p), movimientos: d.movimientos, gastos: d.imputados, medios: d.medios, usadoTarjetas: usadoTarjetas(d, hoy), indicadores: aj.indicadores }, hoy);
   const ahorro = p.cuentas.filter((r) => r.cuenta.tipo === 'remunerada' || r.cuenta.tipo === 'inversion');
   const daps = p.cuentas.filter((r) => r.cuenta.tipo === 'dap' && r.cuenta.dap?.estado === 'vigente');
   const vs = vistas(d);
@@ -221,10 +222,13 @@ export default function MiPlata() {
                   {tasaLbl(r.cuenta)} · {cuadradoLbl(r.diasDesdeCuadre)}
                 </span>
               </span>
-              <span style={{ fontSize: 22, fontWeight: 800, letterSpacing: -0.6 }}>{fmt(r.saldo)}</span>
+              <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                <span style={{ fontSize: 22, fontWeight: 800, letterSpacing: -0.6 }}>{fmtCuenta(r.cuenta, r.saldo)}</span>
+                {r.cuenta.moneda && <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>{r.valorMoneda ? `≈ ${fmt(r.saldoPesos)}` : 'sin el valor del día'}</span>}
+              </span>
             </span>
             <span className="row-between" style={{ width: '100%', paddingTop: 10, borderTop: '1px solid var(--line)' }}>
-              <Ganado v={r.ganadoMes} />
+              <Ganado v={r.ganadoMes} c={r.cuenta} />
               <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)' }}>saldo estimado</span>
             </span>
           </button>
@@ -314,8 +318,8 @@ export function CuentaIni({ c, size = 40 }: { c: Cuenta; size?: number }) {
   );
 }
 
-export const Ganado = ({ v }: { v: number }) => (
-  <span style={{ fontSize: 15, fontWeight: 800, color: v < 0 ? 'var(--owe)' : 'var(--pos)' }}>{v < 0 ? `bajó ${fmt(-v)} este mes` : `ganaste ${fmt(v)} este mes`}</span>
+export const Ganado = ({ v, c = {} }: { v: number; c?: Pick<Cuenta, 'moneda'> }) => (
+  <span style={{ fontSize: 15, fontWeight: 800, color: v < 0 ? 'var(--owe)' : 'var(--pos)' }}>{v < 0 ? `bajó ${fmtCuenta(c, -v)} este mes` : `ganaste ${fmtCuenta(c, v)} este mes`}</span>
 );
 
 // ---------- Hoja de movimiento: depositar, retirar o cuadrar ----------
@@ -336,21 +340,26 @@ export function MovSheet({ d, pedido, onClose }: { d: Datos; pedido: MovPedido; 
     return x ? saldoCuenta(x, d.movCuentas.filter((m) => m.cuentaId === id), hoy) : 0;
   };
   // Origen/destino: las cuentas vista, el efectivo y "otra parte" (plata que la app no lleva).
-  const opciones = [
-    ...vistas(d).filter((x) => x.id !== c.id).map((x) => ({ id: x.id, label: x.nombre })),
-    ...(c.id === ID_EFECTIVO ? [] : [{ id: ID_EFECTIVO, label: 'Efectivo' }]),
-    { id: OTRA, label: 'Otra parte' },
-  ];
+  // Una cuenta en dólares o euros solo mueve plata con "otra parte" (las demás van en pesos).
+  const opciones = c.moneda
+    ? [{ id: OTRA, label: 'Otra parte' }]
+    : [
+        ...vistas(d).filter((x) => x.id !== c.id).map((x) => ({ id: x.id, label: x.nombre })),
+        ...(c.id === ID_EFECTIVO ? [] : [{ id: ID_EFECTIVO, label: 'Efectivo' }]),
+        { id: OTRA, label: 'Otra parte' },
+      ];
   const [amt, setAmt] = useState('');
   const [otra, setOtra] = useState(opciones[0]?.id ?? OTRA);
-  const monto = dg(amt);
+  const monto = c.moneda ? leerDecimal(amt) : dg(amt);
+  const fmt = (n: number) => fmtCuenta(c, n);
+  const mostrar = c.moneda ? `${fmtCuenta(c, 0).replace(/[\d,.]+$/, '')}${mostrarDecimal(amt) || '0'}` : `$${show(amt) || '0'}`;
   const est = saldoDe(c.id);
   const nombreOtra = opciones.find((o) => o.id === otra)?.label ?? '';
 
   let info = '';
   let infoColor = 'var(--muted)';
   if (modo === 'cuadrar') {
-    const dif = monto - est;
+    const dif = Math.round((monto - est) * 100) / 100;
     if (amt === '') info = `La app estima ${fmt(est)}`;
     else if (!dif) info = 'Coincide con lo que estimábamos';
     else [info, infoColor] = [`Estimábamos ${fmt(est)} · diferencia ${dif > 0 ? '+' : ''}${fmt(dif)}`, dif > 0 ? 'var(--pos)' : 'var(--owe)'];
@@ -373,7 +382,7 @@ export function MovSheet({ d, pedido, onClose }: { d: Datos; pedido: MovPedido; 
       return;
     }
     if (modo === 'cuadrar') {
-      const dif = monto - est;
+      const dif = Math.round((monto - est) * 100) / 100;
       await cuadrar(c.id, monto);
       toast(dif ? `Cuadrado · diferencia de ${dif > 0 ? '+' : ''}${fmt(dif)}` : 'Cuadrado · estaba perfecto');
     } else {
@@ -404,7 +413,7 @@ export function MovSheet({ d, pedido, onClose }: { d: Datos; pedido: MovPedido; 
       </div>
       <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--muted)', padding: '4px 4px 0' }}>{pregunta}</div>
       <div className="t-hero-60" style={{ padding: '8px 4px 0', color: amt ? 'var(--ink)' : 'var(--muted)' }} aria-label="Monto">
-        ${show(amt) || '0'}
+        {mostrar}
       </div>
       <div style={{ fontSize: 15, fontWeight: 700, color: infoColor, padding: '2px 4px 10px' }}>{info}</div>
       {modo !== 'cuadrar' && (
@@ -417,7 +426,7 @@ export function MovSheet({ d, pedido, onClose }: { d: Datos; pedido: MovPedido; 
           ))}
         </div>
       )}
-      <Keypad h={46} onKey={(k) => setAmt((v) => pressKey(v, k))} />
+      <Keypad h={46} decimal={!!c.moneda} onKey={(k) => setAmt((v) => (c.moneda ? teclaDecimal(v, k) : pressKey(v, k)))} />
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.3fr', gap: 8, marginTop: 8 }}>
         <button className="btn-line" style={{ fontSize: 15 }} onClick={onClose}>
           Cancelar
