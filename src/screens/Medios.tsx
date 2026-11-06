@@ -61,7 +61,10 @@ export function Medios() {
               {(u.cupo || u.cuadrado || u.usado > 0) && (
                 <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 10, padding: '0 16px 14px' }}>
                   <CupoTarjeta m={m} d={d} compacto />
-                  <span style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <span style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                    <button className="pill h36" onClick={() => push(`/importar?medio=${m.id}`)} aria-label={`Importar movimientos de ${m.nombre}`}>
+                      Importar
+                    </button>
                     <button className="pill h36" onClick={() => setPagar(m)} aria-label={`Pagar ${m.nombre}`}>
                       Pagar tarjeta
                     </button>

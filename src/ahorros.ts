@@ -43,18 +43,23 @@ export async function guardarCuenta(c: CuentaDraft, saldoInicial?: number, fecha
 }
 
 /** Registra un depósito, un retiro o un cuadre (saldo real). */
-export async function registrarMovAhorro(cuentaId: string, tipo: MovAhorro['tipo'], monto: number, fecha = todayISO(), nota?: string) {
+export async function registrarMovAhorro(cuentaId: string, tipo: MovAhorro['tipo'], monto: number, fecha = todayISO(), nota?: string, traspasoId?: string) {
   const id = uid();
-  await db.movAhorro.add({ id, cuentaId, tipo, monto: Math.max(0, Math.round(monto)), fecha, nota, creado: marca() });
+  await db.movAhorro.add({ id, cuentaId, tipo, monto: Math.max(0, Math.round(monto)), fecha, nota, traspasoId, creado: marca() });
   return id;
 }
 
 export const cuadrar = (cuentaId: string, saldoReal: number, fecha = todayISO()) => registrarMovAhorro(cuentaId, 'cuadre', saldoReal, fecha);
 
-export async function borrarMovAhorro(id: string): Promise<MovAhorro | undefined> {
-  const m = await db.movAhorro.get(id);
-  await db.movAhorro.delete(id);
-  return m;
+/** Borra un movimiento de una cuenta; si es un traspaso entre tus cuentas, también la otra pata. Devuelve lo borrado (para deshacer). */
+export async function borrarMovAhorro(id: string): Promise<MovAhorro[]> {
+  return db.transaction('rw', db.movAhorro, async () => {
+    const m = await db.movAhorro.get(id);
+    if (!m) return [];
+    const patas = m.traspasoId ? await db.movAhorro.where('traspasoId').equals(m.traspasoId).toArray() : [m];
+    await db.movAhorro.bulkDelete(patas.map((x) => x.id));
+    return patas;
+  });
 }
 
 /**
@@ -65,12 +70,14 @@ export async function moverPlata(cuentaId: string, modo: 'deposito' | 'retiro', 
   await db.transaction('rw', db.cuentas, db.movAhorro, async () => {
     const [c, o] = await Promise.all([db.cuentas.get(cuentaId), otraId ? db.cuentas.get(otraId) : undefined]);
     if (!c) return;
+    // Entre dos cuentas tuyas: las dos patas quedan unidas (se borran juntas).
+    const t = o ? uid() : undefined;
     if (modo === 'deposito') {
-      await registrarMovAhorro(cuentaId, 'deposito', monto, fecha, o ? `Depósito desde ${o.nombre}` : 'Depósito');
-      if (o) await registrarMovAhorro(o.id, 'retiro', monto, fecha, `Traspaso a ${c.nombre}`);
+      await registrarMovAhorro(cuentaId, 'deposito', monto, fecha, o ? `Depósito desde ${o.nombre}` : 'Depósito', t);
+      if (o) await registrarMovAhorro(o.id, 'retiro', monto, fecha, `Traspaso a ${c.nombre}`, t);
     } else {
-      await registrarMovAhorro(cuentaId, 'retiro', monto, fecha, o ? `Retiro a ${o.nombre}` : 'Retiro');
-      if (o) await registrarMovAhorro(o.id, 'deposito', monto, fecha, `Desde ${c.nombre}`);
+      await registrarMovAhorro(cuentaId, 'retiro', monto, fecha, o ? `Retiro a ${o.nombre}` : 'Retiro', t);
+      if (o) await registrarMovAhorro(o.id, 'deposito', monto, fecha, `Desde ${c.nombre}`, t);
     }
   });
 }

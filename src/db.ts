@@ -278,6 +278,8 @@ export interface MovAhorro {
   nota?: string;
   /** Depósito que viene de un ingreso (sueldo, etc.): se borra junto con él. */
   ingresoId?: string;
+  /** Traspaso entre dos cuentas tuyas: las dos patas comparten este id y se borran juntas. */
+  traspasoId?: string;
   /**
    * Solo en memoria (no se guarda): el movimiento viene de otra parte de la app y se calcula al leer.
    * Un gasto con débito, un pago de una persona por transferencia o el pago de una tarjeta.
@@ -293,6 +295,52 @@ export interface PagoTarjeta {
   cuentaId?: string;
   monto: number;
   fecha: string;
+  creado: string;
+}
+
+// ---------- Cartolas importadas ----------
+
+/** Algo de la app que corresponde a un movimiento del banco. */
+export type TipoRef = 'gasto' | 'movimiento' | 'ingreso' | 'pagoTarjeta' | 'movAhorro';
+export interface RefApp {
+  tipo: TipoRef;
+  id: string;
+}
+
+/** Lo que se hizo con un movimiento del banco, para proponer lo mismo la próxima vez que aparezca. */
+export interface Aprendido {
+  tipo: 'gasto' | 'pago' | 'abono' | 'ingreso' | 'traspaso' | 'pagoTarjeta' | 'ignorar';
+  descripcion?: string;
+  categoriaId?: string;
+  medioId?: string;
+  personaId?: string;
+  /** Traspaso: la otra cuenta. */
+  cuentaId?: string;
+  tipoIngreso?: TipoIngreso;
+}
+
+/**
+ * Movimiento de una cartola que la app ya vio. Así, al importar de nuevo (o un archivo que se cruza
+ * con el anterior), sabe cuáles ya están y no los repite.
+ */
+export interface Importado {
+  /** Huella: cuenta o tarjeta, fecha, monto, detalle y cuántos iguales hubo antes ese día. */
+  id: string;
+  /** Cuenta (Mi plata) o tarjeta (medio) de la app. */
+  destinoId: string;
+  fecha: string;
+  monto: number;
+  detalle: string;
+  /**
+   * - ligado: ya estaba en la app;
+   * - creado: se anotó al importar;
+   * - ignorado: no se anota (o ya estaba en el saldo con que partió la cuenta).
+   */
+  estado: 'ligado' | 'creado' | 'ignorado';
+  refs?: RefApp[];
+  /** Detalle sin números, para reconocer el mismo comercio o persona otro día. */
+  clave: string;
+  aprendido?: Aprendido;
   creado: string;
 }
 
@@ -426,6 +474,8 @@ export interface Ajustes {
   correo?: ConfigCorreo;
   /** Último valor conocido de la UF, el dólar y el euro (de mindicador.cl), para usar sin conexión. */
   indicadores?: Indicadores;
+  /** A qué cuenta o tarjeta de la app corresponde cada cartola (clave del archivo → id). */
+  importar?: Record<string, string>;
 }
 
 export const AJUSTES_DEFAULT: Ajustes = {
@@ -471,6 +521,7 @@ type DB = Dexie & {
   presupuestos: EntityTable<Presupuesto, 'id'>;
   metas: EntityTable<Meta, 'id'>;
   pagosTarjeta: EntityTable<PagoTarjeta, 'id'>;
+  importados: EntityTable<Importado, 'id'>;
 };
 
 // El nombre de la base viene de cuando la app se llamaba Me Debes. NO cambiarlo: los datos guardados están ahí.
@@ -529,6 +580,12 @@ db.version(7).stores({ metas: 'id, cuentaId' });
 
 // v8 (app 2.6): pagos de tarjetas de crédito. Solo agrega una tabla.
 db.version(8).stores({ pagosTarjeta: 'id, medioId, cuentaId, fecha' });
+
+// v9 (app 2.7): cartolas importadas y traspasos entre cuentas. Agrega una tabla y un índice.
+db.version(9).stores({
+  movAhorro: 'id, cuentaId, fecha, traspasoId',
+  importados: 'id, destinoId, clave, fecha',
+});
 
 /** Migración v3 → v4. Exportada para poder probarla. */
 export async function migrarV3aV4(tx: Transaction) {
@@ -867,10 +924,10 @@ export const guardarAjustes = async (patch: Partial<Omit<Ajustes, 'id'>>) => {
 export async function borrarTodo() {
   await db.transaction(
     'rw',
-    [db.personas, db.gastos, db.movimientos, db.cobros, db.medios, db.grupos, db.recurrentes, db.pendientes, db.fotos, db.cuentas, db.movAhorro, db.detectados, db.ingresos, db.presupuestos, db.metas, db.pagosTarjeta],
+    [db.personas, db.gastos, db.movimientos, db.cobros, db.medios, db.grupos, db.recurrentes, db.pendientes, db.fotos, db.cuentas, db.movAhorro, db.detectados, db.ingresos, db.presupuestos, db.metas, db.pagosTarjeta, db.importados],
     async () => {
       await Promise.all(
-        [db.personas, db.gastos, db.movimientos, db.cobros, db.medios, db.grupos, db.recurrentes, db.pendientes, db.fotos, db.cuentas, db.movAhorro, db.detectados, db.ingresos, db.presupuestos, db.metas, db.pagosTarjeta].map((t) => t.clear()),
+        [db.personas, db.gastos, db.movimientos, db.cobros, db.medios, db.grupos, db.recurrentes, db.pendientes, db.fotos, db.cuentas, db.movAhorro, db.detectados, db.ingresos, db.presupuestos, db.metas, db.pagosTarjeta, db.importados].map((t) => t.clear()),
       );
       await db.medios.put({ ...MEDIO_EFECTIVO, creado: now() });
     },

@@ -21,6 +21,11 @@
     Cache-Control = "no-cache"
 
 [[headers]]
+  for = "/sw-compartir.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
   for = "/index.html"
   [headers.values]
     Cache-Control = "no-cache"
@@ -35,3 +40,9 @@
   for = "/assets/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
+
+# "Compartir → a mano." la primera vez, antes de que el service worker esté activo: abre la app en importar.
+[[redirects]]
+  from = "/compartir"
+  to = "/#/importar"
+  status = 303

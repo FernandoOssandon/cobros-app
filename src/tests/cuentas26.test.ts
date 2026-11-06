@@ -74,7 +74,7 @@ describe('tarjetas de crédito: cupo, usado y por pagar', () => {
     await pagarTarjeta('visa', 50_000, undefined, '2026-11-04');
     await cuadrarTarjeta('visa', 346_726, '2026-11-05');
     const r = JSON.parse(JSON.stringify(await construirRespaldo()));
-    expect(r.version).toBe(7);
+    expect(r.version).toBe(8);
     expect(r.pagosTarjeta).toHaveLength(1);
     await borrarTodo();
     await importarRespaldo(validarRespaldo(r));

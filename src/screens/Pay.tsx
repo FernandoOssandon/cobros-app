@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { ID_EFECTIVO } from '../ahorros';
 import { db, guardarPago } from '../db';
+import { guardarIngreso } from '../ingresos';
 import { useDatos } from '../hooks';
 import { dg, fmt, pressKey, shortDate, show, todayISO } from '../lib/format';
 import { useNav } from '../nav';
@@ -22,6 +23,8 @@ export default function Pay() {
   const [fecha, setFecha] = useState(todayISO());
   /** Cuenta de Mi plata donde llegó (o de donde salió) la transferencia. undefined = sin elegir todavía. */
   const [cuenta, setCuenta] = useState<string | null | undefined>(undefined);
+  /** Si te paga más de lo que te debe: el resto queda a su favor o es un ingreso suelto. */
+  const [resto, setResto] = useState<'ingreso' | 'favor'>('ingreso');
   const loaded = useRef(false);
   const v = d?.persona.get(id);
   const editing = movId ? v?.movs.find((m) => m.id === movId) : undefined;
@@ -72,15 +75,19 @@ export default function Pay() {
   // Al editar, el saldo "antes" no considera el pago que se está editando.
   const owe = Math.max(0, signo * v.saldo + (editing?.monto ?? 0));
   const pa = dg(pay);
+  // Te pagó de más (un pago nuevo de alguien que te debía): se pregunta qué es el resto.
+  const sobra = !movId && dir === 'pago' && owe > 0 && pa > owe ? pa - owe : 0;
   const cerrar = () => back(`/persona/${id}`);
   const guardar = async () => {
     if (!pa) {
       toast('Ingresa el monto');
       return;
     }
-    const mid = await guardarPago(id, pa, via, fecha, movId, dir, cuentaFinal);
+    const comoIngreso = sobra > 0 && resto === 'ingreso';
+    const mid = await guardarPago(id, comoIngreso ? owe : pa, via, fecha, movId, dir, cuentaFinal);
+    if (comoIngreso) await guardarIngreso({ descripcion: `${via === 'Efectivo' ? 'Efectivo' : 'Transferencia'} de ${v.first} (lo que sobró de su pago)`, tipo: 'otro', monto: sobra, fecha, cuentaId: cuentaFinal });
     if (det && !movId) await db.detectados.update(det.id, { estado: 'anotado', personaId: id, movimientoId: mid });
-    toast(movId ? 'Pago actualizado' : `Pago de ${fmt(pa)} registrado`);
+    toast(movId ? 'Pago actualizado' : comoIngreso ? `Pago de ${fmt(owe)} · +${fmt(sobra)} como ingreso` : `Pago de ${fmt(pa)} registrado`);
     cerrar();
   };
 
@@ -96,9 +103,27 @@ export default function Pay() {
         </div>
         <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--muted)' }}>
           {owe
-            ? `${dir === 'pago' ? 'Te debe' : 'Le debes'} ${fmt(owe)} · queda ${fmt(Math.max(owe - pa, 0))}${pa > owe ? ` (+${fmt(pa - owe)} a favor)` : ''}`
+            ? `${dir === 'pago' ? 'Te debe' : 'Le debes'} ${fmt(owe)} · queda ${fmt(Math.max(owe - pa, 0))}${pa > owe && !sobra ? ` (+${fmt(pa - owe)} a favor)` : ''}`
             : 'Están a mano'}
         </div>
+        {sobra > 0 && (
+          <div style={{ marginTop: 14, borderRadius: 18, background: 'var(--surface)', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <span style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.3 }}>
+              Te pagó {fmt(sobra)} más de lo que te debía. ¿Qué es el resto?
+            </span>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button className="pill h36" aria-pressed={resto === 'ingreso'} onClick={() => setResto('ingreso')}>
+                Un ingreso
+              </button>
+              <button className="pill h36" aria-pressed={resto === 'favor'} onClick={() => setResto('favor')}>
+                Queda a su favor
+              </button>
+            </div>
+            <span className="t-meta">
+              {resto === 'ingreso' ? `Su deuda queda en $0 y ${fmt(sobra)} se anotan como ingreso suelto.` : `Quedas debiéndole ${fmt(sobra)} a ${v.first}.`}
+            </span>
+          </div>
+        )}
         {owe > 0 && (
           <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
             <button className="pill h38" onClick={() => setPay(String(owe))}>

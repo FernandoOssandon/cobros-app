@@ -56,6 +56,12 @@ export function CuentaDetalle() {
   const crecio = serie.length ? serie[serie.length - 1].saldo - serie[0].saldo : 0;
   const desde = serie[0] ? MESES_LARGOS[Number(serie[0].fecha.slice(5, 7)) - 1] : '';
   const esAhorro = c.tipo === 'remunerada' || c.tipo === 'inversion';
+  /** Si el movimiento es un traspaso entre tus cuentas, el nombre de la otra cuenta. */
+  const traspasoDe = (movId: string) => {
+    const m = d.movAhorro.find((x) => x.id === movId);
+    const otra = m?.traspasoId ? d.movAhorro.find((x) => x.traspasoId === m.traspasoId && x.id !== m.id) : undefined;
+    return otra ? (d.cuentas.find((x) => x.id === otra.cuentaId)?.nombre ?? 'la otra cuenta') : undefined;
+  };
 
   return (
     <div className="scroll" style={{ padding: '4px 20px var(--safe-bottom)' }}>
@@ -130,6 +136,15 @@ export function CuentaDetalle() {
         </span>
         <Icon name="next" size={20} />
       </button>
+      {(c.tipo === 'vista' || c.tipo === 'remunerada') && (
+        <button className="box-line" style={{ marginTop: 10 }} onClick={() => push(`/importar?cuenta=${c.id}`)}>
+          <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span style={{ fontSize: 17, fontWeight: 800 }}>Importar cartola</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)', lineHeight: 1.3 }}>Cruza los movimientos del banco con lo anotado y compara el saldo día a día.</span>
+          </span>
+          <Icon name="next" size={20} />
+        </button>
+      )}
 
       <h2 className="t-section">movimientos.</h2>
       {filas.length ? (
@@ -178,8 +193,8 @@ export function CuentaDetalle() {
       {mov && <MovSheet d={d} pedido={mov} onClose={() => setMov(null)} />}
       {borrarMov && (
         <ConfirmSheet
-          title="¿Borramos este movimiento?"
-          body="El saldo estimado se recalcula sin él."
+          title={traspasoDe(borrarMov) ? '¿Borramos este traspaso?' : '¿Borramos este movimiento?'}
+          body={traspasoDe(borrarMov) ? `Se borra de las dos cuentas (también de ${traspasoDe(borrarMov)}). Los saldos se recalculan sin él.` : 'El saldo estimado se recalcula sin él.'}
           confirm="Sí, borrar"
           onClose={() => setBorrarMov(null)}
           onConfirm={async () => {

@@ -33,11 +33,25 @@ export default defineConfig({
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
           { src: 'icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
+        // "Compartir → a mano." con una cartola en Excel (lo recibe public/sw-compartir.js).
+        share_target: {
+          action: 'compartir',
+          method: 'POST',
+          enctype: 'multipart/form-data',
+          params: {
+            files: [
+              {
+                name: 'archivo',
+                accept: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel', 'application/octet-stream', '.xlsx'],
+              },
+            ],
+          },
+        },
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
-        globIgnores: ['sw-transicion.js'],
-        importScripts: ['sw-transicion.js'],
+        globIgnores: ['sw-transicion.js', 'sw-compartir.js'],
+        importScripts: ['sw-transicion.js', 'sw-compartir.js'],
       },
     }),
   ],

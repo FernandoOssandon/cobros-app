@@ -29,7 +29,7 @@ describe('migración de la base v1 → v3', () => {
     // 2) Se abre con el código nuevo (corre la migración).
     const { db, CATEGORIAS_DEFAULT } = await import('../db');
     await db.open();
-    expect(db.verno).toBe(8);
+    expect(db.verno).toBe(9);
     expect(db.tables.map((t) => t.name)).not.toContain('cargos');
     // v5: tablas nuevas de Mi plata, vacías
     expect(await db.cuentas.count()).toBe(0);
@@ -38,6 +38,8 @@ describe('migración de la base v1 → v3', () => {
     // v6: ingresos y presupuestos, vacías
     expect(await db.ingresos.count()).toBe(0);
     expect(await db.presupuestos.count()).toBe(0);
+    // v9: cartolas importadas, vacía
+    expect(await db.importados.count()).toBe(0);
 
     expect(await db.personas.count()).toBe(2);
     expect(await db.gastos.get('c1')).toMatchObject({ pagador: 'yo', total: 30000, miParte: 10000, participantes: ['p1', 'p2'] });

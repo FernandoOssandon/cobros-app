@@ -53,7 +53,7 @@ test('exportar respaldo v7', async ({ page }) => {
   const descarga = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Exportar' }).click();
   const r = JSON.parse(fs.readFileSync((await (await descarga).path())!, 'utf8'));
-  expect(r.version).toBe(7);
+  expect(r.version).toBe(8);
   expect(r.cuentas).toEqual([]);
   expect(r.gastos).toHaveLength(13);
   expect(r.recurrentes).toHaveLength(5);

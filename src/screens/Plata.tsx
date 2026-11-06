@@ -170,6 +170,16 @@ export default function MiPlata() {
         </div>
       )}
 
+      <button className="box-line" style={{ marginTop: 10 }} onClick={() => push('/importar')}>
+        <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <span style={{ fontSize: 17, fontWeight: 800 }}>Importar cartola</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)', lineHeight: 1.3 }}>
+            Santander o CMR, en Excel. La cruzamos con lo anotado y ves si cuadra con el banco.
+          </span>
+        </span>
+        <Icon name="next" size={20} />
+      </button>
+
       <div className="row-between" style={{ alignItems: 'baseline', padding: '28px 4px 10px' }}>
         <h2 style={{ fontSize: 22, fontWeight: 800, letterSpacing: -0.6 }}>metas.</h2>
         {d.metas.length > 0 && (
@@ -498,7 +508,7 @@ function DapSheet({ d, c, onClose }: { d: Datos; c: Cuenta; onClose: () => void 
 export function useBorrarMovAhorro() {
   const toast = useToast();
   return async (id: string) => {
-    const m = await borrarMovAhorro(id);
-    if (m) toast('Movimiento borrado', { label: 'Deshacer', run: () => db.movAhorro.put(m) });
+    const patas = await borrarMovAhorro(id);
+    if (patas.length) toast(patas.length > 1 ? 'Traspaso borrado de las dos cuentas' : 'Movimiento borrado', { label: 'Deshacer', run: () => db.movAhorro.bulkPut(patas) });
   };
 }

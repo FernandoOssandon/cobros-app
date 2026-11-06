@@ -46,6 +46,7 @@ test('un pago por transferencia entra a la cuenta elegida', async ({ page }) => 
   await teclear(page, '5000');
   await page.getByRole('button', { name: 'Cuenta RUT', exact: true }).click();
   await page.getByRole('button', { name: 'Registrar pago' }).click();
+  await expect(page.getByText('Pago de $5.000 registrado')).toBeVisible();
   await page.goto('#/cuenta/rut');
   await expect(page.getByText(/Te pagó Camila/)).toBeVisible();
 });

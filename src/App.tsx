@@ -32,6 +32,7 @@ import { IngresoForm, Ingresos } from './screens/Ingresos';
 import { AvisosPresupuesto } from './ui/avisos';
 import { MetaDetalle, MetaForm } from './screens/Metas';
 import Tendencias from './screens/Tendencias';
+import Importar from './screens/Importar';
 import { renovarVencidos } from './ahorros';
 import { leerCorreo } from './correo';
 import { actualizarIndicadores } from './indicadores';
@@ -91,6 +92,7 @@ export default function App() {
               <Route path="/meta/:id" element={<MetaDetalle />} />
               <Route path="/meta/:id/editar" element={<MetaForm />} />
               <Route path="/tendencias" element={<Tendencias />} />
+              <Route path="/importar" element={<Importar />} />
               <Route path="/bienvenida" element={<Onboarding />} />
               <Route path="/archivadas" element={<Archivadas />} />
               {/* Rutas de la 1.x */}

@@ -130,7 +130,7 @@ describe('metas de ahorro', () => {
     await quitarAporte(id, aid!);
     expect((await db.metas.get(id))).toMatchObject({ nombre: 'Fondo de emergencia', aportes: [{ monto: 25_000 }] });
     const r = JSON.parse(JSON.stringify(await construirRespaldo()));
-    expect(r.version).toBe(7);
+    expect(r.version).toBe(8);
     expect(r.metas).toHaveLength(1);
     await borrarMeta(id);
     expect(await db.metas.count()).toBe(0);
