@@ -1,4 +1,6 @@
-# Conectar Gmail con a mano
+# Conectar Gmail con a mano (con un script)
+
+> **Desde la 3.1 esto es opcional.** La forma normal es "Conectar con Google" en la app: la misma conexión del respaldo en Drive lee los correos del banco directo desde el teléfono (hay que activar la **Gmail API** en el proyecto de Google Cloud). Este script sigue sirviendo como alternativa: no pide renovar el permiso cada hora, pero se instala a mano.
 
 La app puede leer los correos que te manda el banco cuando pagas o transfieres ("Se realizó una compra por $12.990 en…") y dejarlos **por confirmar**. Nada se anota solo: tú decides si es un gasto, si ya lo tenías anotado o si lo descartas.
 

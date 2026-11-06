@@ -162,10 +162,12 @@ export default function MiPlata() {
       ) : (
         <div style={{ marginTop: 14, borderRadius: 22, background: 'var(--soft)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
           <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: -0.3, lineHeight: 1.15 }}>Que tu banco te avise y la app anote</span>
-          <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--muted)', lineHeight: 1.35 }}>Leemos los correos de compra de tu banco y te proponemos cada cobro.</span>
+          <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--muted)', lineHeight: 1.35 }}>
+            Leemos los correos de compra de tu banco y te proponemos cada cobro. {aj.drive ? 'Con la misma cuenta de Google del respaldo.' : 'Con tu cuenta de Google.'}
+          </span>
           <span style={{ display: 'flex' }}>
             <button className="chip-ink" style={{ border: 'none' }} onClick={() => push('/correo/conectar')}>
-              Conectar Gmail
+              Conectar el correo
             </button>
           </span>
         </div>

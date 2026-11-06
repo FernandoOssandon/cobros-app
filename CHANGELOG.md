@@ -1,5 +1,14 @@
 # Cambios
 
+## 3.1.0 · 6 nov 2026 · una sola conexión con Google
+
+- **Los correos del banco, sin script.** "Conectar el correo" ahora usa tu cuenta de Google: la misma conexión del respaldo en Drive, con una sola ventana de permisos (Drive y Gmail de solo lectura). La app busca solo los correos de los bancos de siempre, directo desde el teléfono. El script de Apps Script queda como alternativa ("Usar un script de Google").
+- **Ponte al día con un toque.** El permiso de Google dura una hora. Si vence y hay cambios sin respaldar o pasaron más de 3 horas sin revisar el correo, el resumen muestra un solo aviso: un toque renueva el permiso, sube el respaldo y trae los cobros nuevos. En Detectados aparece "Revisar correos nuevos".
+- **Ajustes → Cuenta de Google:** el respaldo y la lectura de correos juntos. Si leías con el script, "Cambiar a Google" lo reemplaza. Desconectar la cuenta deja de respaldar y de leer; dejar de leer el correo (en Detectados) no toca el respaldo.
+- Los correos ya leídos con el script no se repiten: Gmail usa los mismos identificadores.
+- **Google Cloud:** hay que activar la **Gmail API** en el mismo proyecto. Gmail es un permiso "restringido": funciona para los usuarios de prueba del proyecto (hasta 100).
+- **Datos:** sin cambios en la base (v10) ni en el respaldo (v8). La conexión no viaja en los respaldos.
+
 ## 2.6.0 · 5 nov 2026 · cuentas que cuadran y cupos de tarjeta
 
 - **Medios ligados a su cuenta.** En cada medio de pago eliges de qué cuenta de Mi plata sale la plata (débito, transferencia, efectivo). Lo que pagas con ese medio baja el saldo estimado de la cuenta, y aparece en sus movimientos (tocándolo abre el gasto).

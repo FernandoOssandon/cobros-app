@@ -27,7 +27,7 @@ async function scriptFalso(page: Page, clave = 'una-clave-larga') {
 
 async function conectar(page: Page, clave = 'una-clave-larga') {
   await page.goto('#/correo/conectar');
-  await page.getByRole('button', { name: 'Conectar Gmail' }).click();
+  await page.getByRole('button', { name: 'Usar un script de Google' }).click();
   await page.getByLabel('URL del script').fill('https://script.google.com/macros/s/prueba/exec');
   await page.getByLabel('Clave').fill(clave);
   await page.getByRole('button', { name: 'Probar y conectar' }).click();

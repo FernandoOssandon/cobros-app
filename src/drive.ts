@@ -8,54 +8,20 @@
 //   si vence y hay cambios sin subir, la app muestra "Respaldar" para hacerlo con un toque.
 import { useSyncExternalStore } from 'react';
 import { construirRespaldo, marcarRespaldo, validarRespaldo, type Respaldo } from './backup';
-import { cambiosDatos, db, guardarAjustes, type ConfigDrive } from './db';
+import { cambiosDatos, db, guardarAjustes } from './db';
+import { alCambiarPermiso, clientIdDe, escribirLocal, leerLocal, obtenerToken, olvidarToken, pedirPermiso, revocarPermiso, tokenValido } from './google';
 import {
   asegurarCarpeta, borrarArchivo, descargarRespaldo, ErrorDrive, listarRespaldos, nombreRespaldo, paraBorrar, quienSoy, SCOPE_DRIVE, subirRespaldo,
   type ArchivoDrive,
 } from './lib/drive';
 import { todayISO } from './lib/format';
 
-/** El ID de cliente puede venir en la compilación (variable VITE_GOOGLE_CLIENT_ID en Netlify) o escribirse en la app. */
-const CLIENT_ID_COMPILADO = (import.meta.env?.VITE_GOOGLE_CLIENT_ID as string | undefined)?.trim() || undefined;
-export const hayClientIdCompilado = !!CLIENT_ID_COMPILADO;
-export const clientIdDe = (cfg?: ConfigDrive) => cfg?.clientId || CLIENT_ID_COMPILADO;
+export { cargarGoogle, clientIdDe, hayClientIdCompilado } from './google';
 
 /** Espera tras el último cambio antes de subir (para juntar varios cambios seguidos). */
 export const DEMORA_MS = 90_000;
 
-// ---------- Token de acceso (dura ~1 hora; se guarda en este teléfono para no pedirlo de nuevo al reabrir) ----------
-
-const CLAVE_TOKEN = 'a-mano-drive-token';
 const CLAVE_PENDIENTE = 'a-mano-drive-pendiente';
-
-function leer<T>(k: string): T | null {
-  try {
-    const s = localStorage.getItem(k);
-    return s ? (JSON.parse(s) as T) : null;
-  } catch {
-    return null;
-  }
-}
-function escribir(k: string, v: unknown) {
-  try {
-    if (v === null || v === undefined) localStorage.removeItem(k);
-    else localStorage.setItem(k, JSON.stringify(v));
-  } catch {
-    // Sin almacenamiento (modo privado): igual funciona mientras la app esté abierta.
-  }
-}
-
-interface Token {
-  valor: string;
-  vence: number;
-}
-let token: Token | null = typeof window !== 'undefined' ? leer<Token>(CLAVE_TOKEN) : null;
-/** Con un minuto de margen. */
-export const tokenValido = () => !!token && token.vence - 60_000 > Date.now();
-function olvidarToken() {
-  token = null;
-  escribir(CLAVE_TOKEN, null);
-}
 
 // ---------- Estado para la interfaz ----------
 
@@ -68,10 +34,14 @@ export interface EstadoDrive {
   tokenOk: boolean;
 }
 
-let estado: EstadoDrive = { pendienteDesde: typeof window !== 'undefined' ? (leer<string>(CLAVE_PENDIENTE) ?? undefined) : undefined, subiendo: false, tokenOk: tokenValido() };
+let estado: EstadoDrive = {
+  pendienteDesde: typeof window !== 'undefined' ? (leerLocal<string>(CLAVE_PENDIENTE) ?? undefined) : undefined,
+  subiendo: false,
+  tokenOk: tokenValido(SCOPE_DRIVE),
+};
 const oyentes = new Set<() => void>();
 function cambiar(p: Partial<EstadoDrive> = {}) {
-  estado = { ...estado, ...p, tokenOk: tokenValido() };
+  estado = { ...estado, ...p, tokenOk: tokenValido(SCOPE_DRIVE) };
   for (const f of oyentes) f();
 }
 export const estadoDrive = () => estado;
@@ -87,85 +57,21 @@ export function useEstadoDrive(): EstadoDrive {
 /** Recalcula si el permiso sigue vigente (se llama cada minuto). */
 export const refrescarEstado = () => cambiar();
 
-let ultimoCambio = 0;
+/** Cuenta los cambios: si cambió algo mientras se subía, queda pendiente para la próxima. */
+let cambios = 0;
 function marcarPendiente() {
-  ultimoCambio = Date.now();
+  cambios++;
   if (!estado.pendienteDesde) {
     const desde = new Date().toISOString();
-    escribir(CLAVE_PENDIENTE, desde);
+    escribirLocal(CLAVE_PENDIENTE, desde);
     cambiar({ pendienteDesde: desde });
   }
 }
 cambiosDatos.addEventListener('cambio', marcarPendiente);
-
-// ---------- Inicio de sesión con Google (Google Identity Services) ----------
-
-interface RespuestaToken {
-  access_token?: string;
-  expires_in?: number | string;
-  error?: string;
-  error_description?: string;
-}
-interface ClienteToken {
-  requestAccessToken(o?: { prompt?: string }): void;
-}
-declare global {
-  interface Window {
-    google?: {
-      accounts: {
-        oauth2: {
-          initTokenClient(c: { client_id: string; scope: string; callback: (r: RespuestaToken) => void; error_callback?: (e: { type?: string }) => void }): ClienteToken;
-          revoke?(token: string, cb?: () => void): void;
-        };
-      };
-    };
-  }
-}
-
-let gis: Promise<void> | null = null;
-/** Carga el script de Google (se precarga para que el toque abra la ventana sin demora). */
-export function cargarGoogle(): Promise<void> {
-  if (window.google?.accounts?.oauth2) return Promise.resolve();
-  gis ??= new Promise<void>((ok, mal) => {
-    const s = document.createElement('script');
-    s.src = 'https://accounts.google.com/gsi/client';
-    s.async = true;
-    s.onload = () => ok();
-    s.onerror = () => {
-      gis = null;
-      mal(new ErrorDrive('No se pudo cargar el inicio de sesión de Google. Revisa tu conexión.'));
-    };
-    document.head.appendChild(s);
-  });
-  return gis;
-}
-
-/** Pide permiso a Google (abre su ventana). Tiene que llamarse desde un toque. */
-export async function pedirPermiso(clientId: string, primeraVez = false): Promise<string> {
-  await cargarGoogle();
-  return new Promise<string>((ok, mal) => {
-    const cliente = window.google!.accounts.oauth2.initTokenClient({
-      client_id: clientId,
-      scope: SCOPE_DRIVE,
-      callback: (r) => {
-        if (r.error || !r.access_token) return mal(new ErrorDrive(r.error_description || 'Google no dio permiso.'));
-        token = { valor: r.access_token, vence: Date.now() + Number(r.expires_in ?? 3600) * 1000 };
-        escribir(CLAVE_TOKEN, token);
-        cambiar({ error: undefined });
-        ok(r.access_token);
-      },
-      error_callback: (e) => mal(new ErrorDrive(e?.type === 'popup_closed' ? 'Cerraste la ventana de Google.' : 'No se abrió la ventana de Google. Revisa que el navegador no la bloquee.')),
-    });
-    cliente.requestAccessToken({ prompt: primeraVez ? 'consent' : '' });
-  });
-}
+alCambiarPermiso(() => cambiar());
 
 async function permiso(interactivo: boolean): Promise<string | null> {
-  if (tokenValido()) return token!.valor;
-  if (!interactivo) return null;
-  const cid = clientIdDe((await db.ajustes.get('main'))?.drive);
-  if (!cid) throw new ErrorDrive('Falta el ID de cliente de Google.');
-  return pedirPermiso(cid);
+  return obtenerToken(interactivo, SCOPE_DRIVE, (await db.ajustes.get('main'))?.drive);
 }
 
 // ---------- Conectar, respaldar, listar, restaurar ----------
@@ -173,24 +79,33 @@ async function permiso(interactivo: boolean): Promise<string | null> {
 /** Un respaldo sin nada no se sube solo: así un teléfono nuevo (vacío) no pisa el respaldo bueno. */
 export const respaldoVacio = (r: Pick<Respaldo, 'gastos' | 'personas' | 'cuentas' | 'ingresos'>) => !r.gastos.length && !r.personas.length && !r.cuentas.length && !r.ingresos.length;
 
-/** Conecta (pide permiso por primera vez) y prepara la carpeta. Devuelve los respaldos que ya hay en Drive. */
-export async function conectarDrive(clientIdEscrito?: string): Promise<ArchivoDrive[]> {
-  const prev = (await db.ajustes.get('main'))?.drive;
+/**
+ * Conecta tu cuenta de Google (una sola vez, para Drive y Gmail): pide los permisos, prepara la carpeta de respaldos
+ * y, si `correo`, deja la lectura de correos con Google (si leías con el script, se reemplaza).
+ * Devuelve los respaldos que ya hay en Drive.
+ */
+export async function conectarGoogle(clientIdEscrito?: string, op: { correo?: boolean } = {}): Promise<ArchivoDrive[]> {
+  const aj = await db.ajustes.get('main');
+  const prev = aj?.drive;
   const cid = clientIdEscrito?.trim() || clientIdDe(prev);
   if (!cid) throw new ErrorDrive('Falta el ID de cliente de Google.');
   const t = await pedirPermiso(cid, true);
   const email = await quienSoy(t).catch(() => undefined);
   const carpetaId = await asegurarCarpeta(t);
   const archivos = await listarRespaldos(t, carpetaId);
-  await guardarAjustes({ drive: { ...prev, clientId: clientIdEscrito?.trim() || prev?.clientId, email, carpetaId } });
+  const correoPrevio = aj?.correo?.modo === 'google' ? aj.correo : undefined;
+  await guardarAjustes({
+    drive: { ...prev, clientId: clientIdEscrito?.trim() || prev?.clientId, email, carpetaId },
+    ...(op.correo ? { correo: { modo: 'google' as const, email, ultimaLectura: correoPrevio?.ultimaLectura } } : {}),
+  });
   return archivos;
 }
 
+/** Desconecta tu cuenta de Google: deja de respaldar en Drive y, si leía el correo con Google, también eso. */
 export async function desconectarDrive() {
-  const t = token?.valor;
-  olvidarToken();
-  if (t) window.google?.accounts.oauth2.revoke?.(t);
-  await guardarAjustes({ drive: undefined });
+  revocarPermiso();
+  const aj = await db.ajustes.get('main');
+  await guardarAjustes({ drive: undefined, ...(aj?.correo?.modo === 'google' ? { correo: undefined } : {}) });
   cambiar({ error: undefined });
 }
 
@@ -223,7 +138,7 @@ async function subir(interactivo: boolean): Promise<ResultadoRespaldo> {
     cambiar();
     return 'sin-permiso';
   }
-  const inicio = Date.now();
+  const cambiosAlInicio = cambios;
   cambiar({ subiendo: true, error: undefined });
   try {
     const r = await construirRespaldo();
@@ -251,13 +166,13 @@ async function subir(interactivo: boolean): Promise<ResultadoRespaldo> {
     await guardarAjustes({ drive: { ...cfg, carpetaId, ultimaSubida: new Date().toISOString() } });
     await marcarRespaldo(r.exportado);
     // Si cambió algo mientras se subía, queda pendiente para la próxima.
-    if (ultimoCambio < inicio) {
-      escribir(CLAVE_PENDIENTE, null);
+    if (cambios === cambiosAlInicio) {
+      escribirLocal(CLAVE_PENDIENTE, null);
       cambiar({ pendienteDesde: undefined });
     }
     return 'ok';
   } catch (e) {
-    if (e instanceof ErrorDrive && e.sinPermiso) {
+    if (e instanceof ErrorDrive && e.status === 401) {
       olvidarToken();
       cambiar({ error: undefined });
       return 'sin-permiso';

@@ -458,10 +458,16 @@ export interface Detectado {
 }
 
 /** Conexión con el script de Google Apps Script que lee los correos del banco. */
+/**
+ * Lectura de correos del banco:
+ * - 'google': la app lee Gmail con tu cuenta de Google (la misma conexión que el respaldo en Drive);
+ * - 'script' (o sin modo, como hasta la 3.0): con tu script de Google Apps Script (`url` y `clave`).
+ */
 export interface ConfigCorreo {
-  url: string;
-  clave: string;
-  /** Cuenta de Gmail que informa el script. */
+  modo?: 'google' | 'script';
+  url?: string;
+  clave?: string;
+  /** Cuenta de Gmail. */
   email?: string;
   /** Marca de tiempo ISO de la última lectura correcta. */
   ultimaLectura?: string;

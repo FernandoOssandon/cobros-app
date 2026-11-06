@@ -15,7 +15,7 @@ import { elegirClavePeriodo, usePeriodo } from '../periodo';
 import { Logo } from '../ui/Logo';
 import { anotarAtrasados, mesNombre, repartoRecurrente } from '../recurrentes';
 import { useRespaldar } from '../useRespaldo';
-import { AvisoRespaldoDrive } from '../ui/drive';
+import { AvisoGoogle } from '../ui/drive';
 import { Icon } from '../ui/icons';
 import { PeriodoBar } from '../ui/periodo';
 import { CupoTarjeta, PagarTarjetaSheet } from '../ui/tarjeta';
@@ -128,7 +128,7 @@ export default function Resumen() {
         </div>
       )}
 
-      {esActual && <AvisoRespaldoDrive />}
+      {esActual && <AvisoGoogle />}
 
       {esActual && verRespaldo && (
         <div className="banner-soft" style={{ marginTop: 14 }}>

@@ -175,7 +175,8 @@ function RecurrentesAlDia() {
 /**
  * Al abrir la app (y al volver a ella):
  * - renueva los depósitos a plazo vencidos que se renuevan solos;
- * - si el correo está conectado y pasaron 15 minutos, lee los correos nuevos del banco.
+ * - si el correo está conectado y pasaron 15 minutos, lee los correos nuevos del banco
+ *   (con Google, solo si el permiso sigue vigente; si no, el aviso "ponte al día" lo ofrece con un toque).
  */
 function CorreoAlDia() {
   const toast = useToast();
@@ -193,7 +194,7 @@ function CorreoAlDia() {
         const r = await leerCorreo();
         if (r?.nuevos) toast(`${r.nuevos} ${r.nuevos === 1 ? 'cobro nuevo' : 'cobros nuevos'} en tu correo`, { label: 'Revisar', run: () => nav('/correo', { state: { from: 'Volver' } }) });
       } catch {
-        // Sin conexión o script caído: se reintenta la próxima vez. El error se ve al abrir "Detectados".
+        // Sin conexión, script caído o Google con error: se reintenta la próxima vez. El error se ve al abrir "Detectados".
       } finally {
         corriendo = false;
       }

@@ -1,8 +1,9 @@
 // 3.0: presupuestos con varias categorías, recurrentes sugeridos, cuentas en dólares y respaldo en Google Drive.
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import type { Page, Route } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import { expect, FIXTURES, test } from './ayuda';
+import { driveFalso } from './google-falso';
 
 const RESPALDO = path.join(FIXTURES, 'respaldo-2-7.json');
 const CLIENT_ID = '123-abc.apps.googleusercontent.com';
@@ -82,86 +83,18 @@ test('una cuenta en dólares suma en pesos con el dólar del día', async ({ pag
   await expect(page.getByRole('button', { name: /Meli Dólar/ })).toContainText('≈ $12.495');
 });
 
-// ---------- Google Drive de mentira ----------
-
-interface Archivo {
-  id: string;
-  name: string;
-  modifiedTime: string;
-  contenido: string;
-  carpeta?: boolean;
-}
-
-/** Simula Google: el inicio de sesión (Google Identity Services) y la API de Drive, en memoria. */
-async function driveFalso(page: Page) {
-  const archivos = new Map<string, Archivo>();
-  let n = 0;
-  const subidas: string[] = [];
-  await page.route('https://accounts.google.com/gsi/client', (r) =>
-    r.fulfill({
-      contentType: 'text/javascript',
-      body: `window.google = { accounts: { oauth2: {
-        initTokenClient: (c) => ({ requestAccessToken: () => setTimeout(() => c.callback({ access_token: 'tok-' + Math.random(), expires_in: 3600 }), 20) }),
-        revoke: () => {},
-      } } };`,
-    }),
-  );
-  const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': '*' };
-  const json = (r: Route, body: unknown, status = 200) => r.fulfill({ status, headers: cors, contentType: 'application/json', body: JSON.stringify(body) });
-  const meta = (a: Archivo) => ({ id: a.id, name: a.name, modifiedTime: a.modifiedTime, size: String(a.contenido.length) });
-  await page.route('https://www.googleapis.com/**', async (r) => {
-    const req = r.request();
-    const url = new URL(req.url());
-    if (req.method() === 'OPTIONS') return r.fulfill({ status: 204, headers: cors });
-    const ahora = new Date().toISOString();
-    if (url.pathname.endsWith('/about')) return json(r, { user: { emailAddress: 'yo@gmail.com' } });
-    const id = /\/files\/([^/?]+)/.exec(url.pathname)?.[1];
-    if (url.pathname.startsWith('/upload/')) {
-      if (req.method() === 'POST') {
-        const cuerpo = req.postData() ?? '';
-        const partes = cuerpo.split(/\r\n--[^\r\n]+/);
-        const m = JSON.parse(/\r\n\r\n([\s\S]*)/.exec(partes[0])![1]);
-        const contenido = /\r\n\r\n([\s\S]*)/.exec(partes[1])![1];
-        const a = { id: `f${++n}`, name: m.name, modifiedTime: ahora, contenido };
-        archivos.set(a.id, a);
-        subidas.push(a.name);
-        return json(r, meta(a));
-      }
-      const a = archivos.get(id!)!;
-      a.contenido = req.postData() ?? '';
-      a.modifiedTime = ahora;
-      subidas.push(a.name);
-      return json(r, meta(a));
-    }
-    if (id && url.searchParams.get('alt') === 'media') return r.fulfill({ headers: cors, contentType: 'application/json', body: archivos.get(id)!.contenido });
-    if (id && req.method() === 'DELETE') {
-      archivos.delete(id);
-      return r.fulfill({ status: 204, headers: cors });
-    }
-    if (req.method() === 'POST') {
-      const a = { id: 'carpeta', name: JSON.parse(req.postData()!).name, modifiedTime: ahora, contenido: '', carpeta: true };
-      archivos.set(a.id, a);
-      return json(r, meta(a));
-    }
-    const q = url.searchParams.get('q') ?? '';
-    const lista = q.includes('google-apps.folder') ? [...archivos.values()].filter((a) => a.carpeta) : [...archivos.values()].filter((a) => !a.carpeta).sort((a, b) => b.name.localeCompare(a.name));
-    return json(r, { files: lista.map(meta) });
-  });
-  return { archivos, subidas };
-}
-
 test('respaldo en Google Drive: conectar, se sube solo, avisa si venció el permiso y se restaura', async ({ page }) => {
   const drive = await driveFalso(page);
   await restaurar(page);
   await page.goto('#/ajustes');
   const seccion = page.getByTestId('seccion-drive');
-  await seccion.getByRole('button', { name: 'Conectar Google Drive' }).click();
+  await seccion.getByRole('button', { name: 'Conectar mi cuenta de Google' }).click();
   await page.getByLabel('ID de cliente de Google').fill('esto-no');
   await page.getByRole('button', { name: 'Conectar con Google' }).click();
   await expect(page.getByRole('alert')).toHaveText('El ID de cliente termina en .apps.googleusercontent.com');
   await page.getByLabel('ID de cliente de Google').fill(CLIENT_ID);
   await page.getByRole('button', { name: 'Conectar con Google' }).click();
-  await expect(page.getByText('Drive conectado · respaldo subido')).toBeVisible();
+  await expect(page.getByText('Google conectado · respaldo subido · sin cobros nuevos en tu correo')).toBeVisible();
   await expect(seccion).toContainText('Conectado como yo@gmail.com.');
   expect(drive.subidas).toEqual(['a-mano-respaldo-2026-11-25.json']);
   const subido = JSON.parse([...drive.archivos.values()].find((a) => !a.carpeta)!.contenido);
@@ -217,7 +150,7 @@ test('teléfono nuevo: al conectar Drive ofrece traer el respaldo en vez de subi
   drive.archivos.set('carpeta', { id: 'carpeta', name: 'a mano · respaldos', modifiedTime: '2026-11-20T10:00:00Z', contenido: '', carpeta: true });
   drive.archivos.set('viejo', { id: 'viejo', name: 'a-mano-respaldo-2026-11-24.json', modifiedTime: '2026-11-24T22:00:00Z', contenido: readFileSync(RESPALDO, 'utf8') });
   await page.goto('#/ajustes');
-  await page.getByRole('button', { name: 'Conectar Google Drive' }).click();
+  await page.getByRole('button', { name: 'Conectar mi cuenta de Google' }).click();
   await page.getByLabel('ID de cliente de Google').fill(CLIENT_ID);
   await page.getByRole('button', { name: 'Conectar con Google' }).click();
   await expect(page.getByText('Encontramos respaldos en tu Drive. ¿Traemos uno a este teléfono?')).toBeVisible();

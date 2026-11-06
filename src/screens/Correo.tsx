@@ -1,4 +1,4 @@
-// Detectados en tu correo y Conectar Gmail.
+// Detectados en tu correo y Conectar el correo (con tu cuenta de Google o, como alternativa, con un script).
 import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import scriptGmail from '../../integraciones/gmail/Codigo.gs?raw';
@@ -11,6 +11,10 @@ import { borrarIngreso, cuentasDestino } from '../ingresos';
 import { useAjustes, useDatos, type Datos } from '../hooks';
 import { daysBetween, fmt, shortDate, todayISO } from '../lib/format';
 import { useNav } from '../nav';
+import { conectarGoogle, respaldarEnDrive, useEstadoDrive } from '../drive';
+import { tokenValido } from '../google';
+import { SCOPE_GMAIL } from '../lib/gmail';
+import { ConectarGoogleSheet } from '../ui/drive';
 import { BackButton, PickerSheet, Sheet } from '../ui/kit';
 import { useToast } from '../ui/toast';
 
@@ -68,10 +72,28 @@ export function Detectados() {
   const [leyendo, setLeyendo] = useState(false);
   const [error, setError] = useState('');
   const [elegirPersona, setElegirPersona] = useState<{ x: Detectado; editar: boolean } | null>(null);
-  // Al desconectar se vuelve a Mi plata; sin esto, la pantalla alcanza a mandar a "Conectar Gmail".
+  // Al desconectar se vuelve a Mi plata; sin esto, la pantalla alcanza a mandar a "Conectar el correo".
   const [saliendo, setSaliendo] = useState(false);
   const conectado = !!aj.correo;
   const ultima = aj.correo?.ultimaLectura;
+  const conGoogle = aj.correo?.modo === 'google';
+  // Se vuelve a dibujar cuando cambia el permiso de Google.
+  useEstadoDrive();
+  const sinPermiso = conGoogle && !tokenValido(SCOPE_GMAIL);
+
+  const revisarConPermiso = async () => {
+    if (leyendo) return;
+    setLeyendo(true);
+    try {
+      const r = await leerCorreo(fetch, true);
+      setError('');
+      toast(r?.nuevos ? `${r.nuevos} ${r.nuevos === 1 ? 'cobro nuevo' : 'cobros nuevos'} en tu correo` : 'Sin cobros nuevos en tu correo');
+    } catch (e) {
+      setError(e instanceof ErrorCorreo ? e.message : 'No se pudo revisar el correo.');
+    } finally {
+      setLeyendo(false);
+    }
+  };
 
   // Al abrir, revisa si pasó más de un minuto desde la última lectura.
   useEffect(() => {
@@ -154,6 +176,15 @@ export function Detectados() {
         <div role="alert" style={{ marginTop: 14, borderRadius: 18, border: '2px solid var(--danger)', padding: '12px 14px', fontSize: 15, fontWeight: 700, color: 'var(--danger)', lineHeight: 1.35 }}>
           {error}
         </div>
+      )}
+      {sinPermiso && !leyendo && (
+        <button className="banner-det" onClick={revisarConPermiso}>
+          <span style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span style={{ fontSize: 17, fontWeight: 800, letterSpacing: -0.3, lineHeight: 1.15 }}>Revisar correos nuevos</span>
+            <span className="t-meta">El permiso de Google venció. Un toque y buscamos cobros nuevos.</span>
+          </span>
+          <span className="chip-ink">Revisar</span>
+        </button>
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 18 }}>
@@ -261,7 +292,7 @@ export function Detectados() {
             {aj.correo?.email ?? 'Gmail conectado'}
           </span>
           <span className="t-meta">
-            {leyendo ? 'Revisando ahora…' : `Revisado ${haceLbl(ultima)}`} · solo correos de bancos
+            {leyendo ? 'Revisando ahora…' : `Revisado ${haceLbl(ultima)}`} · {conGoogle ? 'con tu cuenta de Google' : 'con el script'} · solo correos de bancos
           </span>
         </span>
         <button
@@ -270,7 +301,7 @@ export function Detectados() {
           onClick={async () => {
             setSaliendo(true);
             await desconectarCorreo();
-            toast('Gmail desconectado');
+            toast(conGoogle ? 'Ya no se leen tus correos · el respaldo en Drive sigue' : 'Gmail desconectado');
             back('/plata');
           }}
         >
@@ -298,17 +329,57 @@ export function Detectados() {
   );
 }
 
-// ---------- Conectar Gmail ----------
+// ---------- Conectar el correo ----------
 
 const PUNTOS: [string, string][] = [
-  ['Solo correos de bancos', 'BCI, Banco Estado, Santander, Mach, Tenpo y Mercado Pago. El resto ni lo abrimos.'],
+  ['Solo correos de bancos', 'BCI, Banco Estado, Santander, Banco de Chile, Itaú, Falabella, Mach, Tenpo, Mercado Pago y otros. El resto ni lo abrimos.'],
   ['Solo lectura', 'No enviamos, borramos ni movemos correos.'],
+  ['La misma conexión que el respaldo', 'Tu cuenta de Google, una sola vez, para Drive y Gmail. El permiso dura una hora; después, un toque.'],
   ['Todo queda en tu teléfono', 'Los cobros se guardan acá, como todo lo demás. Desconectas cuando quieras.'],
 ];
 
 export function ConectarGmail() {
   const { back, navigate, backLabel } = useNav();
-  const [paso, setPaso] = useState(false);
+  const aj = useAjustes();
+  const toast = useToast();
+  const [script, setScript] = useState(false);
+  const [google, setGoogle] = useState(false);
+  const [ocupado, setOcupado] = useState(false);
+  const [error, setError] = useState('');
+  const listo = () => navigate('/correo', { replace: true, state: { from: 'Mi plata' } });
+
+  /** Ya conectado con Google: lee el correo y avisa. */
+  const leerYSeguir = async (prefijo: string) => {
+    // Si hay algo por respaldar, se aprovecha el permiso recién dado (sin datos no se sube nada).
+    void respaldarEnDrive();
+    let r = null;
+    try {
+      r = await leerCorreo();
+    } catch (e) {
+      toast(`${prefijo} · ${e instanceof ErrorCorreo ? e.message : 'no se pudo revisar el correo'}`);
+      return listo();
+    }
+    toast(`${prefijo} · ${r?.nuevos ?? 0} ${r?.nuevos === 1 ? 'cobro' : 'cobros'} por revisar`);
+    listo();
+  };
+
+  const conectar = async () => {
+    if (!aj.drive) return setGoogle(true);
+    // Tu cuenta de Google ya está conectada (por el respaldo): falta el permiso para leer el correo.
+    if (ocupado) return;
+    setOcupado(true);
+    setError('');
+    try {
+      if (tokenValido(SCOPE_GMAIL)) await guardarAjustes({ correo: { modo: 'google', email: aj.drive.email } });
+      else await conectarGoogle(undefined, { correo: true });
+      await leerYSeguir('Correo conectado');
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setOcupado(false);
+    }
+  };
+
   return (
     <div className="screen">
       <div className="scroll" style={{ padding: '4px 20px 20px' }}>
@@ -332,23 +403,41 @@ export function ConectarGmail() {
             </div>
           ))}
         </div>
+        {error && (
+          <div role="alert" style={{ marginTop: 6, fontSize: 14, fontWeight: 700, color: 'var(--danger)', lineHeight: 1.35 }}>
+            {error}
+          </div>
+        )}
       </div>
       <div className="foot" style={{ gap: 4, paddingTop: 10 }}>
-        <button className="cta h60" onClick={() => setPaso(true)}>
-          Conectar Gmail
+        <button className="cta h60" aria-disabled={ocupado} onClick={conectar}>
+          {ocupado ? 'Conectando…' : 'Conectar con Google'}
+        </button>
+        <button className="btn-text" onClick={() => setScript(true)}>
+          Usar un script de Google
         </button>
         <button className="btn-text" onClick={() => back('/plata')}>
           Ahora no
         </button>
       </div>
-      {paso && <ConexionSheet onClose={() => setPaso(false)} onListo={() => navigate('/correo', { replace: true, state: { from: 'Mi plata' } })} />}
+      {google && (
+        <ConectarGoogleSheet
+          onClose={() => setGoogle(false)}
+          onConectado={async () => {
+            setGoogle(false);
+            await leerYSeguir('Google conectado');
+          }}
+        />
+      )}
+      {script && <ConexionSheet onClose={() => setScript(false)} onListo={listo} />}
     </div>
   );
 }
 
 /**
- * La conexión real: el script de Google Apps Script que corre en tu cuenta (ver integraciones/gmail/README.md).
+ * La alternativa: el script de Google Apps Script que corre en tu cuenta (ver integraciones/gmail/README.md).
  * Se copia el script, se publica como aplicación web y se pega aquí su URL con la clave.
+ * Sirve si no quieres crear el ID de cliente o si prefieres no tocar el permiso cada hora.
  */
 function ConexionSheet({ onClose, onListo }: { onClose: () => void; onListo: () => void }) {
   const toast = useToast();
@@ -394,12 +483,12 @@ function ConexionSheet({ onClose, onListo }: { onClose: () => void; onListo: () 
   );
 
   return (
-    <Sheet onClose={onClose} label="Conectar Gmail" style={{ gap: 12, maxHeight: '92%', overflowY: 'auto' }}>
+    <Sheet onClose={onClose} label="Conectar con un script" style={{ gap: 12, maxHeight: '92%', overflowY: 'auto' }}>
       <div className="sheet-title" style={{ paddingBottom: 0 }}>
-        Conecta tu Gmail.
+        Con un script.
       </div>
       <div className="sheet-body" style={{ paddingBottom: 4 }}>
-        Se hace una vez, con un script que corre en tu propia cuenta de Google. Toma unos 5 minutos.
+        La alternativa: un script que corre en tu propia cuenta de Google. No pide tocar el permiso cada hora, pero se arma a mano: toma unos 5 minutos.
       </div>
       {paso(
         1,

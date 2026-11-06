@@ -1,8 +1,11 @@
-// Cobros detectados en el correo: pide los correos nuevos al script de Gmail, los interpreta
+// Cobros detectados en el correo: pide los correos nuevos del banco (con tu cuenta de Google o con el script), los interpreta
 // y los deja "por confirmar". Nada se anota solo: tú decides si es un gasto, si ya estaba o si se descarta.
 import { db, guardarAjustes, guardarPago, now, guardarGasto, type ConfigCorreo, type Detectado } from './db';
 import { guardarIngreso, tipoPorNombre } from './ingresos';
 import { buscarParecido, interpretarCorreo, reconocerMedio, reconocerPersona, sugerirCategoria, type CorreoCrudo } from './lib/correo';
+import { obtenerToken, olvidarToken } from './google';
+import { ErrorDrive } from './lib/drive';
+import { correosDelBanco, SCOPE_GMAIL } from './lib/gmail';
 import { sumarDias } from './lib/recurrence';
 import { todayISO } from './lib/format';
 
@@ -20,6 +23,7 @@ export class ErrorCorreo extends Error {}
 
 /** Pide los correos al script. Usa text/plain para que el navegador no haga una consulta previa (CORS). */
 export async function pedirCorreos(cfg: ConfigCorreo, desde: string, f: typeof fetch = fetch): Promise<{ mensajes: CorreoCrudo[]; email?: string }> {
+  if (!cfg.url || !cfg.clave) throw new ErrorCorreo('Falta la dirección o la clave del script.');
   let res: Response;
   try {
     res = await f(cfg.url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ clave: cfg.clave, desde }), redirect: 'follow' });
@@ -77,20 +81,64 @@ export async function guardarCorreos(mensajes: CorreoCrudo[]): Promise<Resultado
   return r;
 }
 
-/** Lee el correo desde la última lectura (o los últimos 30 días) y guarda la hora de esta lectura. */
-export async function leerCorreo(f: typeof fetch = fetch): Promise<ResultadoLectura | null> {
-  const cfg = (await db.ajustes.get('main'))?.correo;
-  if (!cfg?.url || !cfg.clave) return null;
+/**
+ * Lee el correo desde la última lectura (o los últimos 30 días) y guarda la hora de esta lectura.
+ * Con Google: sin `interactivo` solo lee si el permiso sigue vigente (si no, devuelve null y la app ofrece "ponte al día");
+ * con `interactivo` (desde un toque) pide permiso si hace falta.
+ */
+export function leerCorreo(f: typeof fetch = fetch, interactivo = false): Promise<ResultadoLectura | null> {
+  // Si ya se está leyendo (al abrir la app y la pantalla a la vez), se espera esa misma lectura.
+  // Un toque que llega mientras tanto vuelve a intentar con permiso si esa lectura no pudo.
+  if (lecturaEnCurso && interactivo) return lecturaEnCurso.catch(() => null).then((r) => r ?? leerCorreo(f, true));
+  lecturaEnCurso ??= leer(f, interactivo).finally(() => {
+    lecturaEnCurso = null;
+  });
+  return lecturaEnCurso;
+}
+let lecturaEnCurso: Promise<ResultadoLectura | null> | null = null;
+
+async function leer(f: typeof fetch, interactivo: boolean): Promise<ResultadoLectura | null> {
+  const aj = await db.ajustes.get('main');
+  const cfg = aj?.correo;
+  if (!cfg) return null;
   const inicio = now();
   // Un margen de 1 día por si un correo llegó atrasado; los repetidos se descartan por id.
   const desde = cfg.ultimaLectura ? new Date(new Date(cfg.ultimaLectura).getTime() - 86_400_000).toISOString() : new Date(`${sumarDias(todayISO(), -DIAS_PRIMERA_LECTURA)}T00:00:00`).toISOString();
-  const { mensajes, email } = await pedirCorreos(cfg, desde, f);
+  let mensajes: CorreoCrudo[];
+  let email = cfg.email;
+  if (cfg.modo === 'google') {
+    let token: string | null;
+    try {
+      token = await obtenerToken(interactivo, SCOPE_GMAIL, aj?.drive);
+    } catch (e) {
+      throw new ErrorCorreo((e as Error).message);
+    }
+    if (!token) return null;
+    const vistos = new Set((await db.detectados.toCollection().primaryKeys()) as string[]);
+    try {
+      mensajes = await correosDelBanco(token, desde, vistos, f);
+    } catch (e) {
+      // El permiso venció antes de lo esperado: se olvida y la app ofrece renovarlo con un toque.
+      if (e instanceof ErrorDrive && e.status === 401) {
+        olvidarToken();
+        if (!interactivo) return null;
+      }
+      throw new ErrorCorreo(
+        e instanceof ErrorDrive && e.status === 403 ? 'Google no dejó leer el correo. Revisa que la Gmail API esté activada en tu proyecto de Google Cloud.' : (e as Error).message,
+      );
+    }
+  } else {
+    if (!cfg.url || !cfg.clave) return null;
+    const r = await pedirCorreos(cfg, desde, f);
+    mensajes = r.mensajes;
+    email = r.email ?? cfg.email;
+  }
   const r = await guardarCorreos(mensajes);
-  await guardarAjustes({ correo: { ...cfg, email: email ?? cfg.email, ultimaLectura: inicio } });
+  await guardarAjustes({ correo: { ...cfg, email, ultimaLectura: inicio } });
   return r;
 }
 
-export const conectarCorreo = (url: string, clave: string) => guardarAjustes({ correo: { url: url.trim(), clave: clave.trim() } });
+export const conectarCorreo = (url: string, clave: string) => guardarAjustes({ correo: { modo: 'script', url: url.trim(), clave: clave.trim() } });
 
 /** Deja de leer el correo y borra los detectados que estaban por confirmar (los anotados se quedan). */
 export async function desconectarCorreo() {

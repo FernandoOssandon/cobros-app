@@ -11,7 +11,7 @@
 **Versión 2.3**: nueva marca **a mano.** (nombre, símbolo de igual, íconos y textos). No hay cambios en los datos.
 
 
-**Versión 2.2 "Mi plata"**: patrimonio, cuentas de ahorro con interés estimado, depósitos a plazo y cobros detectados en los correos del banco (Gmail, vía un script propio: ver `integraciones/gmail/README.md`).
+**Versión 2.2 "Mi plata"**: patrimonio, cuentas de ahorro con interés estimado, depósitos a plazo y cobros detectados en los correos del banco (Gmail; desde la 3.1, con la misma conexión de Google del respaldo en Drive, o como alternativa con un script propio: ver `integraciones/gmail/README.md`).
 
 **Versión 2.1**: editar las cuotas de los cobros recurrentes, foto de la boleta desde el detalle, grupos que se editan, terminan y borran, y pruebas de punta a punta. Detalle en [CHANGELOG.md](CHANGELOG.md).
 
