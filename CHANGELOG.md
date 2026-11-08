@@ -1,5 +1,16 @@
 # Cambios
 
+## 3.2.0 · 6 nov 2026 · ¿cómo termino el mes?
+
+- **Hasta el sueldo.** En el resumen, una tarjeta nueva dice cuánto puedes gastar por día hasta que llegue el sueldo (o hasta fin de mes, si no tienes un sueldo fijo). La cuenta va de sueldo a sueldo: lo que tienes en tus cuentas del mes, más lo que entra antes del sueldo, menos lo ya gastado con tarjeta y lo que viene.
+  - **Lo ya gastado con tarjeta** cuenta hoy, aunque lo pagues después: lo facturado que falta pagar y lo del período abierto. Las cuotas futuras cuentan solo en su mes.
+  - **Lo que viene:** recurrentes (los variables con su último monto), lo que está por confirmar, cuotas e ingresos fijos que llegan antes del sueldo. El sueldo del día de cierre es del ciclo siguiente.
+  - **Ritmo:** cuánto llevas por día en el ciclo (sin recurrentes, cuotas de compras anteriores ni gastos grandes, como una transferencia de arriendo) y con cuánto llegas a este ritmo.
+  - **Avisos:** si una cuenta no alcanza para pagar la tarjeta o lo que se carga a ella antes del sueldo.
+- **Cuentas del mes.** Eliges qué cuentas cuentan para el día a día; por defecto, las corrientes, vista y efectivo. Las remuneradas e inversiones quedan como ahorro (si te faltan, la app te dice cuánto tienes ahí). Los depósitos a plazo y las cuentas en dólares no cuentan.
+- **Cierre del ciclo.** Los primeros 10 días después del sueldo, el resumen ofrece cerrar el ciclo anterior: ingresos, gasto real y lo que quedó (comparado con el ciclo anterior), lo que falta ordenar (gastos sin categoría, cobros del correo, recurrentes por confirmar, cartolas, cuentas sin cuadrar) y aportes a tus metas.
+- **Datos:** sin cambios de versión en la base ni en el respaldo (campos nuevos opcionales: `paraElMes` en las cuentas y `ultimoCierre` en los ajustes).
+
 ## 3.1.0 · 6 nov 2026 · una sola conexión con Google
 
 - **Los correos del banco, sin script.** "Conectar el correo" ahora usa tu cuenta de Google: la misma conexión del respaldo en Drive, con una sola ventana de permisos (Drive y Gmail de solo lectura). La app busca solo los correos de los bancos de siempre, directo desde el teléfono. El script de Apps Script queda como alternativa ("Usar un script de Google").

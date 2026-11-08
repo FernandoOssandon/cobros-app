@@ -264,6 +264,11 @@ export interface Cuenta {
    */
   moneda?: 'USD' | 'EUR';
   dap?: DatosDap;
+  /**
+   * ¿Cuenta para "cómo termino el mes"? Sin definir: sí las corrientes, vista y efectivo; no las remuneradas ni inversiones.
+   * Nunca cuentan los depósitos a plazo ni las cuentas en otra moneda.
+   */
+  paraElMes?: boolean;
   archivada: boolean;
   orden: number;
   creado: string;
@@ -496,6 +501,8 @@ export interface Ajustes {
   sugerenciasDescartadas?: string[];
   /** Respaldo automático en Google Drive (si está conectado). */
   drive?: ConfigDrive;
+  /** Inicio (YYYY-MM-DD) del último ciclo de sueldo a sueldo que cerraste. */
+  ultimoCierre?: string;
 }
 
 export interface ConfigDrive {

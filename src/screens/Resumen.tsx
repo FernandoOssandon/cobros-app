@@ -16,6 +16,7 @@ import { Logo } from '../ui/Logo';
 import { anotarAtrasados, mesNombre, repartoRecurrente } from '../recurrentes';
 import { useRespaldar } from '../useRespaldo';
 import { AvisoGoogle } from '../ui/drive';
+import { AvisoCierre, TarjetaHastaSueldo, useProyeccion } from './Proyeccion';
 import { Icon } from '../ui/icons';
 import { PeriodoBar } from '../ui/periodo';
 import { CupoTarjeta, PagarTarjetaSheet } from '../ui/tarjeta';
@@ -39,6 +40,7 @@ export default function Resumen() {
   const [confirmando, setConfirmando] = useState<string | null>(null);
 
   const r = useMemo(() => (d ? resumenMes(mes, d.imputados, d.movimientos, d.medios) : null), [d, mes]);
+  const proy = useProyeccion(d);
   if (!d || !r) return <div className="scroll" />;
 
   const encabezado = (
@@ -130,6 +132,8 @@ export default function Resumen() {
 
       {esActual && <AvisoGoogle />}
 
+      {esActual && <AvisoCierre d={d} />}
+
       {esActual && verRespaldo && (
         <div className="banner-soft" style={{ marginTop: 14 }}>
           <span style={{ flex: 1, fontSize: 15, fontWeight: 700, lineHeight: 1.2 }}>
@@ -172,6 +176,8 @@ export default function Resumen() {
           </button>
         </div>
       )}
+
+      {esActual && proy && !proy.sinCuentas && <TarjetaHastaSueldo p={proy} />}
 
       <IngresosYPresupuestos d={d} mes={mes} esActual={esActual} gastoReal={r.gastoReal} />
 

@@ -27,6 +27,7 @@ import Archivadas from './screens/Archivadas';
 import MiPlata from './screens/Plata';
 import { CuentaDetalle, CuentaForm, DapForm } from './screens/Cuenta';
 import { ConectarGmail, Detectados } from './screens/Correo';
+import { CierrePantalla, ProyeccionPantalla } from './screens/Proyeccion';
 import { PresupuestoForm, Presupuestos } from './screens/Presupuestos';
 import { IngresoForm, Ingresos } from './screens/Ingresos';
 import { AvisosPresupuesto } from './ui/avisos';
@@ -94,6 +95,8 @@ export default function App() {
               <Route path="/meta/:id" element={<MetaDetalle />} />
               <Route path="/meta/:id/editar" element={<MetaForm />} />
               <Route path="/tendencias" element={<Tendencias />} />
+              <Route path="/proyeccion" element={<ProyeccionPantalla />} />
+              <Route path="/cierre" element={<CierrePantalla />} />
               <Route path="/importar" element={<Importar />} />
               <Route path="/bienvenida" element={<Onboarding />} />
               <Route path="/archivadas" element={<Archivadas />} />
