@@ -2,20 +2,25 @@
 // y devuelve las diferencias con lo que dio TypeScript (vacío = todo igual).
 package cl.amano.nucleo
 
-private val MEDIOS = listOf(
-    Medio("visa", TipoMedio.CREDITO, 25, orden = 2),
-    Medio("cmr", TipoMedio.CREDITO, 14, orden = 1),
-    Medio("fin", TipoMedio.CREDITO, 31, orden = 4),
-    Medio("vieja", TipoMedio.CREDITO, 10, archivado = true, orden = 5),
-    Medio("deb", TipoMedio.DEBITO, orden = 3),
+internal val MEDIOS = listOf(
+    Medio("visa", TipoMedio.CREDITO, 25, orden = 2, nombre = "Visa", cuentaId = "cv", cupo = 1_500_000),
+    Medio(
+        "cmr", TipoMedio.CREDITO, 14, orden = 1, nombre = "CMR Falabella", cuentaId = "cm", cupo = 800_000,
+        usoCuadrado = UsoCuadrado(350_000, "2026-03-10", "2026-01-01T12:00:00Z"),
+    ),
+    Medio("fin", TipoMedio.CREDITO, 31, orden = 4, nombre = "Fin de mes"),
+    Medio("vieja", TipoMedio.CREDITO, 10, archivado = true, orden = 5, nombre = "Archivada"),
+    Medio("deb", TipoMedio.DEBITO, orden = 3, nombre = "Débito", cuentaId = "cv"),
+    Medio("cash", TipoMedio.EFECTIVO, orden = 6, nombre = "Efectivo", cuentaId = "ce"),
+    Medio("sin", TipoMedio.CREDITO, orden = 7, nombre = "Crédito sin día", cuentaId = "cv"),
 )
 
-private fun frecuencia(o: Any?): Frecuencia {
+internal fun frecuencia(o: Any?): Frecuencia {
     val m = o.obj()
     return Frecuencia(UnidadFrecuencia.deClave(m["unidad"].txt()), m["cada"]?.ent() ?: 1, m["dia"]?.ent())
 }
 
-private class Diferencias {
+internal class Diferencias {
     val lista = mutableListOf<String>()
     fun igual(que: String, esperado: Any?, dio: Any?) {
         if (esperado != dio && lista.size < 200) lista += "$que: esperaba $esperado, dio $dio"
@@ -48,19 +53,22 @@ fun diferenciasFechas(): List<String> {
     return d.lista
 }
 
-private fun gasto(o: Any?): Gasto {
+internal fun gasto(o: Any?): Gasto {
     val m = o.obj()
     return Gasto(
         id = m["id"].txt(), total = m["total"].largo(), fecha = m["fecha"].txt(), pagador = m["pagador"].txt(), miParte = m["miParte"].largo(),
         medioId = m["medioId"].txtONull(), categoriaId = m["categoriaId"].txtONull(),
         montos = m["montos"]?.obj()?.mapValues { (_, v) -> v.largo() }, cuotas = m["cuotas"]?.ent(),
-        recurrenteId = m["recurrenteId"].txtONull(), creado = m["creado"].txt(),
+        recurrenteId = m["recurrenteId"].txtONull(), creado = m["creado"].txt(), descripcion = (m["descripcion"] as String?) ?: "",
     )
 }
 
-private fun movimiento(o: Any?): Movimiento {
+internal fun movimiento(o: Any?): Movimiento {
     val m = o.obj()
-    return Movimiento(m["id"].txt(), m["personaId"].txt(), TipoMovimiento.deClave(m["tipo"].txt()), m["monto"].largo(), m["fecha"].txt(), m["creado"].txt(), gastoId = m["gastoId"].txtONull())
+    return Movimiento(
+        m["id"].txt(), m["personaId"].txt(), TipoMovimiento.deClave(m["tipo"].txt()), m["monto"].largo(), m["fecha"].txt(), m["creado"].txt(),
+        gastoId = m["gastoId"].txtONull(), cuentaId = m["cuentaId"] as String?,
+    )
 }
 
 private fun presupuesto(o: Any?): Presupuesto {
@@ -79,7 +87,7 @@ private fun jsonResumen(r: Resumen) = mapOf(
 
 private fun jsonPeriodo(p: Periodo) = listOf(p.tipo, p.desde, p.hasta, p.mes, p.medioId, p.cierreMes, Periodos.clave(p))
 
-private fun micro(x: Double): Any = if (x.isInfinite()) "inf" else redondearJs(x * 1e6)
+internal fun micro(x: Double): Any = if (x.isInfinite()) "inf" else redondearJs(x * 1e6)
 
 fun diferenciasDatos(): List<String> {
     val d = Diferencias()

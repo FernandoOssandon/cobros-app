@@ -36,15 +36,20 @@ En Windows: `.\gradlew.bat check`.
 | `Repartos.kt` | `src/lib/split.ts` | Repartir un gasto (iguales, exactos, partes) |
 | `Fechas.kt` | `src/lib/format.ts`, `recurrence.ts` | Sumar días y meses, días entre fechas, día de la semana, "mismo día n meses después" |
 | `Recurrencias.kt` | `src/lib/recurrence.ts` | Fechas de un recurrente, próxima ocurrencia, equivalente mensual |
-| `Modelo.kt` | `src/db.ts` | Gasto, Movimiento, Medio y Presupuesto (solo los campos de los cálculos) |
+| `Modelo.kt` | `src/db.ts` | Gastos, movimientos, medios, presupuestos, recurrentes, ingresos, cuentas… (solo los campos de los cálculos) |
 | `Cuotas.kt` | `src/lib/cuotas.ts` | Compras en cuotas repartidas en sus meses |
 | `Saldos.kt` | `src/lib/balance.ts` | Saldo con cada persona, % pagado, estado de cada cargo y deuda |
 | `Resumenes.kt` | `src/lib/resumen.ts` | Gasto real, lo que salió de cada medio y lo de otros; período de facturación |
 | `Periodos.kt` | `src/lib/periodos.ts` | Mes o período de cada tarjeta, moverse entre períodos, resumen de la tarjeta |
 | `Presupuestos.kt` | `src/lib/presupuestos.ts` | Avance de cada presupuesto (por día, proyección, estado) |
+| `Cuentas.kt` | `src/lib/ahorro.ts` | Saldo estimado de cada cuenta (con interés diario), depósitos a plazo, rendimiento, patrimonio, movimientos e historial |
+| `Flujos.kt` | `src/lib/flujos.ts` | Lo que mueve tus cuentas sin anotarlo ahí: gastos con débito, pagos por transferencia, pagos de tarjetas |
+| `Tarjetas.kt` | `src/lib/tarjetas.ts`, `usadoTarjetas` | Cupo, usado y disponible; lo que toca pagar del último estado de cuenta |
+| `Ingresos.kt` | `src/lib/ingresosMes.ts` | Ingresos del mes: los fijos (llegó, por confirmar, llega) y los sueltos |
+| `Proyeccion.kt` | `src/lib/proyeccion.ts` | Ciclo de sueldo a sueldo, "hoy puedes gastar $X", ritmo, avisos de cuentas y cierre del ciclo |
 
-Todos dan exactamente lo mismo que TypeScript en los vectores (JVM y JavaScript). Pendientes: `ingresosMes`, `tarjetas`
-(cupo y por pagar), `flujos` y `ahorro` (saldos de cuentas), `proyeccion`, `metas`, `tendencias`, `importar`/`bancos` y `sii/*`.
+Todos dan exactamente lo mismo que TypeScript en los vectores (JVM y JavaScript). Pendientes: `metas`, `tendencias`,
+`importar`/`bancos` y `sii/*`.
 
 ### Cómo son los vectores
 
@@ -52,11 +57,14 @@ Todos dan exactamente lo mismo que TypeScript en los vectores (JVM y JavaScript)
 - Lo demás: documentos JSON (`VECTORES_FECHAS`, `VECTORES_DATOS`) que se leen con un lector mínimo propio (`Json.kt`,
   sin dependencias). `VECTORES_DATOS` son 8 conjuntos de gastos, cuotas, pagos y presupuestos simulados con una semilla
   fija, con los resultados de TypeScript para cuotas, saldos, resúmenes de 5 meses, períodos de cada tarjeta y avances
-  de presupuestos en 5 fechas distintas.
+  de presupuestos en 5 fechas distintas. `VECTORES_PLATA` son 6 conjuntos con cuentas (vista, efectivo, remuneradas,
+  inversión, en dólares, depósitos a plazo), recurrentes, ingresos y pagos de tarjetas, con los resultados de TypeScript
+  en 6 fechas: saldos, patrimonio, tarjetas, proyección completa y cierre del ciclo.
 
 Notas de la migración:
 
-- Montos en `Long` (pesos enteros). El redondeo usa `redondearJs` (como `Math.round` de JavaScript: las mitades hacia
+- Montos en `Long` (pesos enteros). Los saldos de las cuentas van en `Double`, porque una cuenta en dólares tiene
+  centavos; los decimales se comparan en millonésimas. El redondeo usa `redondearJs` (como `Math.round` de JavaScript: las mitades hacia
   arriba), no el redondeo bancario de Kotlin.
 - La PWA todavía usa la versión TypeScript. Cuando un módulo pase a usarse desde Kotlin en la PWA, su archivo `.ts`
   se reemplaza por el paquete de este núcleo y sus pruebas actuales se corren contra él.
