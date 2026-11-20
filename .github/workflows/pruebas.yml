@@ -9,7 +9,8 @@ on:
 
 jobs:
   pruebas:
-    runs-on: ubuntu-latest
+    # Ubuntu fijo: ubuntu-latest pasó a 26.04 y Playwright 1.56 todavía no instala Chromium ahí.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
       TZ: America/Santiago
