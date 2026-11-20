@@ -9,7 +9,7 @@ plugins {
 }
 
 group = "cl.amano"
-version = "0.1.0"
+version = "0.2.0"
 
 kotlin {
     jvm {
@@ -19,7 +19,12 @@ kotlin {
     }
 
     js(IR) {
-        nodejs()
+        nodejs {
+            // Las pruebas recorren miles de vectores: más margen que los 2 s por prueba que trae Mocha.
+            testTask {
+                useMocha { timeout = "60s" }
+            }
+        }
         // Módulos ES: la PWA (Vite) importa las funciones exportadas directo, con sus tipos.
         useEsModules()
         binaries.library()

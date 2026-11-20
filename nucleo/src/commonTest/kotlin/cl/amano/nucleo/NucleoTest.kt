@@ -18,6 +18,17 @@ class NucleoTest {
     }
 
     @Test
+    fun fechasYRecurrenciasIgualQueTypeScript() {
+        assertEquals(emptyList(), diferenciasFechas().take(20))
+    }
+
+    @Test
+    fun cuotasSaldosResumenesPeriodosYPresupuestosIgualQueTypeScript() {
+        assertTrue(VECTORES_DATOS.size >= 8)
+        assertEquals(emptyList(), diferenciasDatos().take(20))
+    }
+
+    @Test
     fun redondeoComoJavaScript() {
         // Kotlin redondea 2.5 a 2 (bancario); JavaScript, a 3. El núcleo usa el de JavaScript.
         assertEquals(3L, redondearJs(2.5))
