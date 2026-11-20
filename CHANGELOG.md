@@ -1,5 +1,22 @@
 # Cambios
 
+## 3.3.2 · 20 nov 2026 · el sueldo que manda y la primera app Android
+
+**Arreglo:**
+
+- **"Hasta el sueldo" ya no se confunde con una pega anterior.** El ciclo lo marca el ingreso fijo mensual más grande, pero si ese ingreso ya terminó (tenía fecha de fin) la proyección caía al mes calendario. Ahora cuenta solo un sueldo que todavía tiene pagos por venir.
+
+**App Android (`android/`), primera versión de prueba:**
+
+- App nativa en Kotlin + Jetpack Compose, solo lectura: cargas un respaldo (de Drive o el que exportas) y muestra el Resumen (gasto real del mes, cuánto puedes gastar por día hasta el sueldo, ingresos, presupuestos, tarjetas, cuentas, patrimonio y personas). Al pie muestra cuánto tardó en abrir y calcular, para comparar con la PWA.
+- GitHub Actions arma el APK en cada push (Actions → Pruebas → Artifacts → `a-mano-android`). Cada APK nuevo se instala encima del anterior.
+
+**Núcleo Kotlin 0.4.0:**
+
+- 0.3.0: cuentas (saldo con interés diario, depósitos a plazo, patrimonio), flujos, tarjetas (cupo, usado, por pagar), ingresos del mes y la proyección hasta el sueldo con el cierre del ciclo.
+- 0.4.0: lector del respaldo de la PWA (v2 a v9) y el "tablero" con todo lo del Resumen.
+- Todo da exactamente lo mismo que la versión TypeScript, en JVM y en JavaScript: miles de comparaciones con datos simulados, más tres respaldos completos de punta a punta.
+
 ## 3.3.1 · 8 nov 2026 · arranque más liviano y núcleo en Kotlin
 
 **Rendimiento (lo mismo para Android y iPhone):**

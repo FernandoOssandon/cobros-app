@@ -1,6 +1,6 @@
 # a mano.
 
-PWA para llevar tu plata a mano: tus gastos (solos, compartidos o en cuotas), lo que te deben y lo que debes, dónde está tu plata y cuánto puedes gastar hasta el sueldo. Funciona sin conexión y guarda todo en el teléfono (IndexedDB). Va en la **versión 3.3**, camino a una app nativa en Kotlin para Android (con el núcleo compartido en `nucleo/`) y la PWA para iPhone; el detalle de cada versión está en [CHANGELOG.md](CHANGELOG.md).
+PWA para llevar tu plata a mano: tus gastos (solos, compartidos o en cuotas), lo que te deben y lo que debes, dónde está tu plata y cuánto puedes gastar hasta el sueldo. Funciona sin conexión y guarda todo en el teléfono (IndexedDB). Va en la **versión 3.3**, camino a una app nativa en Kotlin para Android (primera versión de prueba en `android/`, con el núcleo compartido en `nucleo/`) y la PWA para iPhone; el detalle de cada versión está en [CHANGELOG.md](CHANGELOG.md).
 
 > Antes se llamaba **Me Debes**. Por dentro se mantienen algunos nombres antiguos a propósito: la base de datos (`me-debes`), el formato de respaldo (`app: 'me-debes'`) y la carpeta del proyecto. Cambiarlos haría perder los datos guardados o dejaría de leer los respaldos.
 
@@ -94,6 +94,7 @@ e2e/                 Pruebas de punta a punta (Playwright) y sus datos de ejempl
 integraciones/gmail/ Script de Apps Script (alternativa a la conexión con Google)
 docs/                Notas de diseño (SII)
 nucleo/              Núcleo en Kotlin Multiplatform: las reglas de la plata para Android (JVM) y la PWA (JS); ver nucleo/README.md
+android/             App Android (Kotlin + Compose), por ahora solo lectura desde un respaldo; ver android/README.md
 ```
 
 ## Rutas

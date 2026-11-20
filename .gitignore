@@ -32,3 +32,11 @@ nucleo/build
 nucleo/.gradle
 nucleo/.kotlin
 nucleo/kotlin-js-store
+
+# App Android (Gradle)
+android/.gradle
+android/.kotlin
+android/build
+android/app/build
+android/local.properties
+android/.idea

@@ -145,8 +145,8 @@ data class Recurrente(
     val creado: String = "",
 )
 
-/** Ocurrencia de un recurrente que espera el monto real. */
-data class Pendiente(val id: String, val recurrenteId: String, val fecha: String, val creado: String = "")
+/** Ocurrencia de un recurrente que espera una acción: "confirmar" (falta el monto real) o "anotar" (un fijo atrasado). */
+data class Pendiente(val id: String, val recurrenteId: String, val fecha: String, val creado: String = "", val tipo: String = "confirmar")
 
 data class Ingreso(
     val id: String,
@@ -231,3 +231,12 @@ data class MovAhorro(
     /** Solo los calculados (no se guardan). */
     val origen: OrigenMov? = null,
 )
+
+// ---------- Personas y categorías ----------
+
+data class Persona(val id: String, val nombre: String, val archivada: Boolean = false, val creado: String = "") {
+    /** Primer nombre ("Camila" de "Camila Rojas"). */
+    val primerNombre get() = nombre.trim().split(' ').first()
+}
+
+data class Categoria(val id: String, val nombre: String, val color: String = "", val icono: String = "", val orden: Int = 0, val archivada: Boolean = false)

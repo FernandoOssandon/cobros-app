@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Cuenta, Gasto, Ingreso, Medio, MovAhorro, PagoTarjeta, Pendiente, Recurrente } from '../db';
 import { imputar } from '../lib/cuotas';
-import { cicloActual, cicloAnterior, cuentaParaElMes, proyectar, resumenCiclo, tocaCierre, type FuentesProyeccion } from '../lib/proyeccion';
+import { cicloActual, cicloAnterior, cuentaParaElMes, proyectar, resumenCiclo, sueldoPrincipal, tocaCierre, type FuentesProyeccion } from '../lib/proyeccion';
 
 const HOY = '2026-11-06';
 const g = (p: Partial<Gasto>): Gasto => ({
@@ -58,6 +58,14 @@ describe('el ciclo de sueldo a sueldo', () => {
     expect(cicloActual([sueldo], HOY)).toMatchObject({ inicio: '2026-10-25', hasta: '2026-11-25', dias: 19, transcurridos: 13 });
     expect(cicloActual([{ ...sueldo, generadoHasta: '2026-11-25' }], '2026-11-25')).toMatchObject({ inicio: '2026-11-25', hasta: '2026-12-25', dias: 30 });
     expect(cicloAnterior([sueldo], HOY)).toMatchObject({ inicio: '2026-09-25', hasta: '2026-10-25' });
+  });
+  it('una pega anterior que ya terminó no marca el ciclo, aunque haya pagado más', () => {
+    const anterior = { ...sueldo, id: 'pega', monto: 2_500_000, inicio: '2025-01-28', frecuencia: { unidad: 'mes' as const, cada: 1, dia: 28 }, fin: '2026-06-30', generadoHasta: '2026-04-28', creado: '2025-01-01' };
+    expect(sueldoPrincipal([anterior, sueldo], HOY)?.id).toBe('sueldo');
+    expect(cicloActual([anterior, sueldo], HOY)).toMatchObject({ inicio: '2026-10-25', hasta: '2026-11-25' });
+    // Mientras seguía vigente, sí era el sueldo.
+    expect(sueldoPrincipal([anterior, sueldo], '2026-05-10')?.id).toBe('pega');
+    expect(sueldoPrincipal([anterior], HOY)).toBeUndefined();
   });
   it('sin sueldo fijo, el mes calendario', () => {
     expect(cicloActual([], HOY)).toMatchObject({ inicio: '2026-11-01', hasta: '2026-12-01', dias: 25 });

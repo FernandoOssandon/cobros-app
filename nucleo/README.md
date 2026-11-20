@@ -47,6 +47,9 @@ En Windows: `.\gradlew.bat check`.
 | `Tarjetas.kt` | `src/lib/tarjetas.ts`, `usadoTarjetas` | Cupo, usado y disponible; lo que toca pagar del último estado de cuenta |
 | `Ingresos.kt` | `src/lib/ingresosMes.ts` | Ingresos del mes: los fijos (llegó, por confirmar, llega) y los sueltos |
 | `Proyeccion.kt` | `src/lib/proyeccion.ts` | Ciclo de sueldo a sueldo, "hoy puedes gastar $X", ritmo, avisos de cuentas y cierre del ciclo |
+| `Respaldos.kt` | `src/backup.ts` | Leer el respaldo JSON de la PWA (v2 a v9) y llevarlo al modelo |
+| `Tablero.kt` | `src/hooks.ts` + Resumen | Todo lo del Resumen de un día, de una vez (lo usa la app Android) |
+| `Json.kt` | — | Lector de JSON mínimo, sin dependencias |
 
 Todos dan exactamente lo mismo que TypeScript en los vectores (JVM y JavaScript). Pendientes: `metas`, `tendencias`,
 `importar`/`bancos` y `sii/*`.
@@ -59,7 +62,14 @@ Todos dan exactamente lo mismo que TypeScript en los vectores (JVM y JavaScript)
   fija, con los resultados de TypeScript para cuotas, saldos, resúmenes de 5 meses, períodos de cada tarjeta y avances
   de presupuestos en 5 fechas distintas. `VECTORES_PLATA` son 6 conjuntos con cuentas (vista, efectivo, remuneradas,
   inversión, en dólares, depósitos a plazo), recurrentes, ingresos y pagos de tarjetas, con los resultados de TypeScript
-  en 6 fechas: saldos, patrimonio, tarjetas, proyección completa y cierre del ciclo.
+  en 6 fechas: saldos, patrimonio, tarjetas, proyección completa y cierre del ciclo. `VECTORES_RESPALDO` son 3 respaldos
+  completos tal como los exporta la PWA (con fotos, escapes y campos que el núcleo no usa) y el Resumen que calcula
+  TypeScript con ellos.
+
+## Quién lo usa
+
+- **App Android** (`../android`): compila `src/commonMain/kotlin` dentro de la app.
+- **PWA**: todavía no (sigue con la versión TypeScript).
 
 Notas de la migración:
 

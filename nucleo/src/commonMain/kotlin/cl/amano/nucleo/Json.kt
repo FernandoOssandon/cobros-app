@@ -1,5 +1,5 @@
-// Lector de JSON mínimo (sin dependencias) para los vectores de prueba: objetos → Map, listas → List,
-// enteros → Long, decimales → Double, textos, booleanos y null.
+// Lector de JSON mínimo (sin dependencias), para los respaldos y los vectores de prueba:
+// objetos → Map, listas → List, enteros → Long, decimales → Double, textos, booleanos y null.
 package cl.amano.nucleo
 
 internal class LectorJson(private val s: String) {
@@ -63,6 +63,13 @@ internal class LectorJson(private val s: String) {
 
     private fun texto(): String {
         require(s[i] == '"'); i++
+        // Sin escapes (lo común, incluso en las fotos en base64): se copia de una vez.
+        val fin = s.indexOf('"', i)
+        if (fin >= 0 && (i until fin).none { s[it] == '\\' }) {
+            val t = s.substring(i, fin)
+            i = fin + 1
+            return t
+        }
         val sb = StringBuilder()
         while (s[i] != '"') {
             if (s[i] == '\\') {

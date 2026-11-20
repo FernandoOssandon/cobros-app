@@ -115,9 +115,15 @@ object Proyecciones {
 
     // ---------- El ciclo ----------
 
-    /** El sueldo: el ingreso fijo mensual activo más grande. */
-    fun sueldoPrincipal(recurrentes: List<Recurrente>): Recurrente? = recurrentes
-        .filter { it.tipo == TipoRecurrente.INGRESO && it.activo && it.frecuencia.unidad == UnidadFrecuencia.MES }
+    /**
+     * El sueldo: el ingreso fijo mensual activo más grande que todavía tiene pagos por venir
+     * (una pega anterior con fecha de fin no cuenta, aunque haya sido más grande).
+     */
+    fun sueldoPrincipal(recurrentes: List<Recurrente>, hoy: String): Recurrente? = recurrentes
+        .filter {
+            it.tipo == TipoRecurrente.INGRESO && it.activo && it.frecuencia.unidad == UnidadFrecuencia.MES &&
+                Recurrencias.proxima(it.frecuencia, it.inicio, desde(it, hoy), it.fin) != null
+        }
         .sortedWith(compareByDescending<Recurrente> { it.monto }.thenBy { it.creado })
         .firstOrNull()
 
@@ -128,7 +134,7 @@ object Proyecciones {
     private fun desde(r: Recurrente, hoy: String) = maxOf(r.generadoHasta ?: "", Fechas.sumarDias(hoy, -1))
 
     fun cicloActual(recurrentes: List<Recurrente>, hoy: String): Ciclo {
-        val s = sueldoPrincipal(recurrentes)
+        val s = sueldoPrincipal(recurrentes, hoy)
         val hasta = s?.let { Recurrencias.proxima(it.frecuencia, it.inicio, desde(it, hoy), it.fin) }
         if (s == null || hasta == null) {
             val mes = hoy.substring(0, 7)

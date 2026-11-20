@@ -29,10 +29,16 @@ export interface Ciclo {
   transcurridos: number;
 }
 
-/** El sueldo: el ingreso fijo mensual activo más grande. */
-export function sueldoPrincipal(recurrentes: Recurrente[]): Recurrente | undefined {
+/** Desde cuándo proyectar un recurrente: lo ya generado (anotado o por confirmar) no se vuelve a contar. */
+const desdeRecurrente = (r: Recurrente, hoy: string) => [r.generadoHasta ?? '', sumarDias(hoy, -1)].sort()[1];
+
+/**
+ * El sueldo: el ingreso fijo mensual activo más grande que todavía tiene pagos por venir
+ * (una pega anterior con fecha de fin no cuenta, aunque haya sido más grande).
+ */
+export function sueldoPrincipal(recurrentes: Recurrente[], hoy = todayISO()): Recurrente | undefined {
   return recurrentes
-    .filter((r) => r.tipo === 'ingreso' && r.activo && r.frecuencia.unidad === 'mes')
+    .filter((r) => r.tipo === 'ingreso' && r.activo && r.frecuencia.unidad === 'mes' && proxima(r.frecuencia, r.inicio, desdeRecurrente(r, hoy), r.fin))
     .sort((a, b) => b.monto - a.monto || a.creado.localeCompare(b.creado))[0];
 }
 
@@ -46,9 +52,9 @@ const ciclo = (inicio: string, hasta: string, hoy: string, sueldo?: Recurrente):
 
 /** El ciclo en curso: desde el último sueldo hasta el próximo. */
 export function cicloActual(recurrentes: Recurrente[], hoy = todayISO()): Ciclo {
-  const s = sueldoPrincipal(recurrentes);
+  const s = sueldoPrincipal(recurrentes, hoy);
   // El próximo sueldo que todavía no llega (si el de hoy ya se anotó, el del mes siguiente).
-  const hasta = s ? proxima(s.frecuencia, s.inicio, [s.generadoHasta ?? '', sumarDias(hoy, -1)].sort()[1], s.fin) : undefined;
+  const hasta = s ? proxima(s.frecuencia, s.inicio, desdeRecurrente(s, hoy), s.fin) : undefined;
   if (!s || !hasta) {
     const mes = hoy.slice(0, 7);
     return ciclo(`${mes}-01`, `${sumarMes(mes, 1)}-01`, hoy);
@@ -193,9 +199,6 @@ function tarjeta(m: Medio, f: FuentesProyeccion, hoy: string): TarjetaProyeccion
   const abierto = suma(actual.desde, hoy);
   return { medio: m, porPagar, cierre: cerrado.hasta, abierto, desde: actual.desde, total: porPagar + abierto };
 }
-
-/** Desde cuándo proyectar un recurrente: lo ya generado (anotado o por confirmar) no se vuelve a contar. */
-const desdeRecurrente = (r: Recurrente, hoy: string) => [r.generadoHasta ?? '', sumarDias(hoy, -1)].sort()[1];
 
 export function proyectar(f: FuentesProyeccion, hoy = todayISO()): Proyeccion {
   const c = cicloActual(f.recurrentes, hoy);

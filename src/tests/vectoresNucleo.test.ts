@@ -397,6 +397,48 @@ function vectorPlata(semilla: number) {
   };
 }
 
+// ---------- Respaldo completo → Tablero (lo que la app Android lee y muestra) ----------
+function vectorRespaldo(semilla: number) {
+  const d = datosPlata(semilla);
+  const hoy = ['2026-11-25', '2026-03-26', '2026-06-15'][semilla % 3];
+  const personas = PERSONAS.map((id, i) => ({ id, nombre: NOMBRES[id], telefono: '', archivada: i === 3, color: i, creado: `2025-0${i + 1}-01T00:00:00Z` }));
+  const respaldo = {
+    app: 'me-debes', version: 9, exportado: '2026-11-20T12:00:00.000Z',
+    personas, gastos: d.gastos, movimientos: d.movimientos, cobros: [], medios: MEDIOS,
+    categorias: CATS.map((id, i) => ({ id, nombre: `Categoría ${i}`, icono: 'comida', color: '#ffd', orden: i, archivada: false })),
+    grupos: [], recurrentes: d.recurrentes,
+    pendientes: [...d.pendientes, { id: 'pe6', recurrenteId: 'arriendo', fecha: '2026-10-05', tipo: 'anotar', creado: '' } as Pendiente],
+    fotos: [{ id: 'f1', gastoId: d.gastos[0].id, creado: '', dataUrl: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ"esc\\"' }],
+    cuentas: d.cuentas, movAhorro: d.movAhorro, detectados: [], ingresos: d.ingresos, presupuestos: datosSimulados(semilla).presupuestos,
+    metas: [], pagosTarjeta: d.pagosTarjeta, importados: [], contribuyentes: [], docsTributarios: [],
+    ajustes: { tema: 'auto', indicadores: { USD: VALORES.USD, UF: { valor: 39_500.12, fecha: '2026-11-01' }, actualizado: '2026-11-01T10:00:00Z' }, ultimoCierre: semilla % 2 ? '2026-10-25' : undefined },
+  };
+  const imp = imputar(d.gastos);
+  const movCuentas = flujosCuentas({ cuentas: d.cuentas, movAhorro: d.movAhorro, gastos: d.gastos, medios: MEDIOS, movimientos: d.movimientos, pagosTarjeta: d.pagosTarjeta, personas });
+  const fuentes = { ...d, pendientes: respaldo.pendientes, medios: MEDIOS, imputados: imp, movCuentas };
+  const usadas = usadoTarjetas({ medios: MEDIOS, gastos: d.gastos, pagosTarjeta: d.pagosTarjeta } as Parameters<typeof usadoTarjetas>[0], hoy);
+  const pat = patrimonio({ cuentas: d.cuentas, movAhorro: movCuentas, personas, movimientos: d.movimientos, gastos: imp, medios: MEDIOS, usadoTarjetas: usadas, indicadores: respaldo.ajustes.indicadores }, hoy);
+  const p = proyectar(fuentes, hoy);
+  const ing = ingresosMes(hoy.slice(0, 7), d.ingresos, d.recurrentes, respaldo.pendientes, hoy);
+  const cierre = tocaCierre(d.recurrentes, d.gastos, respaldo.ajustes.ultimoCierre, hoy);
+  return {
+    // El respaldo va como texto, tal como lo lee la app (con escapes, fotos y campos que el núcleo no usa).
+    texto: JSON.stringify(respaldo, null, 1),
+    hoy,
+    esperado: {
+      resumen: jsonResumen(resumenMes(hoy.slice(0, 7), imp, d.movimientos, MEDIOS)),
+      proyeccion: [jsonCiclo(p.ciclo), p.tienes, p.enTarjetas, p.entra, p.sale, p.libre, p.porDia, p.ritmo, p.aEsteRitmo, p.viene.length, p.avisos.map((a) => a.motivo)],
+      patrimonio: [pat.ahorros, pat.vista, pat.efectivo, pat.teDeben, pat.debes, pat.tarjetas, pat.total],
+      ingresos: [ing.total, ing.fijos.map((f) => [f.r.id, f.estado]), ing.sueltos.map((i) => i.id)],
+      presupuestos: avances(respaldo.presupuestos, imp, hoy).map((a) => [a.presupuesto.id, a.gastado, a.estado]),
+      tarjetas: MEDIOS.filter((m) => m.tipo === 'credito' && !m.archivado).sort((a, b) => a.orden - b.orden).map((m) => [m.id, usoTarjeta(m, d.gastos, d.pagosTarjeta, hoy).usado]),
+      personas: personas.map((x) => [x.id, saldo(d.movimientos.filter((m) => m.personaId === x.id))]).filter((x) => x[1] !== 0).sort((a, b) => (b[1] as number) - (a[1] as number)),
+      porConfirmar: respaldo.pendientes.filter((x) => x.tipo === 'confirmar' && d.recurrentes.some((r) => r.id === x.recurrenteId)).length,
+      cierre: cierre ? jsonCiclo(cierre) : null,
+    },
+  };
+}
+
 /** Un documento JSON como lista de trozos (cada constante de texto de la JVM admite hasta 64 KB). */
 function constanteJson(nombre: string, docs: unknown[]): string {
   const esc = (s: string) => s.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\$/g, '\\$');
@@ -427,6 +469,7 @@ function generar(): string {
     constanteJson('VECTORES_FECHAS', [vectoresFechas()]),
     constanteJson('VECTORES_DATOS', [11, 23, 37, 41, 58, 64, 79, 83].map(vectorDatos)),
     constanteJson('VECTORES_PLATA', [5, 17, 29, 42, 61, 88].map(vectorPlata)),
+    constanteJson('VECTORES_RESPALDO', [3, 31, 56].map(vectorRespaldo)),
   ].join('\n');
 }
 
