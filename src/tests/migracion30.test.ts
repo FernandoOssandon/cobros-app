@@ -16,7 +16,7 @@ describe('migración de la base v9 → v10', () => {
 
     const { db } = await import('../db');
     await db.open();
-    expect(db.verno).toBe(10);
+    expect(db.verno).toBe(11);
     const casa = await db.presupuestos.get('casa');
     expect(casa).toMatchObject({ categoriaIds: ['cat-casa'], nombre: '', monto: 150_000, periodo: 'mes' });
     expect(casa).not.toHaveProperty('categoriaId');

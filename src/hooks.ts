@@ -1,16 +1,18 @@
 // Consultas en vivo a la base de datos (se actualizan solas cuando cambian los datos).
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import {
   AJUSTES_DEFAULT, db,
-  type Ajustes, type Categoria, type Cobro, type Cuenta, type Detectado, type Gasto, type Grupo, type Importado, type Ingreso, type Medio, type Meta, type PagoTarjeta, type MovAhorro, type Movimiento,
+  type Ajustes, type Categoria, type Cobro, type Cuenta, type Detectado, type Gasto, type Grupo, type Ingreso, type Medio, type Meta, type PagoTarjeta, type MovAhorro, type Movimiento,
   type Pendiente, type Persona, type Presupuesto, type Recurrente,
 } from './db';
 import { byDate, cargado, estadosCargos, estadosDeudas, pctPagado, saldo, type EstadoCargo } from './lib/balance';
 import { imputar, type GastoImputado } from './lib/cuotas';
 import { flujosCuentas } from './lib/flujos';
-import { firstName, initials } from './lib/format';
-import { avatarColor } from './ui/kit';
+import { firstName, initials, todayISO } from './lib/format';
+import { proyectar, type Proyeccion } from './lib/proyeccion';
+import { usoTarjeta } from './lib/tarjetas';
+import { avatarColor } from './ui/textos';
 
 export interface PersonView {
   p: Persona;
@@ -90,17 +92,17 @@ export interface Datos {
    * pagos por transferencia, pagos de tarjeta). Úsalo para saldos; `movAhorro` es solo lo guardado.
    */
   movCuentas: MovAhorro[];
-  /** Movimientos de cartolas ya importados (para no repetirlos). */
-  importados: Importado[];
 }
 
 /** Todos los datos de la app en una sola consulta en vivo (son pocos). `undefined` mientras carga. */
 export function useDatos(): Datos | undefined {
   return useLiveQuery(async () => {
-    const [ps, gs, ms, cs, md, cat, gr, rec, pen, fotos, cuentas, movAhorro, detectados, ingresos, presupuestos, metas, pagosTarjeta, importados] = await Promise.all([
+    // Marca de rendimiento: en DevTools → Performance aparece como "a-mano:datos" (lectura + cálculo).
+    const t0 = performance.now();
+    const [ps, gs, ms, cs, md, cat, gr, rec, pen, fotos, cuentas, movAhorro, detectados, ingresos, presupuestos, metas, pagosTarjeta] = await Promise.all([
       db.personas.toArray(), db.gastos.toArray(), db.movimientos.toArray(), db.cobros.toArray(), db.medios.toArray(),
       db.categorias.toArray(), db.grupos.toArray(), db.recurrentes.toArray(), db.pendientes.toArray(), db.fotos.orderBy('gastoId').uniqueKeys(),
-      db.cuentas.toArray(), db.movAhorro.toArray(), db.detectados.toArray(), db.ingresos.toArray(), db.presupuestos.toArray(), db.metas.toArray(), db.pagosTarjeta.toArray(), db.importados.toArray(),
+      db.cuentas.toArray(), db.movAhorro.toArray(), db.detectados.toArray(), db.ingresos.toArray(), db.presupuestos.toArray(), db.metas.toArray(), db.pagosTarjeta.toArray(),
     ]);
     const personas = buildViews(ps, ms, cs);
     const estado = new Map<string, { estado: EstadoCargo; pendiente: number }>();
@@ -110,7 +112,7 @@ export function useDatos(): Datos | undefined {
     }
     const mediosOrden = md.slice().sort((a, b) => a.orden - b.orden);
     const catsOrden = cat.slice().sort((a, b) => a.orden - b.orden);
-    return {
+    const datos = {
       personas,
       persona: new Map(personas.map((v) => [v.p.id, v])),
       gastos: gs,
@@ -134,9 +136,19 @@ export function useDatos(): Datos | undefined {
       metas: metas.filter((m) => !m.archivada).sort((a, b) => a.orden - b.orden),
       pagosTarjeta: pagosTarjeta.sort((a, b) => b.fecha.localeCompare(a.fecha) || b.creado.localeCompare(a.creado)),
       movCuentas: flujosCuentas({ cuentas, movAhorro, gastos: gs, medios: md, movimientos: ms, pagosTarjeta, personas: ps }),
-      importados,
     } satisfies Datos;
+    medir('a-mano:datos', t0);
+    return datos;
   });
+}
+
+/** Registra cuánto tomó algo (visible en DevTools → Performance → Timings). */
+function medir(nombre: string, desde: number) {
+  try {
+    performance.measure(nombre, { start: desde, end: performance.now() });
+  } catch {
+    // Navegadores sin performance.measure con opciones: no pasa nada.
+  }
 }
 
 export function useAjustes(): Ajustes & { cargado: boolean } {
@@ -165,3 +177,23 @@ export const isDark = () => document.documentElement.dataset.theme === 'dark';
 export function usePeople(): PersonView[] | undefined {
   return useDatos()?.personas;
 }
+
+// ---------- Derivados de los datos ----------
+
+/** Lo usado de cada tarjeta de crédito que está cuadrada con el banco (o tiene pagos anotados). */
+export function usadoTarjetas(d: Datos, hoy = todayISO()): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const m of d.medios) {
+    if (m.tipo !== 'credito' || m.archivado) continue;
+    if (!m.usoCuadrado && !d.pagosTarjeta.some((p) => p.medioId === m.id)) continue;
+    out.set(m.id, usoTarjeta(m, d.gastos, d.pagosTarjeta, hoy).usado);
+  }
+  return out;
+}
+
+/** La proyección con los datos de la app. */
+export function useProyeccion(d: Datos | undefined): Proyeccion | undefined {
+  const hoy = todayISO();
+  return useMemo(() => (d ? proyectar(d, hoy) : undefined), [d, hoy]);
+}
+

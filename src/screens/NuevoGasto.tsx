@@ -13,7 +13,7 @@ import { useNav } from '../nav';
 import { guardarRecurrente } from '../recurrentes';
 import { Icon } from '../ui/icons';
 import { CatChip, DateInputPill, Keypad, MedioChip, PersonPick, PickerSheet, Switch, TaskHeader } from '../ui/kit';
-import { useToast } from '../ui/toast';
+import { useToast } from '../ui/toastCtx';
 
 const MODOS: [ModoGasto, string][] = [
   ['solo', 'Solo yo'],
@@ -73,6 +73,7 @@ export default function NuevoGasto() {
     if (editId && !editing) return;
     loaded.current = true;
     if (editing) {
+      // oxlint-disable-next-line react/set-state-in-effect -- carga el formulario cuando llegan los datos (consulta en vivo)
       setAmt(String(editing.total));
       if (editing.moneda) {
         setMoneda(editing.moneda.codigo);

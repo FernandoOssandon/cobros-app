@@ -35,8 +35,10 @@ test('confirmar un recurrente variable (la luz)', async ({ page }) => {
   await page.getByText('¿Cuánto llegó?').first().click();
   await teclear(page, '28450', '.sheet');
   await page.getByRole('button', { name: 'Confirmar', exact: true }).click();
+  // Se espera que se guarde (la hoja se cierra) antes de cambiar de pantalla.
+  await expect(page.locator('.sheet')).toHaveCount(0);
   await page.goto('#/gastos');
-  await expect(page.getByText('Luz de noviembre')).toBeVisible();
+  await expect(page.getByText('Luz de noviembre', { exact: true })).toBeVisible();
 });
 
 test('cobrar por WhatsApp deja el registro en el historial', async ({ page }) => {
@@ -53,7 +55,7 @@ test('exportar respaldo v7', async ({ page }) => {
   const descarga = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Exportar' }).click();
   const r = JSON.parse(fs.readFileSync((await (await descarga).path())!, 'utf8'));
-  expect(r.version).toBe(8);
+  expect(r.version).toBe(9);
   expect(r.cuentas).toEqual([]);
   expect(r.gastos).toHaveLength(13);
   expect(r.recurrentes).toHaveLength(5);

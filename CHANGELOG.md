@@ -1,6 +1,37 @@
 # Cambios
 
-## 3.2.0 · 6 nov 2026 · ¿cómo termino el mes?
+## 3.3.1 · 8 nov 2026 · arranque más liviano y núcleo en Kotlin
+
+**Rendimiento (lo mismo para Android y iPhone):**
+
+- **Cada pantalla se carga cuando se abre.** Al arrancar se lee un tercio menos de JavaScript (770 KB → 517 KB): el Resumen viene en el paquete inicial y el resto se trae en segundo plano unos segundos después, así abrir cualquier pantalla sigue siendo instantáneo y todo funciona sin conexión.
+- Lo ya importado de las cartolas solo lo lee la pantalla de importar (antes iba en la consulta general y crecía con cada cartola).
+- Marca de rendimiento `a-mano:datos` (DevTools → Performance → Timings) para medir en el teléfono cuánto tarda en leerse y calcularse todo.
+- Medido con un teléfono de gama media simulado: el Resumen aparece en ~0,3 s con tus datos y en ~0,47 s con tres años de datos. La mayor parte es leer la base del teléfono, no calcular.
+
+**Núcleo en Kotlin Multiplatform (`nucleo/`), primer paso hacia la app Android:**
+
+- Proyecto Gradle que compila el mismo código para JVM (la futura app Android) y para JavaScript con tipos de TypeScript (la PWA).
+- Portados el RUT y los repartos. Se prueban contra **759 vectores generados desde la versión TypeScript**, en JVM y en JavaScript, y dan exactamente lo mismo (incluido el redondeo de JavaScript, distinto del de Kotlin).
+- `npm test` regenera los vectores si cambia la lógica; GitHub Actions compila y prueba el núcleo en cada push.
+
+## 3.3.0 · 8 nov 2026 · mantención y base para el SII
+
+**Base para el apartado de emprendedores (sin pantallas todavía):**
+
+- **Contribuyentes y documentos tributarios.** La base pasa a v11 con dos tablas nuevas: `contribuyentes` (tú o tu negocio: RUT, régimen, si es afecto a IVA, tasa de PPM) y `docsTributarios` (facturas, boletas, notas, boletas de honorarios… emitidas o recibidas, con sus montos, estado y de dónde salieron). Cada documento tiene un id estable (quién lo emite, tipo y folio): leer el mismo documento desde un archivo y desde un correo no lo duplica, y si después aparece anulado se actualiza sin perder lo que la app le ligó.
+- **Lectores (todo en el teléfono):** el XML de los documentos electrónicos (EnvioDTE, EnvioBOLETA o un DTE suelto, en ISO-8859-1 o UTF-8) y los listados que se descargan del SII en CSV o Excel (detalle del Registro de Compras y Ventas, informes de boletas de honorarios). Las columnas se reconocen por su nombre, no por su posición.
+- **Cálculos:** RUT (dígito verificador y formato), IVA (19 %), retención de boletas de honorarios por año (15,25 % en 2026, sube a 17 % en 2028), bruto ↔ líquido, y un resumen orientativo del mes tipo F29 (débito, crédito, IVA determinado, honorarios, retenciones por enterar y PPM).
+- **Respaldo v9:** incluye contribuyentes y documentos; sigue leyendo los respaldos v2 a v8.
+- `docs/sii.md`: las alternativas para leer y escribir en el SII y el plan por etapas.
+
+**Mantención:**
+
+- Registro de cambios completo (faltaban la 2.6.1, la 2.7 y la 3.0) y README al día.
+- Sin advertencias del lint: los textos, hooks y datos que compartían archivo con componentes pasaron a sus propios módulos (`ui/textos.ts`, `ui/presupuestoTextos.ts`, `ui/iconosDatos.ts`, `ui/toastCtx.ts`, `acciones.ts`, y `usadoTarjetas` / `useProyeccion` en `hooks.ts`). "Empieza" de un recurrente se calcula en vez de copiarse con un efecto.
+- La versión de `package-lock.json` vuelve a coincidir con la de `package.json`.
+
+## 3.2.0 · 8 nov 2026 · ¿cómo termino el mes?
 
 - **Hasta el sueldo.** En el resumen, una tarjeta nueva dice cuánto puedes gastar por día hasta que llegue el sueldo (o hasta fin de mes, si no tienes un sueldo fijo). La cuenta va de sueldo a sueldo: lo que tienes en tus cuentas del mes, más lo que entra antes del sueldo, menos lo ya gastado con tarjeta y lo que viene.
   - **Lo ya gastado con tarjeta** cuenta hoy, aunque lo pagues después: lo facturado que falta pagar y lo del período abierto. Las cuotas futuras cuentan solo en su mes.
@@ -19,6 +50,26 @@
 - Los correos ya leídos con el script no se repiten: Gmail usa los mismos identificadores.
 - **Google Cloud:** hay que activar la **Gmail API** en el mismo proyecto. Gmail es un permiso "restringido": funciona para los usuarios de prueba del proyecto (hasta 100).
 - **Datos:** sin cambios en la base (v10) ni en el respaldo (v8). La conexión no viaja en los respaldos.
+
+## 3.0.0 · 6 nov 2026 · respaldo en Drive, presupuestos por categorías, recurrentes sugeridos y dólares
+
+- **Respaldo automático en Google Drive.** Conectas tu cuenta una vez (permiso `drive.file`: la app solo ve lo que ella crea). Al rato de cada cambio, y al salir de la app, sube el respaldo del día a la carpeta "a mano · respaldos" (un archivo por día, el mismo JSON que "Exportar"; se guardan 30). El permiso de Google dura una hora: si vence y hay cambios sin subir, el resumen muestra "Respaldar" para renovarlo con un toque. Restaurar elige un respaldo de Drive; en un teléfono nuevo, al conectar ofrece traer el respaldo en vez de subir uno vacío. El ID de cliente viene en la compilación (`VITE_GOOGLE_CLIENT_ID`) o se escribe en la app.
+- **Presupuestos con varias categorías.** Cada presupuesto cuenta todo, una categoría o una combinación ("Salidas y comida" semanal, "Casa" mensual); puede haber varios a la vez y el nombre es opcional (se arma con las categorías).
+- **Recurrentes sugeridos.** Lo que se repite cada mes por un monto parecido aparece en Recurrentes para hacerlo recurrente con un toque o descartarlo.
+- **Cuentas en dólares o euros** (ej. Meli Dólar): saldo y movimientos en su moneda, con decimales; en el patrimonio suman en pesos con el valor del día. No se ligan a gastos, pagos ni ingresos.
+- **Datos:** base v10 (los presupuestos de una categoría pasan a la lista de categorías) y respaldo v8. La conexión con Drive no viaja en el respaldo.
+
+## 2.7.0 · 6 nov 2026 · cartolas, traspasos y pagos de más
+
+- **Importar cartolas** en Excel de la cuenta corriente Santander y de la CMR Falabella (desde Mi plata o compartiendo el archivo con la app). Se cruzan con lo anotado: lo que ya existe se reconoce, lo nuevo se propone (gasto, pago de alguien, ingreso, traspaso o pago de tarjeta) y lo que no calza se muestra para decidir a mano. La app recuerda lo que hiciste con cada descripción para proponer lo mismo la próxima vez.
+- **Comparar saldos:** si el saldo de la cartola no cuadra con el de la app, dice cuánto y muestra las diferencias lado a lado para elegir qué queda.
+- **Traspasos entre tus cuentas** (las dos patas se anotan y se borran juntas).
+- **Pagos de más:** si alguien te paga más de lo que te debe, el resto puede quedar como ingreso suelto.
+- **Datos:** base v9 (tabla `importados`, para no repetir movimientos de cartolas) y respaldo v8.
+
+## 2.6.1 · 5 nov 2026
+
+- Restaurar un respaldo ya no falla cuando el medio "Efectivo" se había cambiado de tipo (por ejemplo, a débito): se crea un efectivo nuevo sin chocar con el anterior.
 
 ## 2.6.0 · 5 nov 2026 · cuentas que cuadran y cupos de tarjeta
 

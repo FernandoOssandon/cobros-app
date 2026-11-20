@@ -1,9 +1,9 @@
 // Mi plata: patrimonio, cuentas de ahorro, depósitos a plazo y la hoja para depositar, retirar o cuadrar.
 import { avanceMeta } from '../lib/metas';
 import { TarjetaMeta } from './Metas';
-import { usadoTarjetas } from '../ui/tarjeta';
+import { usadoTarjetas } from '../hooks';
 import { useState } from 'react';
-import { asegurarEfectivo, borrarMovAhorro, cobrarDap, cuadrar, ID_EFECTIVO, moverPlata } from '../ahorros';
+import { asegurarEfectivo, cobrarDap, cuadrar, ID_EFECTIVO, moverPlata } from '../ahorros';
 import { db, type Cuenta } from '../db';
 import { useAjustes, useDatos, type Datos } from '../hooks';
 import { alVencerDap, fmtCuenta, patrimonio, plazoDap, saldoCuenta } from '../lib/ahorro';
@@ -12,32 +12,15 @@ import { dg, fmt, juntarY, pressKey, shortDate, show, todayISO } from '../lib/fo
 import { useNav } from '../nav';
 import { Icon } from '../ui/icons';
 import { ConfirmSheet, Keypad, PickerSheet, Sheet } from '../ui/kit';
-import { useToast } from '../ui/toast';
+import { cuadradoLbl, fechaLarga, pct } from '../ui/textos';
+import { useToast } from '../ui/toastCtx';
 
 // ---------- Formatos ----------
 
-export const pct = (v: number) => String(Math.round(v * 100) / 100).replace('.', ',');
 const plural = (n: number, a: string, b: string) => `${n} ${n === 1 ? a : b}`;
-const MS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 const parse = (iso: string) => new Date(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10)));
-/** "1 ene 2027" */
-export const fechaLarga = (iso: string) => {
-  const d = parse(iso);
-  return `${d.getDate()} ${MS[d.getMonth()]} ${d.getFullYear()}`;
-};
-/** "Lunes 24 may 2027" */
-export const fechaConDia = (iso: string) => `${DIAS[parse(iso).getDay()]} ${fechaLarga(iso)}`;
 const diasEntre = (a: string, b: string) => Math.round((parse(b).getTime() - parse(a).getTime()) / 86_400_000);
-export const cuadradoLbl = (n?: number) => (n === undefined ? 'sin cuadrar' : n <= 0 ? 'cuadrado hoy' : `cuadrado hace ${plural(n, 'día', 'días')}`);
-export const tasaLbl = (c: Cuenta) => (c.tasa ? `${pct(c.tasa)}% ${c.tasaUnidad === 'mensual' ? 'mensual' : 'anual'}` : 'sin tasa');
-export const TIPO_CUENTA: Record<Cuenta['tipo'], string> = {
-  remunerada: 'Cuenta remunerada',
-  vista: 'Cuenta vista',
-  efectivo: 'Efectivo',
-  inversion: 'Inversión',
-  dap: 'Depósito a plazo',
-};
+const tasaLbl = (c: Cuenta) => (c.tasa ? `${pct(c.tasa)}% ${c.tasaUnidad === 'mensual' ? 'mensual' : 'anual'}` : 'sin tasa');
 
 const vistas = (d: Datos) => d.cuentas.filter((c) => c.tipo === 'vista' && !c.archivada && !c.moneda);
 
@@ -512,14 +495,4 @@ function DapSheet({ d, c, onClose }: { d: Datos; c: Cuenta; onClose: () => void 
       )}
     </Sheet>
   );
-}
-
-// ---------- Movimiento: borrar con deshacer (detalle de cuenta) ----------
-
-export function useBorrarMovAhorro() {
-  const toast = useToast();
-  return async (id: string) => {
-    const patas = await borrarMovAhorro(id);
-    if (patas.length) toast(patas.length > 1 ? 'Traspaso borrado de las dos cuentas' : 'Movimiento borrado', { label: 'Deshacer', run: () => db.movAhorro.bulkPut(patas) });
-  };
 }

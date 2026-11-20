@@ -13,7 +13,7 @@ import { borrarRecurrente, generarRecurrentes, guardarRecurrente } from '../recu
 import { Icon } from '../ui/icons';
 import { BackButton, ConfirmSheet, DateInputPill, TaskHeader } from '../ui/kit';
 import { PorConfirmarSheet } from '../ui/sheets';
-import { useToast } from '../ui/toast';
+import { useToast } from '../ui/toastCtx';
 import { IconoIngreso } from '../ui/ingreso';
 
 const nombreCuenta = (d: Datos, id?: string) => (id ? d.cuentas.find((c) => c.id === id)?.nombre ?? (id === ID_EFECTIVO ? 'Efectivo' : undefined) : undefined);
@@ -186,6 +186,7 @@ export function IngresoForm() {
       setFechaOp(f === hoy ? 'hoy' : f === sumarDias(hoy, -1) ? 'ayer' : 'otro');
     };
     if (ingreso) {
+      // oxlint-disable-next-line react/set-state-in-effect -- carga el formulario cuando llegan los datos (consulta en vivo)
       setClase('suelto');
       setAmt(String(ingreso.monto));
       setDesc(ingreso.descripcion);

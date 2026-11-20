@@ -5,7 +5,8 @@ import type { Datos } from '../hooks';
 import { fmt } from '../lib/format';
 import type { ResumenMedio } from '../lib/resumen';
 import { PESTANAS } from '../nav';
-import { NAV, Svg, Icon } from './icons';
+import { Svg, Icon } from './icons';
+import { NAV } from './iconosDatos';
 import { CatIcon, MedioThumb } from './kit';
 
 /** Fila de gasto (ícono de categoría, descripción, medio + badge, tu parte y el total). */
@@ -41,8 +42,6 @@ export function GastoRow({ g, d, onClick, meta: metaFija }: { g: GastoImputado; 
     </button>
   );
 }
-
-export const tipoMedioLabel = (t: Medio['tipo']) => ({ credito: 'Crédito', debito: 'Débito', efectivo: 'Efectivo', transferencia: 'Transferencia' })[t];
 
 /** Tarjeta de medio de pago con barra apilada: tuyo / recuperado / pendiente. */
 export function MedioCard({ r, medio, meta, onClick }: { r: ResumenMedio; medio?: Medio; meta: string; onClick: () => void }) {

@@ -12,9 +12,9 @@ import { useAjustes } from '../hooks';
 import { fechaRespaldo, NOMBRE_CARPETA, type ArchivoDrive } from '../lib/drive';
 import { SCOPE_GMAIL } from '../lib/gmail';
 import { dateLabel } from '../lib/format';
-import { haceLbl } from '../screens/Correo';
+import { haceLbl } from './textos';
 import { ConfirmSheet, Sheet } from './kit';
-import { useToast } from './toast';
+import { useToast } from './toastCtx';
 
 const RE_CLIENT_ID = /^[\w-]+\.apps\.googleusercontent\.com$/;
 
@@ -61,7 +61,7 @@ function textoResultado(r: ResultadoRespaldo): string {
 export const HORAS_AVISO_CORREO = 3;
 
 /** El correo se lee con Google, venció el permiso y pasó un rato desde la última lectura. */
-export function correoAtrasado(aj: Pick<Ajustes, 'correo'>, ahora = Date.now()): boolean {
+function correoAtrasado(aj: Pick<Ajustes, 'correo'>, ahora = Date.now()): boolean {
   const c = aj.correo;
   if (c?.modo !== 'google' || tokenValido(SCOPE_GMAIL)) return false;
   return !c.ultimaLectura || ahora - new Date(c.ultimaLectura).getTime() >= HORAS_AVISO_CORREO * 3_600_000;
@@ -74,7 +74,7 @@ const textoCobros = (r: ResultadoLectura | null) =>
  * Un toque para ponerse al día con Google: pide el permiso (una sola ventana para Drive y Gmail),
  * sube lo pendiente y lee los correos nuevos del banco. Devuelve el mensaje para mostrar.
  */
-export async function ponerseAlDia(op: { respaldo: boolean; correo: boolean }): Promise<string> {
+async function ponerseAlDia(op: { respaldo: boolean; correo: boolean }): Promise<string> {
   const partes: string[] = [];
   let pidio = false;
   if (op.respaldo) {

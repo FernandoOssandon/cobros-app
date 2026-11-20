@@ -1,40 +1,21 @@
-import { useEffect, type ReactNode } from 'react';
+import { Suspense, useEffect, type ReactNode } from 'react';
 import { HashRouter, Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { db } from './db';
 import { useAjustes, useThemeSync } from './hooks';
 import { esPestana, useNav } from './nav';
 import { generarRecurrentes } from './recurrentes';
 import { TabBar } from './ui/rows';
-import { ToastProvider, useToast } from './ui/toast';
+import { ToastProvider } from './ui/toast';
+import { useToast } from './ui/toastCtx';
 import { UpdateProvider, UpdateToast } from './ui/UpdatePrompt';
 import Resumen from './screens/Resumen';
-import Gastos from './screens/Gastos';
-import NuevoGasto from './screens/NuevoGasto';
-import GastoDetalle from './screens/GastoDetalle';
-import Personas from './screens/Personas';
-import Person from './screens/Person';
-import EditPerson from './screens/EditPerson';
-import Pay from './screens/Pay';
-import Collect from './screens/Collect';
-import Recurrentes from './screens/Recurrentes';
-import NuevoRecurrente from './screens/NuevoRecurrente';
-import { Grupo, Grupos } from './screens/Grupos';
-import Categorias from './screens/Categorias';
-import { MedioForm, Medios } from './screens/Medios';
-import Onboarding from './screens/Onboarding';
-import Ajustes from './screens/Ajustes';
-import Archivadas from './screens/Archivadas';
-import MiPlata from './screens/Plata';
-import { CuentaDetalle, CuentaForm, DapForm } from './screens/Cuenta';
-import { ConectarGmail, Detectados } from './screens/Correo';
-import { CierrePantalla, ProyeccionPantalla } from './screens/Proyeccion';
-import { PresupuestoForm, Presupuestos } from './screens/Presupuestos';
-import { IngresoForm, Ingresos } from './screens/Ingresos';
+import {
+  Ajustes, Archivadas, Categorias, CierrePantalla, Collect, ConectarGmail, CuentaDetalle, CuentaForm, DapForm, Detectados, EditPerson, Gastos,
+  GastoDetalle, Grupo, Grupos, Importar, IngresoForm, Ingresos, MedioForm, Medios, MetaDetalle, MetaForm, MiPlata, NuevoGasto, NuevoRecurrente,
+  Onboarding, Pay, Person, Personas, precargarPantallas, PresupuestoForm, Presupuestos, ProyeccionPantalla, Recurrentes, Tendencias,
+} from './pantallas';
 import { AvisosPresupuesto } from './ui/avisos';
 import { RespaldoAutomatico } from './ui/drive';
-import { MetaDetalle, MetaForm } from './screens/Metas';
-import Tendencias from './screens/Tendencias';
-import Importar from './screens/Importar';
 import { renovarVencidos } from './ahorros';
 import { leerCorreo } from './correo';
 import { actualizarIndicadores } from './indicadores';
@@ -54,6 +35,9 @@ export default function App() {
             <IndicadoresAlDia />
             <RespaldoAutomatico />
             <PrimerUso />
+            <Precarga />
+            {/* Mientras baja una pantalla (solo la primera vez, si todavía no se precargó) se ve el fondo vacío. */}
+            <Suspense fallback={<div className="scroll" />}>
             <Routes>
               <Route path="/" element={<Tab><Resumen /></Tab>} />
               <Route path="/gastos" element={<Tab><Gastos /></Tab>} />
@@ -105,11 +89,18 @@ export default function App() {
               <Route path="/cargo/:id" element={<RedirigeCargo />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
+            </Suspense>
           </UpdateProvider>
         </ToastProvider>
       </div>
     </HashRouter>
   );
+}
+
+/** Después del arranque, trae el resto de las pantallas en segundo plano. */
+function Precarga() {
+  useEffect(() => precargarPantallas(), []);
+  return null;
 }
 
 /** Pestaña: contenido + barra inferior + botón "Nuevo gasto". */

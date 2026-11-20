@@ -98,7 +98,7 @@ test('respaldo en Google Drive: conectar, se sube solo, avisa si venció el perm
   await expect(seccion).toContainText('Conectado como yo@gmail.com.');
   expect(drive.subidas).toEqual(['a-mano-respaldo-2026-11-25.json']);
   const subido = JSON.parse([...drive.archivos.values()].find((a) => !a.carpeta)!.contenido);
-  expect(subido).toMatchObject({ app: 'me-debes', version: 8 });
+  expect(subido).toMatchObject({ app: 'me-debes', version: 9 });
   expect(subido.gastos.length).toBeGreaterThan(10);
   expect(subido.ajustes).not.toHaveProperty('drive');
 

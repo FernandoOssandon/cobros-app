@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { entregarArchivo, importarRespaldo, validarRespaldo, type Respaldo } from '../backup';
+import { diasSinRespaldo, entregarArchivo, importarRespaldo, validarRespaldo, type Respaldo } from '../backup';
 import { borrarTodo, db, guardarAjustes } from '../db';
 import { isDark, useAjustes } from '../hooks';
 import { imputar } from '../lib/cuotas';
@@ -10,7 +10,7 @@ import { useNav } from '../nav';
 import { useRespaldar } from '../useRespaldo';
 import { Icon } from '../ui/icons';
 import { BackButton, ConfirmSheet, Switch } from '../ui/kit';
-import { useToast } from '../ui/toast';
+import { useToast } from '../ui/toastCtx';
 import { UpdateBanner } from '../ui/UpdatePrompt';
 import { SeccionDrive } from '../ui/drive';
 
@@ -36,7 +36,7 @@ export default function Ajustes() {
   const [name, setName] = useState<string | null>(null);
   const [bank, setBank] = useState<string | null>(null);
 
-  const dias = aj.ultimoRespaldo ? Math.floor((Date.now() - new Date(aj.ultimoRespaldo).getTime()) / 86_400_000) : null;
+  const dias = aj.ultimoRespaldo ? diasSinRespaldo(aj, undefined) : null;
   const respaldoLabel = aj.drive
     ? 'Además del de Drive, puedes guardar o traer un archivo de respaldo.'
     : dias === null

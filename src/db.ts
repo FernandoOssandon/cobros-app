@@ -428,6 +428,95 @@ export interface Meta {
   creado: string;
 }
 
+// ---------- SII: emprendedores ----------
+
+/**
+ * Régimen tributario: define qué se declara cada mes (F29) y en abril (F22).
+ * - honorarios: persona que emite boletas de honorarios (segunda categoría);
+ * - pro_pyme_transparente / pro_pyme_general: régimen Pro Pyme (art. 14 D N° 8 y N° 3);
+ * - semi_integrado: régimen general (art. 14 A);
+ * - otro: cualquier otro caso (renta presunta, etc.).
+ */
+export type RegimenSii = 'honorarios' | 'pro_pyme_transparente' | 'pro_pyme_general' | 'semi_integrado' | 'otro';
+
+/** Un contribuyente que sigue la app: tú como persona (si emites boletas de honorarios) o tu negocio (EIRL, SpA…). */
+export interface Contribuyente {
+  id: string;
+  /** RUT normalizado: "12345678-5". */
+  rut: string;
+  /** Razón social o nombre. */
+  nombre: string;
+  tipo: 'persona' | 'empresa';
+  regimen?: RegimenSii;
+  /** ¿Sus ventas llevan IVA? (emite facturas y boletas afectas). */
+  afectoIva?: boolean;
+  /** Códigos de actividad económica del SII. */
+  actividades?: string[];
+  /** Tasa de PPM en % (pagos provisionales mensuales), si tiene. */
+  tasaPpm?: number;
+  archivado: boolean;
+  creado: string;
+}
+
+/** Tipos de documento del SII. Los electrónicos (DTE) tienen además un código numérico (`codigo`). */
+export type TipoDocSii =
+  | 'factura' // 33
+  | 'factura_exenta' // 34
+  | 'boleta' // 39
+  | 'boleta_exenta' // 41
+  | 'liquidacion_factura' // 43
+  | 'factura_compra' // 46
+  | 'guia' // 52
+  | 'nota_debito' // 56
+  | 'nota_credito' // 61
+  | 'factura_exportacion' // 110
+  | 'bhe' // boleta de honorarios electrónica
+  | 'bte' // boleta de prestación de servicios de terceros
+  | 'resumen_boletas' // total diario o mensual de boletas (sin detalle)
+  | 'otro';
+
+/**
+ * Un documento tributario emitido o recibido por un contribuyente (factura, boleta, boleta de honorarios, nota…).
+ * El id es estable (`idDocumento`), así que importar el mismo documento dos veces no lo duplica.
+ */
+export interface DocTributario {
+  id: string;
+  contribuyenteId: string;
+  sentido: 'emitido' | 'recibido';
+  tipo: TipoDocSii;
+  /** Código SII del documento electrónico (33, 39, 61…). */
+  codigo?: number;
+  folio: number;
+  /** Fecha de emisión (YYYY-MM-DD). */
+  fecha: string;
+  /** Período tributario en que se declara (YYYY-MM); por defecto el mes de la fecha. */
+  periodo: string;
+  rutContraparte?: string;
+  nombreContraparte?: string;
+  /** Montos en pesos, siempre positivos (una nota de crédito resta por su tipo). */
+  neto: number;
+  exento: number;
+  iva: number;
+  total: number;
+  /** Boletas de honorarios: monto bruto, retención y líquido. */
+  bruto?: number;
+  retencion?: number;
+  liquido?: number;
+  /** Boletas de honorarios: quién entera la retención en el SII (el receptor si es empresa; si no, tú). */
+  retiene?: 'receptor' | 'emisor';
+  estado: 'vigente' | 'anulado';
+  /** De dónde salió: archivo del SII, XML de un correo, a mano o desde una integración. */
+  origen: 'archivo' | 'correo' | 'manual' | 'integracion';
+  /** Glosa o detalle principal. */
+  detalle?: string;
+  /** Nota de crédito o débito: el documento que corrige. */
+  referencia?: { codigo?: number; folio: number };
+  /** Ingreso o gasto de la app que corresponde a este documento (cuando se cobró o se pagó). */
+  ingresoId?: string;
+  gastoId?: string;
+  creado: string;
+}
+
 // ---------- Detectados en el correo ----------
 
 export type TipoDetectado = 'compra' | 'transferencia' | 'recibido' | 'otro';
@@ -560,6 +649,8 @@ type DB = Dexie & {
   metas: EntityTable<Meta, 'id'>;
   pagosTarjeta: EntityTable<PagoTarjeta, 'id'>;
   importados: EntityTable<Importado, 'id'>;
+  contribuyentes: EntityTable<Contribuyente, 'id'>;
+  docsTributarios: EntityTable<DocTributario, 'id'>;
 };
 
 // El nombre de la base viene de cuando la app se llamaba Me Debes. NO cambiarlo: los datos guardados están ahí.
@@ -668,6 +759,12 @@ db.version(10)
         delete p.categoriaId;
       }),
   );
+
+// v11 (app 3.3): base para el SII. Contribuyentes (tú o tu negocio) y sus documentos tributarios (solo tablas nuevas).
+db.version(11).stores({
+  contribuyentes: 'id, rut',
+  docsTributarios: 'id, contribuyenteId, periodo, fecha, [contribuyenteId+periodo], rutContraparte',
+});
 
 /** Migración v3 → v4. Exportada para poder probarla. */
 export async function migrarV3aV4(tx: Transaction) {
@@ -1006,10 +1103,10 @@ export const guardarAjustes = async (patch: Partial<Omit<Ajustes, 'id'>>) => {
 export async function borrarTodo() {
   await db.transaction(
     'rw',
-    [db.personas, db.gastos, db.movimientos, db.cobros, db.medios, db.grupos, db.recurrentes, db.pendientes, db.fotos, db.cuentas, db.movAhorro, db.detectados, db.ingresos, db.presupuestos, db.metas, db.pagosTarjeta, db.importados],
+    [db.personas, db.gastos, db.movimientos, db.cobros, db.medios, db.grupos, db.recurrentes, db.pendientes, db.fotos, db.cuentas, db.movAhorro, db.detectados, db.ingresos, db.presupuestos, db.metas, db.pagosTarjeta, db.importados, db.contribuyentes, db.docsTributarios],
     async () => {
       await Promise.all(
-        [db.personas, db.gastos, db.movimientos, db.cobros, db.medios, db.grupos, db.recurrentes, db.pendientes, db.fotos, db.cuentas, db.movAhorro, db.detectados, db.ingresos, db.presupuestos, db.metas, db.pagosTarjeta, db.importados].map((t) => t.clear()),
+        [db.personas, db.gastos, db.movimientos, db.cobros, db.medios, db.grupos, db.recurrentes, db.pendientes, db.fotos, db.cuentas, db.movAhorro, db.detectados, db.ingresos, db.presupuestos, db.metas, db.pagosTarjeta, db.importados, db.contribuyentes, db.docsTributarios].map((t) => t.clear()),
       );
       await db.medios.put({ ...MEDIO_EFECTIVO, creado: now() });
     },

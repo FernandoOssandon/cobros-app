@@ -13,8 +13,10 @@ import { useNav } from '../nav';
 import { Icon } from '../ui/icons';
 import { BackButton, ConfirmSheet, DateInputPill, Switch, TaskHeader } from '../ui/kit';
 import { ColorPicker } from '../ui/sheets';
-import { useToast } from '../ui/toast';
-import { CuentaIni, cuadradoLbl, fechaConDia, fechaLarga, Ganado, MovSheet, pct, TIPO_CUENTA, useBorrarMovAhorro, type MovPedido } from './Plata';
+import { useToast } from '../ui/toastCtx';
+import { CuentaIni, Ganado, MovSheet, type MovPedido } from './Plata';
+import { useBorrarMovAhorro } from '../acciones';
+import { cuadradoLbl, fechaConDia, fechaLarga, pct, TIPO_CUENTA } from '../ui/textos';
 
 // ---------- Detalle ----------
 

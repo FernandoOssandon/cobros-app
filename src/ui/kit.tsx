@@ -1,10 +1,9 @@
 // Piezas de interfaz reutilizables del diseño v2.
 import { useEffect, type ReactNode } from 'react';
-import { AVATAR_COLORS, type Categoria, type Medio } from '../db';
+import type { Categoria, Medio } from '../db';
 import { KEYS } from '../lib/format';
-import { IC, Icon, Svg } from './icons';
-
-export const avatarColor = (i: number) => AVATAR_COLORS[((i % AVATAR_COLORS.length) + AVATAR_COLORS.length) % AVATAR_COLORS.length];
+import { Icon, Svg } from './icons';
+import { IC } from './iconosDatos';
 
 export const BackButton = ({ onClick, label = 'Volver' }: { onClick: () => void; label?: string }) => (
   <button className="btn-o back" onClick={onClick}>

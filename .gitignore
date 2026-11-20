@@ -26,3 +26,9 @@ dist-ssr
 # Pruebas de punta a punta
 test-results
 playwright-report
+
+# Núcleo Kotlin (Gradle)
+nucleo/build
+nucleo/.gradle
+nucleo/.kotlin
+nucleo/kotlin-js-store

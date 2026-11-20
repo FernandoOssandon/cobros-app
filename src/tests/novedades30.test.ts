@@ -9,7 +9,7 @@ import { CONSERVAR, ErrorDrive, listarRespaldos, nombreRespaldo, paraBorrar, sub
 import { flujosCuentas } from '../lib/flujos';
 import { avancePresupuesto, categoriasDe } from '../lib/presupuestos';
 import { sugerirRecurrentes } from '../lib/sugerencias';
-import { categoriasPresupuesto, nombrePresupuesto } from '../ui/presupuesto';
+import { categoriasPresupuesto, nombrePresupuesto } from '../ui/presupuestoTextos';
 
 const g = (p: Partial<Gasto>): Gasto => ({
   id: Math.random().toString(36).slice(2), descripcion: 'x', total: 1000, fecha: '2026-11-10', pagador: 'yo', modo: 'solo', yoIncluido: true,

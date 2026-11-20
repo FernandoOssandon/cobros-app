@@ -12,7 +12,7 @@ interface UpdateCtx {
   actualizar: () => void;
 }
 const Ctx = createContext<UpdateCtx>({ hay: false, actualizar: () => {} });
-export const useUpdate = () => useContext(Ctx);
+const useUpdate = () => useContext(Ctx);
 
 export function UpdateProvider({ children }: { children: ReactNode }) {
   const {

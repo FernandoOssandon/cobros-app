@@ -11,14 +11,14 @@ import { aportarMeta, borrarMeta, guardarMeta, quitarAporte } from '../metas';
 import { useNav } from '../nav';
 import { Svg } from '../ui/icons';
 import { BackButton, ConfirmSheet, DateInputPill, Keypad, Sheet, TaskHeader } from '../ui/kit';
-import { useToast } from '../ui/toast';
+import { useToast } from '../ui/toastCtx';
 
 export const IC_META = 'M5 21V4M5 4h11l-2 4 2 4H5';
 
 const mesYAnio = (fecha: string, hoy = todayISO()) => `${MESES_LARGOS[Number(fecha.slice(5, 7)) - 1]}${fecha.slice(0, 4) !== hoy.slice(0, 4) ? ' ' + fecha.slice(0, 4) : ''}`;
 
 /** "te faltan $190.000 · aparta $47.500 al mes hasta marzo" (o "¡Lo lograste!"). */
-export function lineaMeta(a: AvanceMeta): { texto: string; color: string } {
+function lineaMeta(a: AvanceMeta): { texto: string; color: string } {
   if (a.lograda) return { texto: '¡Lo lograste! Ya juntaste lo que querías.', color: 'var(--pos)' };
   if (a.dias !== undefined && a.dias < 0) return { texto: `Ya pasó la fecha · te faltan ${fmt(a.falta)}`, color: 'var(--owe)' };
   if (a.meses && a.meta.fecha) return { texto: `te faltan ${fmt(a.falta)} · aparta ${fmt(a.porMes)} al mes hasta ${mesYAnio(a.meta.fecha)}`, color: 'var(--muted)' };
@@ -231,6 +231,7 @@ export function MetaForm() {
 
   useEffect(() => {
     if (!editing) return;
+    // oxlint-disable-next-line react/set-state-in-effect -- carga el formulario cuando llega la meta (consulta en vivo)
     setNombre(editing.nombre);
     if (editing.moneda && editing.montoMoneda) {
       setMoneda(editing.moneda);

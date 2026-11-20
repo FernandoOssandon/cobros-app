@@ -7,18 +7,7 @@ import { sumarDias } from '../lib/recurrence';
 import { porPagar, usoTarjeta } from '../lib/tarjetas';
 import { pagarTarjeta, borrarPagoTarjeta } from '../tarjetas';
 import { Keypad, Sheet } from './kit';
-import { useToast } from './toast';
-
-/** Lo usado de cada tarjeta de crédito que está cuadrada con el banco (o tiene pagos anotados). */
-export function usadoTarjetas(d: Datos, hoy = todayISO()): Map<string, number> {
-  const out = new Map<string, number>();
-  for (const m of d.medios) {
-    if (m.tipo !== 'credito' || m.archivado) continue;
-    if (!m.usoCuadrado && !d.pagosTarjeta.some((p) => p.medioId === m.id)) continue;
-    out.set(m.id, usoTarjeta(m, d.gastos, d.pagosTarjeta, hoy).usado);
-  }
-  return out;
-}
+import { useToast } from './toastCtx';
 
 /** "Usado $443.385 de $2.000.000" + barra + "disponible $1.556.615". */
 export function CupoTarjeta({ m, d, compacto = false }: { m: Medio; d: Datos; compacto?: boolean }) {

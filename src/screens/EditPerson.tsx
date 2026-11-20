@@ -6,7 +6,7 @@ import { elegirContacto, puedeElegirContacto } from '../lib/contacts';
 import { fmt } from '../lib/format';
 import { useNav } from '../nav';
 import { ConfirmSheet, Switch, TaskHeader } from '../ui/kit';
-import { useToast } from '../ui/toast';
+import { useToast } from '../ui/toastCtx';
 
 export default function EditPerson() {
   const { id = '' } = useParams();

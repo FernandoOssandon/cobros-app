@@ -7,7 +7,7 @@ import { cargosPendientes } from '../lib/balance';
 import { fmt, relativeDays } from '../lib/format';
 import { TONOS, conDatos, enlaceWa, mensajesCobro } from '../lib/messages';
 import { BackButton, Switch } from '../ui/kit';
-import { useToast } from '../ui/toast';
+import { useToast } from '../ui/toastCtx';
 
 export default function Collect() {
   const { id = '' } = useParams();
@@ -34,6 +34,7 @@ export default function Collect() {
     // (Sin la opción 'noopener', porque con ella window.open siempre devuelve null.)
     const w = window.open(url, '_blank');
     if (w) w.opener = null;
+    // oxlint-disable-next-line react/immutability -- se corta el vínculo con la ventana de WhatsApp abierta (no es estado de React)
     else window.location.href = url;
     setSending(true);
     void (async () => {

@@ -7,7 +7,7 @@ import { useDatos } from '../hooks';
 import { dg, fmt, pressKey, shortDate, show, todayISO } from '../lib/format';
 import { useNav } from '../nav';
 import { CloseButton, DateInputPill, Keypad } from '../ui/kit';
-import { useToast } from '../ui/toast';
+import { useToast } from '../ui/toastCtx';
 
 const VIAS = ['Transferencia', 'Efectivo'];
 

@@ -16,14 +16,17 @@ import { Logo } from '../ui/Logo';
 import { anotarAtrasados, mesNombre, repartoRecurrente } from '../recurrentes';
 import { useRespaldar } from '../useRespaldo';
 import { AvisoGoogle } from '../ui/drive';
-import { AvisoCierre, TarjetaHastaSueldo, useProyeccion } from './Proyeccion';
+import { AvisoCierre, TarjetaHastaSueldo } from './Proyeccion';
+import { useProyeccion } from '../hooks';
 import { Icon } from '../ui/icons';
 import { PeriodoBar } from '../ui/periodo';
 import { CupoTarjeta, PagarTarjetaSheet } from '../ui/tarjeta';
-import { BarraPresupuesto, categoriasPresupuesto, IconoPresupuesto, lineasPresupuesto, nombrePresupuesto } from '../ui/presupuesto';
-import { GastoRow, MedioCard, tipoMedioLabel } from '../ui/rows';
+import { BarraPresupuesto, IconoPresupuesto } from '../ui/presupuesto';
+import { categoriasPresupuesto, lineasPresupuesto, nombrePresupuesto } from '../ui/presupuestoTextos';
+import { GastoRow, MedioCard } from '../ui/rows';
+import { tipoMedioLabel } from '../ui/textos';
 import { PorConfirmarSheet } from '../ui/sheets';
-import { useToast } from '../ui/toast';
+import { useToast } from '../ui/toastCtx';
 
 export default function Resumen() {
   const d = useDatos();

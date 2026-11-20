@@ -11,7 +11,7 @@ import { describirFrecuencia } from '../lib/recurrence';
 import { useNav } from '../nav';
 import { Icon } from '../ui/icons';
 import { Avatar, AvatarYo, BackButton, CatChip, CatIcon, ConfirmSheet } from '../ui/kit';
-import { useToast } from '../ui/toast';
+import { useToast } from '../ui/toastCtx';
 
 export default function GastoDetalle() {
   const { id = '' } = useParams();
@@ -25,6 +25,7 @@ export default function GastoDetalle() {
   const [subiendo, setSubiendo] = useState(false);
   const file = useRef<HTMLInputElement>(null);
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- la URL de la foto se crea y se libera junto con el blob
     if (!foto) return setFotoUrl(null);
     const u = URL.createObjectURL(foto.blob);
     setFotoUrl(u);

@@ -7,7 +7,7 @@ import { useNav } from '../nav';
 import { Icon } from '../ui/icons';
 import { BackButton, ConfirmSheet, Sheet } from '../ui/kit';
 import { GastoRow } from '../ui/rows';
-import { useToast } from '../ui/toast';
+import { useToast } from '../ui/toastCtx';
 
 /** "18–20 nov", "3 nov" o "28 oct – 2 nov". */
 function rango(es: Gasto[]) {

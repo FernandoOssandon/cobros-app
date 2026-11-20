@@ -10,9 +10,9 @@ import { mesDe } from '../lib/resumen';
 import { useNav } from '../nav';
 import { Icon } from '../ui/icons';
 import { BackButton, ConfirmSheet, MedioThumb, Switch, TaskHeader } from '../ui/kit';
-import { tipoMedioLabel } from '../ui/rows';
+import { tipoMedioLabel } from '../ui/textos';
 import { ColorPicker } from '../ui/sheets';
-import { useToast } from '../ui/toast';
+import { useToast } from '../ui/toastCtx';
 
 export function Medios() {
   const d = useDatos();

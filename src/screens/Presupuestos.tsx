@@ -9,8 +9,9 @@ import { useNav } from '../nav';
 import { borrarPresupuesto, guardarPresupuesto } from '../presupuestos';
 import { Icon } from '../ui/icons';
 import { BackButton, CatChip, Pill, Switch, TaskHeader } from '../ui/kit';
-import { BarraPresupuesto, categoriasPresupuesto, ChipEstado, IconoPresupuesto, LineasPresupuesto, lineasPresupuesto, nombreAuto, nombrePresupuesto, subPresupuesto } from '../ui/presupuesto';
-import { useToast } from '../ui/toast';
+import { BarraPresupuesto, ChipEstado, IconoPresupuesto, LineasPresupuesto } from '../ui/presupuesto';
+import { categoriasPresupuesto, lineasPresupuesto, nombreAuto, nombrePresupuesto, subPresupuesto } from '../ui/presupuestoTextos';
+import { useToast } from '../ui/toastCtx';
 
 export function Presupuestos() {
   const d = useDatos();
@@ -109,6 +110,7 @@ export function PresupuestoForm() {
   useEffect(() => {
     if (!editing) return;
     const c = categoriasDe(editing);
+    // oxlint-disable-next-line react/set-state-in-effect -- carga el formulario cuando llega el presupuesto (consulta en vivo)
     setAlcance(c.length ? 'categorias' : 'todo');
     setCats(c);
     setPeriodo(editing.periodo);

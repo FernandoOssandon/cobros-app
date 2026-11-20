@@ -2,7 +2,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { cuadrar, guardarCuenta, ID_EFECTIVO } from '../ahorros';
-import { MEDIO_COLORS, guardarMedio, type Medio, type MovAhorro } from '../db';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db, MEDIO_COLORS, guardarMedio, type Importado, type Medio, type MovAhorro } from '../db';
 import { useAjustes, useDatos, type Datos } from '../hooks';
 import { aplicarImportacion, recordarDestino, type ResultadoImportar } from '../importar';
 import { descripcionDe, ErrorCartola, reconocerCartola, type Cartola } from '../lib/bancos';
@@ -15,12 +16,12 @@ import { diaLabel, fmt, shortDate } from '../lib/format';
 import { ErrorArchivo, leerXlsx } from '../lib/xlsx';
 import { useNav } from '../nav';
 import { BackButton, CatChip, Pill, Sheet } from '../ui/kit';
-import { useToast } from '../ui/toast';
+import { useToast } from '../ui/toastCtx';
 
 const CACHE_COMPARTIDO = 'a-mano-compartido';
 const CLAVE_COMPARTIDO = '/__compartido__';
 
-function datosImportar(d: Datos): DatosImportar {
+function datosImportar(d: Datos, importados: Importado[]): DatosImportar {
   return {
     gastos: d.gastos,
     movimientos: d.movimientos,
@@ -33,7 +34,7 @@ function datosImportar(d: Datos): DatosImportar {
     saldoPersona: new Map(d.personas.map((v) => [v.p.id, v.saldo])),
     categorias: d.categorias,
     recurrentes: d.recurrentes,
-    importados: d.importados,
+    importados,
   };
 }
 
@@ -148,7 +149,9 @@ export default function Importar() {
     return undefined;
   }, [d, cartola, destinoId, aj.importar, sp]);
 
-  const di = useMemo(() => (d ? datosImportar(d) : undefined), [d]);
+  // Lo ya importado solo lo necesita esta pantalla: no va en la consulta general (crece con cada cartola).
+  const importados = useLiveQuery(() => db.importados.toArray(), []);
+  const di = useMemo(() => (d && importados ? datosImportar(d, importados) : undefined), [d, importados]);
   const rev = useMemo(() => (cartola && destino && di ? revisar(cartola, destino, di, { incluirAnteriores: anteriores }) : undefined), [cartola, destino, di, anteriores]);
   const dec: Decisiones | undefined = useMemo(() => {
     if (!rev) return undefined;

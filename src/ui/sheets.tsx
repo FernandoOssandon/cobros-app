@@ -4,9 +4,10 @@ import { CAT_COLORS, ICONOS_CATEGORIA, crearPersona, guardarCategoria, type Cate
 import { confirmarPendiente, mesNombre, saltarPendiente } from '../recurrentes';
 import { elegirContacto, puedeElegirContacto } from '../lib/contacts';
 import { dg, firstName, fmt, pressKey, show } from '../lib/format';
-import { IC, Icon, Svg } from './icons';
+import { Icon, Svg } from './icons';
+import { IC } from './iconosDatos';
 import { Keypad, Sheet } from './kit';
-import { useToast } from './toast';
+import { useToast } from './toastCtx';
 
 /** "Luz de noviembre: ¿cuánto llegó?" */
 export function PorConfirmarSheet({ p, r, onClose }: { p: Pendiente; r: Recurrente; onClose: () => void }) {

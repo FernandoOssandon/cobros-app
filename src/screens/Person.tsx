@@ -6,7 +6,7 @@ import { dg, fmt, show, shortDate, todayISO } from '../lib/format';
 import { useNav } from '../nav';
 import { Icon } from '../ui/icons';
 import { BackButton, DateInputPill, Sheet } from '../ui/kit';
-import { useToast } from '../ui/toast';
+import { useToast } from '../ui/toastCtx';
 
 type Item = { kind: 'mov'; key: string; m: Movimiento } | { kind: 'cobro'; key: string; c: Cobro };
 const ORDEN = { cargo: 1, deuda: 1, pago: 2, abono: 2 } as const;

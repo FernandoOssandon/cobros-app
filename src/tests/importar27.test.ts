@@ -217,7 +217,7 @@ describe('traspasos y respaldo', () => {
     const r = revisar(await archivo('cartola-santander.xlsx'), { tipo: 'cuenta', cuenta: d.cuentas.find((c) => c.id === 'rut')! }, d);
     await aplicarImportacion(r, decisionesIniciales(r), d.saldoPersona);
     const resp = await construirRespaldo();
-    expect(resp.version).toBe(8);
+    expect(resp.version).toBe(9);
     expect(resp.importados).toHaveLength(8);
     await importarRespaldo(validarRespaldo(JSON.parse(JSON.stringify(resp))));
     expect(await db.importados.count()).toBe(8);

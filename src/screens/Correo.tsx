@@ -16,24 +16,14 @@ import { tokenValido } from '../google';
 import { SCOPE_GMAIL } from '../lib/gmail';
 import { ConectarGoogleSheet } from '../ui/drive';
 import { BackButton, PickerSheet, Sheet } from '../ui/kit';
-import { useToast } from '../ui/toast';
+import { haceLbl } from '../ui/textos';
+import { useToast } from '../ui/toastCtx';
 
 /** "Hoy 10:42", "Ayer 19:08", "23 nov 18:30". */
-export function cuandoLbl(fecha: string, hora?: string, hoy = todayISO()) {
+function cuandoLbl(fecha: string, hora?: string, hoy = todayISO()) {
   const dd = daysBetween(fecha, hoy);
   const dia = dd === 0 ? 'Hoy' : dd === 1 ? 'Ayer' : shortDate(fecha);
   return hora ? `${dia} ${hora}` : dia;
-}
-
-/** "hace 5 min", "hace 2 h", "recién". */
-export function haceLbl(iso?: string, ahora = Date.now()) {
-  if (!iso) return 'todavía no se revisa';
-  const min = Math.floor((ahora - new Date(iso).getTime()) / 60_000);
-  if (min < 1) return 'recién';
-  if (min < 60) return `hace ${min} min`;
-  const h = Math.floor(min / 60);
-  if (h < 24) return `hace ${h} h`;
-  return `hace ${Math.floor(h / 24)} ${Math.floor(h / 24) === 1 ? 'día' : 'días'}`;
 }
 
 /** Cómo se presenta cada detectado: gasto, pago con una persona o ingreso. */

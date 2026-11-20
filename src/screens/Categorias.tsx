@@ -5,7 +5,8 @@ import { useDatos } from '../hooks';
 import { fmt, mesLargo, todayISO } from '../lib/format';
 import { mesDe } from '../lib/resumen';
 import { useNav } from '../nav';
-import { IC, Svg } from '../ui/icons';
+import { Svg } from '../ui/icons';
+import { IC } from '../ui/iconosDatos';
 import { BackButton, CatIcon } from '../ui/kit';
 import { CategoriaSheet } from '../ui/sheets';
 

@@ -10,7 +10,7 @@ import { computeSplit, type SplitMode } from '../lib/split';
 import { useNav } from '../nav';
 import { borrarRecurrente, generarRecurrentes, guardarRecurrente } from '../recurrentes';
 import { CatChip, ConfirmSheet, DateInputPill, MedioChip, PersonPick, Switch, TaskHeader } from '../ui/kit';
-import { useToast } from '../ui/toast';
+import { useToast } from '../ui/toastCtx';
 
 type Freq = 'mes' | 'semana' | 'anio' | 'custom';
 const TIPOS: [Recurrente['tipo'], string, string][] = [
@@ -60,7 +60,7 @@ export default function NuevoRecurrente() {
   const [wd, setWd] = useState(0);
   const [n, setN] = useState(2);
   const [unit, setUnit] = useState<'dia' | 'semana' | 'mes'>('semana');
-  const [inicio, setInicio] = useState(hoy);
+  const [inicioElegido, setInicioElegido] = useState(hoy);
   const [inicioManual, setInicioManual] = useState(false);
   const [finOn, setFinOn] = useState(false);
   const [fin, setFin] = useState(sumarDias(hoy, 365));
@@ -80,6 +80,7 @@ export default function NuevoRecurrente() {
     if (id && !editing) return;
     loaded.current = true;
     if (!editing) {
+      // oxlint-disable-next-line react/set-state-in-effect -- carga el formulario cuando llegan los datos (consulta en vivo)
       setMedio(d.medios.find((m) => !m.archivado && m.tipo !== 'efectivo')?.id ?? d.medios[0]?.id ?? null);
       setCat(d.categorias.find((c) => c.id === 'cat-casa')?.id ?? null);
       return;
@@ -94,13 +95,24 @@ export default function NuevoRecurrente() {
       setAmtMon(aBorrador(editing.montoMoneda));
     }
     const [y, m, dd] = editing.inicio.split('-').map(Number);
-    if (f.unidad === 'mes' && f.cada === 1) [setFreq('mes'), setDia(f.dia ?? dd)];
-    else if (f.unidad === 'semana' && f.cada === 1) [setFreq('semana'), setWd((new Date(y, m - 1, dd).getDay() + 6) % 7)];
-    else if (f.unidad === 'anio' && f.cada === 1) setFreq('anio');
-    else [setFreq('custom'), setN(f.cada), setUnit(f.unidad === 'anio' ? 'mes' : f.unidad)];
-    setInicio(editing.inicio);
+    if (f.unidad === 'mes' && f.cada === 1) {
+      setFreq('mes');
+      setDia(f.dia ?? dd);
+    } else if (f.unidad === 'semana' && f.cada === 1) {
+      setFreq('semana');
+      setWd((new Date(y, m - 1, dd).getDay() + 6) % 7);
+    } else if (f.unidad === 'anio' && f.cada === 1) setFreq('anio');
+    else {
+      setFreq('custom');
+      setN(f.cada);
+      setUnit(f.unidad === 'anio' ? 'mes' : f.unidad);
+    }
+    setInicioElegido(editing.inicio);
     setInicioManual(true);
-    if (editing.fin) [setFinOn(true), setFin(editing.fin)];
+    if (editing.fin) {
+      setFinOn(true);
+      setFin(editing.fin);
+    }
     setMedio(editing.medioId ?? null);
     setCat(editing.categoriaId ?? null);
     if (editing.reparto) {
@@ -113,12 +125,7 @@ export default function NuevoRecurrente() {
   }, [d, id, editing]);
 
   // Si no eligió la fecha a mano, "Empieza" sigue a la frecuencia.
-  useEffect(() => {
-    if (inicioManual) return;
-    if (freq === 'mes') setInicio(proximoDiaMes(hoy, dia));
-    else if (freq === 'semana') setInicio(proximoDiaSemana(hoy, wd));
-    else setInicio(hoy);
-  }, [freq, dia, wd, hoy, inicioManual]);
+  const inicio = inicioManual ? inicioElegido : freq === 'mes' ? proximoDiaMes(hoy, dia) : freq === 'semana' ? proximoDiaSemana(hoy, wd) : hoy;
 
   if (!d) return <div className="screen" />;
   const personas = d.personas.filter((v) => !v.p.archivada || sel.includes(v.p.id) || persona === v.p.id);
@@ -339,7 +346,7 @@ export default function NuevoRecurrente() {
               value={inicio}
               label={shortDate(inicio) + (inicio.slice(0, 4) === hoy.slice(0, 4) ? ` ${inicio.slice(0, 4)}` : '')}
               onChange={(v) => {
-                setInicio(v);
+                setInicioElegido(v);
                 setInicioManual(true);
                 if (freq === 'mes') setDia(Number(v.slice(8, 10)));
               }}

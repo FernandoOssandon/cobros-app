@@ -1,129 +1,110 @@
 # a mano.
 
-> Antes se llamaba **Me Debes**. Cambió de nombre en la 2.3 porque ya no es solo "quién me debe": son tus gastos, lo que te deben y dónde está tu plata. Por dentro se mantienen algunos nombres antiguos a propósito: la base de datos (`me-debes`), el formato de respaldo (`app: 'me-debes'`) y la carpeta del proyecto. Cambiarlos haría perder los datos guardados o dejaría de leer los respaldos.
+PWA para llevar tu plata a mano: tus gastos (solos, compartidos o en cuotas), lo que te deben y lo que debes, dónde está tu plata y cuánto puedes gastar hasta el sueldo. Funciona sin conexión y guarda todo en el teléfono (IndexedDB). Va en la **versión 3.3**, camino a una app nativa en Kotlin para Android (con el núcleo compartido en `nucleo/`) y la PWA para iPhone; el detalle de cada versión está en [CHANGELOG.md](CHANGELOG.md).
 
-**Versión 2.6**: cada medio de pago se liga a su cuenta (el débito baja el saldo), pagos por transferencia a una cuenta, cupo usado y disponible de las tarjetas de crédito, y pagar la tarjeta desde una cuenta.
+> Antes se llamaba **Me Debes**. Por dentro se mantienen algunos nombres antiguos a propósito: la base de datos (`me-debes`), el formato de respaldo (`app: 'me-debes'`) y la carpeta del proyecto. Cambiarlos haría perder los datos guardados o dejaría de leer los respaldos.
 
-**Versión 2.5**: compras en cuotas, tendencias mes a mes, metas de ahorro, montos en UF/dólar/euro, planillas de ingresos y presupuestos, y pruebas automáticas en GitHub antes de publicar.
+**Stack:** React 19 + Vite + TypeScript, `vite-plugin-pwa` (Workbox) y Dexie (IndexedDB). La fuente Bricolage Grotesque viene incluida, así que también funciona offline. Se publica en Netlify.
 
-**Versión 2.4**: presupuestos (semanal y por categoría), ingresos (sueldo fijo y sueltos, con "te quedan" del mes) y períodos de facturación por tarjeta en Resumen y Gastos. Detalle en [CHANGELOG.md](CHANGELOG.md).
+## Qué hace
 
-**Versión 2.3**: nueva marca **a mano.** (nombre, símbolo de igual, íconos y textos). No hay cambios en los datos.
-
-
-**Versión 2.2 "Mi plata"**: patrimonio, cuentas de ahorro con interés estimado, depósitos a plazo y cobros detectados en los correos del banco (Gmail; desde la 3.1, con la misma conexión de Google del respaldo en Drive, o como alternativa con un script propio: ver `integraciones/gmail/README.md`).
-
-**Versión 2.1**: editar las cuotas de los cobros recurrentes, foto de la boleta desde el detalle, grupos que se editan, terminan y borran, y pruebas de punta a punta. Detalle en [CHANGELOG.md](CHANGELOG.md).
-
-**Versión 2.0**: la app pasó de "quién me debe" a "a dónde se va mi plata". Implementa el handoff de diseño v2 (`design_handoff_me_debes/`): barra inferior con Resumen, Gastos, Personas y Recurrentes; gastos solo míos, compartidos o pagados por otra persona; deudas en ambos sentidos; medios de pago con nombre y barra apilada (tuyo / recuperado / pendiente); recurrentes fijos, variables ("por confirmar") y atrasados ("Anotar los N"); grupos y eventos; categorías con color; foto de la boleta; búsqueda y filtros; onboarding "Agrega tus tarjetas".
-
-PWA móvil para llevar la cuenta de quién te debe plata. Está construida a partir del handoff de diseño "Lúdica" (`design_handoff_me_debes`). Funciona sin conexión y guarda los datos solo en el teléfono, en IndexedDB.
-
-**Stack:** React 19 + Vite + TypeScript, `vite-plugin-pwa` (Workbox) y Dexie (IndexedDB). La fuente Bricolage Grotesque viene incluida en la app, así que también funciona offline.
+| Área | Qué hay |
+|---|---|
+| **Gastos** | Solo tuyos, compartidos (partes iguales, montos exactos o por partes) o pagados por otra persona. Cuotas, montos en UF/dólar/euro, categorías, medios de pago, grupos y eventos, foto de la boleta, búsqueda y filtros. |
+| **Personas** | Quién te debe y a quién le debes, pagos (ligados a la cuenta donde llegó o de donde salió la plata) y cobros por WhatsApp con el detalle. |
+| **Recurrentes** | Fijos (se anotan solos), variables (quedan por confirmar) y atrasados; cobros recurrentes a otras personas; sugerencias de lo que se repite cada mes. |
+| **Mi plata** | Cuentas (vista, remuneradas con interés estimado, efectivo, inversiones, en dólares o euros), depósitos a plazo, metas de ahorro, tarjetas de crédito con cupo, períodos de facturación y pagos. |
+| **Cuadrar con el banco** | Cartolas en Excel (Santander cuenta corriente y CMR Falabella), cobros leídos de los correos del banco (Gmail) y comparación de saldos. |
+| **Entender** | Resumen del mes o del período de cada tarjeta, ingresos y "te quedan", presupuestos por categorías, tendencias, **cuánto puedes gastar por día hasta el sueldo** y el cierre de cada ciclo. |
+| **No perder nada** | Respaldo automático diario en Google Drive, exportar/importar un JSON y planillas Excel (CSV). |
+| **SII (en preparación)** | Base para emprendedores: contribuyentes, documentos tributarios, lectores de XML y de listados del SII, y cálculos (IVA, honorarios, resumen tipo F29). Ver [docs/sii.md](docs/sii.md). |
 
 ## Cómo correrla
 
 ```bash
 npm install
 npm run dev        # desarrollo en http://localhost:5173
-npm test           # pruebas de la lógica (reparto, saldos, respaldo, CSV)
-npm run e2e        # compila y prueba la app completa en un Chrome de celular
-npm run build      # genera la versión de producción en dist/
-npm run preview    # sirve dist/ para probar la PWA (service worker incluido)
+npm test           # pruebas de la lógica (Vitest)
+npm run lint       # oxlint (sin advertencias)
+npm run e2e        # compila y prueba la app completa en un Chrome de celular (Playwright)
+npm run build      # versión de producción en dist/
+npm run preview    # sirve dist/ para probar la PWA (con service worker)
+cd nucleo && ./gradlew check   # núcleo en Kotlin (necesita Java 17+)
 ```
 
-### Pruebas de punta a punta
+### Pruebas
 
-Viven en `e2e/` y usan Playwright. Abren la app compilada, cargan `e2e/fixtures/respaldo-ejemplo.json` (datos inventados, con la fecha congelada en el 25 de noviembre de 2026) y recorren los flujos importantes: primer uso, gastos compartidos, pagos, recurrentes, cobro por WhatsApp, respaldo, fotos y grupos. Si la app tira un error en la consola, la prueba falla.
-
-- La primera vez: `npx playwright install chromium`.
-- `npm run e2e` corre todo. `npx playwright test grupos` corre solo las que mencionan "grupos".
-- Si algo falla, `npx playwright show-report` muestra qué pasó paso a paso.
+- **Unitarias** (`src/tests/`): la lógica pura de `src/lib/` y las operaciones sobre la base (con `fake-indexeddb`), incluidas las migraciones y el respaldo.
+- **De punta a punta** (`e2e/`): abren la app compilada con la fecha congelada en el 25 de noviembre de 2026, cargan datos inventados de `e2e/fixtures/` y recorren los flujos importantes. Google (inicio de sesión, Drive y Gmail) se simula en `e2e/google-falso.ts`. Si la app tira un error en la consola, la prueba falla.
+- La primera vez: `npx playwright install chromium`. Para correr solo algunas: `npx playwright test grupos`. Si algo falla: `npx playwright show-report`.
 
 ## Publicar versiones nuevas
 
-El sitio de Netlify está conectado a este repo y `netlify.toml` define cómo compilar, así que **cada `git push` a `main` publica una versión nueva**.
+Netlify está conectado al repo y `netlify.toml` define cómo compilar: **cada `git push` a `main` publica una versión nueva** (si fallan las pruebas unitarias, no se publica).
 
-1. Sube el número en `package.json` (`"version"`); se muestra en Ajustes. Anota los cambios en `CHANGELOG.md`.
-2. `npm test`, `npm run e2e` y `git push`. GitHub Actions vuelve a correr todo (pestaña **Actions** del repo) y Netlify no publica si fallan las pruebas unitarias.
-3. En el teléfono aparece el aviso **"Hay una versión nueva · Actualizar"**: la app revisa cada hora y cada vez que vuelves a abrirla.
+1. Sube el número en `package.json` (se muestra en Ajustes) y anota los cambios en `CHANGELOG.md`.
+2. `npm test`, `npm run e2e` y `git push`. GitHub Actions vuelve a correr todo (`.github/workflows/pruebas.yml`).
+3. En el teléfono aparece **"Hay una versión nueva · Actualizar"**: la app revisa cada hora y cada vez que vuelves a abrirla.
 
-**Los datos no se pierden al actualizar.** Viven en el teléfono (IndexedDB) asociados a la dirección del sitio, y cada cambio de estructura incluye una migración probada (`src/tests/migration.test.ts`). Solo se pierden si cambia la dirección del sitio, si se desinstala la app o si se borran los datos del navegador. Por eso existe el recordatorio de respaldo.
+**Los datos no se pierden al actualizar.** Viven en el teléfono asociados a la dirección del sitio, y cada cambio de estructura trae una migración probada. Solo se pierden si cambia la dirección del sitio, si se desinstala la app o si se borran los datos del navegador: para eso está el respaldo en Drive.
 
-> Transición 1.0 → 1.1: la 1.0 se actualizaba sola y no sabe mostrar el aviso. `public/sw-transicion.js` hace que la primera versión con aviso se active sola; desde ahí cada versión espera a que toques "Actualizar".
+## Google (Drive y Gmail)
 
-## Publicarla por primera vez
+Una sola conexión con la cuenta de Google sirve para el respaldo en Drive (`drive.file`: la app solo ve la carpeta que ella crea) y para leer los correos del banco (`gmail.readonly`: solo busca remitentes de bancos). Todo pasa en el teléfono, sin servidor; por eso el permiso dura una hora y se renueva con un toque.
 
-La PWA necesita HTTPS para poder instalarse. La opción más rápida:
+- En Google Cloud: un proyecto con la **Google Drive API** y la **Gmail API** activadas, la pantalla de consentimiento en modo de prueba con los usuarios de prueba (hasta 100) y un ID de cliente de tipo "Aplicación web" con el origen del sitio.
+- En Netlify: la variable `VITE_GOOGLE_CLIENT_ID` con ese ID (no es secreto). Sin ella, la app pide el ID al conectar.
+- Gmail es un permiso restringido: para abrirlo a cualquier persona, Google exige una verificación de seguridad. Como alternativa sigue existiendo el script de Apps Script (`integraciones/gmail/`).
 
-1. Ejecuta `npm run build`, o usa la carpeta `dist/` que ya viene generada.
-2. Entra a https://app.netlify.com/drop y arrastra la carpeta `dist/`.
-3. Abre el enlace en el teléfono:
-   - **Android (Chrome):** menú ⋮ → "Instalar app".
-   - **iPhone (Safari):** botón Compartir → "Agregar a inicio".
-
-También sirven GitHub Pages o Cloudflare Pages. La app usa rutas con `#` y una base relativa, así que funciona en cualquier carpeta.
-
-## Qué se agregó respecto al handoff (brechas)
-
-| Brecha | Solución, con el mismo lenguaje visual |
-|---|---|
-| El historial de cobros no se guardaba | Cada "Mandar por WhatsApp" crea un registro `Cobro`. Aparece como un aviso centrado con borde punteado en el historial de la persona ("Le cobraste $7.200 por WhatsApp · 10 oct"), como "Cobrado hace N días" en la tarjeta de Inicio y como "Último cobro…" en el detalle y en la pantalla de cobro. Al tocar el aviso se ve el mensaje enviado. |
-| El cargo compartido no quedaba vinculado | Nueva entidad `Cargo`. Cada movimiento lleva su `cargoId` y la burbuja dice "dividido entre N". Al tocarla se abre el **detalle del cargo**, con los participantes, el estado de cada uno, tu parte, y las opciones de editar y borrar. |
-| No había dónde ingresar el teléfono | Pantalla **Editar persona** (nombre, teléfono, archivar) y un campo de teléfono en la pantalla de cobro, que se guarda al enviar. Sin número, WhatsApp abre el selector de contactos. |
-| No se podían editar ni borrar movimientos | Los cargos se editan y borran desde su detalle. Al tocar un pago se abre una hoja inferior con "Editar pago" y "Borrar pago". Al borrar aparece un toast con **Deshacer**. |
-| La fecha siempre era "hoy" | Una pastilla de fecha en Nuevo cargo y en Registrar pago, para anotar gastos de días anteriores. |
-| Exportar a Excel | En Ajustes, "Descargar planilla (Excel)": un CSV con `;` y UTF-8 que Excel en español abre directo. |
-| Archivar personas | Desde Editar persona. Las personas archivadas se ocultan de Inicio y del selector, y se ven en "Ver archivadas". Solo se puede **borrar** a alguien sin historial. |
-| Estado de cada cargo | Los pagos se aplican a los cargos más antiguos primero. Cada burbuja muestra "pagado" o "quedan $X". |
-| Confirmaciones | "Importar" y "Borrar todo" piden confirmación en una hoja inferior, como recomienda el handoff para producción. |
-
-## Modelo de datos (base v4, app 2.0)
+## Modelo de datos (base v11, respaldo v9)
 
 | Tabla | Qué guarda |
 |---|---|
-| `gastos` | Todo lo que se paga: total, fecha, `pagador` (`'yo'` o una persona), medio de pago, categoría, grupo, `miParte` y reparto (`solo`, `equal`, `exact`, `shares`). |
-| `movimientos` | Lo que cambia el saldo con una persona: `cargo` (me debe), `pago` (me pagó), `deuda` (le debo: pagó por mí) y `abono` (le pagué). Saldo neto = cargos − pagos − deudas + abonos. |
-| `recurrentes` | Plantillas de 3 tipos: `mio` (arriendo, luz), `compartido` (Netflix con amigos) y `cobro` (cuota que alguien me paga). El monto puede ser `fijo` (se anota solo) o `variable` (queda en `pendientes` para confirmar). Se generan al abrir la app. |
-| `medios`, `categorias`, `grupos`, `fotos` | Tarjetas con nombre y color (el efectivo viene incluido), categorías con ícono y color (vienen 6), eventos y fotos de boletas (se achican antes de guardarse). |
-| `personas`, `cobros`, `ajustes` | Igual que en la 1.0, más el recordatorio de respaldo. |
-| `cuentas`, `movAhorro` | Mi plata (base v5): cuentas remuneradas, vista, depósitos a plazo e inversiones. `movAhorro` guarda cuadres (saldo real), depósitos y retiros. El saldo se estima con interés diario desde el último cuadre. |
-| `ingresos`, `presupuestos` | (base v6) El sueldo y otros ingresos, que se depositan en la cuenta donde llegan. Presupuestos semanales o mensuales, del total o de una categoría. |
-| `detectados` | Movimientos leídos de los correos del banco, por confirmar (ver `integraciones/gmail/README.md`). |
+| `gastos`, `movimientos` | Lo que se paga (total, fecha, pagador, medio, categoría, grupo, reparto, cuotas, moneda) y lo que cambia el saldo con cada persona: `cargo`, `pago`, `deuda` y `abono`. |
+| `personas`, `cobros`, `grupos` | Personas (con teléfono), cobros enviados por WhatsApp y grupos o eventos. |
+| `medios`, `categorias`, `fotos` | Medios de pago (con su cuenta, cupo, día de facturación y cuadre), categorías con ícono y color, y fotos de boletas. |
+| `recurrentes`, `pendientes` | Plantillas (`mio`, `compartido`, `cobro`, `ingreso`), fijas o variables, y las ocurrencias por confirmar o atrasadas. |
+| `cuentas`, `movAhorro`, `metas` | Mi plata: cuentas, cuadres, depósitos, retiros y traspasos; metas de ahorro con sus aportes. |
+| `ingresos`, `presupuestos`, `pagosTarjeta` | Sueldo e ingresos sueltos (se depositan en su cuenta), presupuestos por categorías y pagos de tarjetas. |
+| `detectados`, `importados` | Cobros leídos de los correos del banco y movimientos de cartolas ya importados (para no repetirlos). |
+| `contribuyentes`, `docsTributarios` | SII: tú o tu negocio, y los documentos tributarios emitidos y recibidos. |
+| `ajustes` | Preferencias, conexión con Google (no viaja en el respaldo), indicadores del día y el último cierre de ciclo. |
 
-La lógica pura vive en `src/lib/`: `resumen.ts` (gasto real del mes y desglose por tarjeta), `recurrence.ts` (fechas), `search.ts` (búsqueda) y `balance.ts` (saldos netos). Las pantallas del rediseño (Resumen, Gastos, Recurrentes) se conectan sobre esa base.
+La lógica pura vive en `src/lib/` y no toca la base: se prueba sola y las pantallas la usan a través de `src/hooks.ts`.
 
 ## Estructura
 
 ```
 src/
-  db.ts              Esquema Dexie, migraciones v1→v3 y operaciones (gastos, pagos, medios…)
-  backup.ts          Respaldo v3 (con fotos), importación de respaldos v2, compartir/descargar
-  recurrentes.ts     Motor de recurrentes (generar, confirmar, saltar; también los ingresos fijos)
-  ingresos.ts        Ingresos (y su depósito en la cuenta donde llegan) · presupuestos.ts: guardar y borrar
-  periodo.ts         Período elegido (mes o tarjeta), compartido entre Resumen y Gastos
-  metas.ts           Metas de ahorro y aportes · indicadores.ts: UF, dólar y euro desde mindicador.cl
-  tarjetas.ts        Pagos y cuadre de tarjetas de crédito
-  hooks.ts           Consultas en vivo y tema claro/oscuro
-  lib/               Lógica pura: format, split, balance, resumen, periodos, presupuestos, ingresosMes, cuotas, monedas, metas, tendencias, flujos (lo que mueve cada cuenta), tarjetas (cupo y por pagar), recurrence, search, messages, csv, contacts
-  nav.ts             Pestañas y pila de pantallas ("‹ {pantalla anterior}")
-  screens/           Resumen, Gastos, NuevoGasto, GastoDetalle, Personas, Person, Pay, Collect, Recurrentes,
-                     NuevoRecurrente, Grupos, Categorias, Medios, Onboarding, Ajustes, EditPerson, Archivadas,
-                     Plata, Cuenta, Correo, Presupuestos, Ingresos, Metas, Tendencias
-  ui/                Kit (botones, chips, hojas), íconos, filas (gasto, tarjeta de medio, barra inferior),
-                     hojas compartidas (por confirmar, nueva persona, categoría), toast y aviso de versión nueva
-  tests/             Pruebas con Vitest
-e2e/                 Pruebas de punta a punta con Playwright (y sus datos de ejemplo en fixtures/)
+  db.ts              Esquema Dexie, migraciones (v1 → v11) y operaciones básicas
+  backup.ts          Respaldo v9 (con fotos); lee respaldos v2 a v8
+  hooks.ts           Datos en vivo (useDatos, useAjustes) y derivados (usadoTarjetas, useProyeccion)
+  recurrentes.ts · ingresos.ts · presupuestos.ts · metas.ts · ahorros.ts · tarjetas.ts · acciones.ts
+  importar.ts        Aplicar una cartola importada · correo.ts: cobros del correo · indicadores.ts: UF, dólar y euro
+  google.ts          Conexión con Google (Drive y Gmail) · drive.ts: respaldo automático
+  sii.ts             SII: contribuyentes y documentos (leer archivos, guardar sin duplicar)
+  lib/               Lógica pura: format, split, balance, resumen, periodos, presupuestos, ingresosMes, cuotas, monedas,
+                     metas, tendencias, flujos, tarjetas, proyeccion, sugerencias, recurrence, search, messages, csv,
+                     xlsx, bancos, importar, correo, gmail, drive, rut y sii/ (documentos, dte, tablas, impuestos)
+  nav.ts · periodo.ts
+  screens/           Una pantalla por archivo
+  ui/                Kit de componentes, íconos, filas, hojas, toast, aviso de versión nueva y textos compartidos
+  tests/             Pruebas unitarias (Vitest)
+e2e/                 Pruebas de punta a punta (Playwright) y sus datos de ejemplo
+integraciones/gmail/ Script de Apps Script (alternativa a la conexión con Google)
+docs/                Notas de diseño (SII)
+nucleo/              Núcleo en Kotlin Multiplatform: las reglas de la plata para Android (JVM) y la PWA (JS); ver nucleo/README.md
 ```
 
 ## Rutas
 
 Pestañas: `/` (Resumen) · `/gastos` · `/plata` (Mi plata) · `/personas` · `/recurrentes`
-Pantallas: `/gasto/nuevo[?p=id]` · `/gasto/:id[/editar]` · `/persona/:id[/editar|/pago|/cobro]` · `/recurrente/nuevo` · `/recurrente/:id` · `/grupos` · `/grupo/:id` · `/categorias` · `/medios` · `/medio/nuevo` · `/medio/:id` · `/ajustes` · `/bienvenida` · `/archivadas` · `/cuenta/nueva` · `/cuenta/:id[/editar]` · `/deposito/nuevo` · `/deposito/:id` · `/correo` · `/correo/conectar` · `/presupuestos` · `/presupuesto/nuevo` · `/presupuesto/:id` · `/ingresos` · `/ingreso/nuevo[?sueldo=1|?tipo=suelto&det=id]` · `/ingreso/:id` · `/ingreso/fijo/:id` · `/tendencias` · `/meta/nueva` · `/meta/:id[/editar]`
+
+Pantallas: `/gasto/nuevo` · `/gasto/:id[/editar]` · `/persona/:id[/editar|/pago|/cobro]` · `/recurrente/nuevo` · `/recurrente/:id` · `/grupos` · `/grupo/:id` · `/categorias` · `/medios` · `/medio/nuevo` · `/medio/:id` · `/ajustes` · `/cuenta/nueva` · `/cuenta/:id[/editar]` · `/deposito/nuevo` · `/deposito/:id` · `/correo` · `/correo/conectar` · `/presupuestos` · `/presupuesto/nuevo` · `/presupuesto/:id` · `/ingresos` · `/ingreso/nuevo` · `/ingreso/:id` · `/ingreso/fijo/:id` · `/meta/nueva` · `/meta/:id[/editar]` · `/tendencias` · `/proyeccion` · `/cierre` · `/importar` · `/bienvenida` · `/archivadas`
 
 ## Datos y respaldo
 
-- Todo queda en IndexedDB del navegador del teléfono. Al iniciar, la app pide almacenamiento persistente.
-- **Exportar** abre el menú de compartir del teléfono (Drive, WhatsApp, correo) con un JSON (`version: 3`, incluye fotos). En computador lo descarga. **Importar** acepta respaldos v2 y v3 y reemplaza los datos actuales.
-- Si pasan 7 días sin respaldar, Inicio muestra un recordatorio (se puede apagar en Ajustes).
-- Ojo en iPhone: Safari puede borrar los datos de sitios que no se usan en semanas. Instalar la app en la pantalla de inicio y exportar respaldos de vez en cuando evita sorpresas.
+- Todo queda en IndexedDB del teléfono; al iniciar, la app pide almacenamiento persistente.
+- **Respaldo en Drive:** al rato de cada cambio y al salir de la app, un archivo por día (se guardan 30) en la carpeta "a mano · respaldos".
+- **Exportar** abre el menú de compartir con el JSON (incluye fotos); en computador lo descarga. **Importar** reemplaza todos los datos (conviene exportar antes).
+- Ojo en iPhone: Safari puede borrar los datos de sitios que no se usan en semanas. Instalar la app en la pantalla de inicio y tener el respaldo en Drive evita sorpresas.

@@ -1,30 +1,24 @@
 // ¿Cómo termino el mes?: la proyección hasta el próximo sueldo y el cierre del ciclo (de sueldo a sueldo).
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { db, guardarAjustes } from '../db';
-import { useAjustes, useDatos, type Datos } from '../hooks';
+import { useAjustes, useDatos, useProyeccion, type Datos } from '../hooks';
 import { aportarMeta } from '../metas';
 import { avanceMeta } from '../lib/metas';
 import { daysBetween, fmt, juntarY, shortDate, todayISO } from '../lib/format';
-import { cicloAnterior, cicloActual, cuentaParaElMes, proyectar, puedeContar, resumenCiclo, tocaCierre, type Ciclo, type LoQueViene, type Proyeccion } from '../lib/proyeccion';
+import { cicloAnterior, cicloActual, cuentaParaElMes, puedeContar, resumenCiclo, tocaCierre, type Ciclo, type LoQueViene, type Proyeccion } from '../lib/proyeccion';
 import { sumarDias } from '../lib/recurrence';
 import { useNav } from '../nav';
 import { Icon } from '../ui/icons';
 import { BackButton, Sheet, Switch } from '../ui/kit';
-import { useToast } from '../ui/toast';
+import { useToast } from '../ui/toastCtx';
 
 const plural = (n: number, uno: string, varios: string) => `${n} ${n === 1 ? uno : varios}`;
 const fechaLbl = (iso: string) => shortDate(iso, new Date(`${todayISO()}T12:00:00`));
 
 /** "hasta el sueldo" o "hasta fin de mes". */
-export const hastaLbl = (c: Ciclo) => (c.sueldo ? 'hasta el sueldo' : 'hasta fin de mes');
+const hastaLbl = (c: Ciclo) => (c.sueldo ? 'hasta el sueldo' : 'hasta fin de mes');
 /** Rango de un ciclo: "25 oct – 24 nov". */
-export const rangoCiclo = (c: Ciclo) => `${fechaLbl(c.inicio)} – ${fechaLbl(sumarDias(c.hasta, -1))}`;
-
-/** La proyección con los datos de la app. */
-export function useProyeccion(d: Datos | undefined): Proyeccion | undefined {
-  const hoy = todayISO();
-  return useMemo(() => (d ? proyectar(d, hoy) : undefined), [d, hoy]);
-}
+const rangoCiclo = (c: Ciclo) => `${fechaLbl(c.inicio)} – ${fechaLbl(sumarDias(c.hasta, -1))}`;
 
 // ---------- En el resumen ----------
 

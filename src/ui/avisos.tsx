@@ -6,8 +6,8 @@ import { db } from '../db';
 import { imputar } from '../lib/cuotas';
 import { fmt, todayISO } from '../lib/format';
 import { avancePresupuesto } from '../lib/presupuestos';
-import { categoriasPresupuesto, nombrePresupuesto } from './presupuesto';
-import { useToast } from './toast';
+import { categoriasPresupuesto, nombrePresupuesto } from './presupuestoTextos';
+import { useToast } from './toastCtx';
 
 export function AvisosPresupuesto() {
   const toast = useToast();

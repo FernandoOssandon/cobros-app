@@ -10,7 +10,7 @@ import { sugerirRecurrentes } from '../lib/sugerencias';
 import { Icon } from '../ui/icons';
 import { Avatar, CatIcon, EmptyState } from '../ui/kit';
 import { PorConfirmarSheet } from '../ui/sheets';
-import { useToast } from '../ui/toast';
+import { useToast } from '../ui/toastCtx';
 import { IconoIngreso } from '../ui/ingreso';
 
 const SECCIONES: [Recurrente['tipo'], string][] = [

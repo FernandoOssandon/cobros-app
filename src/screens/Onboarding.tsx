@@ -4,8 +4,8 @@ import { useNav } from '../nav';
 import { Icon } from '../ui/icons';
 import { Logo } from '../ui/Logo';
 import { MedioThumb } from '../ui/kit';
-import { tipoMedioLabel } from '../ui/rows';
-import { useToast } from '../ui/toast';
+import { tipoMedioLabel } from '../ui/textos';
+import { useToast } from '../ui/toastCtx';
 
 export default function Onboarding() {
   const d = useDatos();

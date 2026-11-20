@@ -37,3 +37,20 @@ jobs:
           name: reporte-playwright
           path: playwright-report/
           retention-days: 7
+
+  # Núcleo en Kotlin Multiplatform: pruebas en JVM y en JavaScript contra los vectores generados desde TypeScript.
+  nucleo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: nucleo
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Compilar y probar el núcleo (JVM y JavaScript)
+        run: bash ./gradlew build --no-daemon
